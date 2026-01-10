@@ -77,12 +77,12 @@ export default function ComprasPage() {
     try {
       const { data, error } = await supabase
         .from('cartoes')
-        .select('id, nome')
+        .select('id, nome, vencimento')
         .eq('user_id', session?.user?.id)
         .order('nome')
 
       if (error) throw error
-      setCartoes(data || [])
+      setCartoes((data || []) as Cartao[])
     } catch (error) {
       console.error('Erro ao carregar cartões:', error)
     }
@@ -129,7 +129,7 @@ export default function ComprasPage() {
     }
 
     // Buscar informações do cartão
-    const cartao = cartoes.find(c => c.id === cartaoId)
+    const cartao = cartoes.find(c => c.id === cartaoId) as Cartao | undefined
     if (!cartao) {
       const data = new Date(dataCompra)
       data.setMonth(data.getMonth() + numeroParcela - 1)
@@ -149,7 +149,8 @@ export default function ComprasPage() {
 
     // Usar o dia de fechamento como dia de vencimento da parcela
     const ultimoDia = new Date(anoVencimento, mesVencimento + 1, 0).getDate()
-    const diaVencimento = Math.min(cartao.vencimento || 15, ultimoDia)
+    const diaVencimentoCartao = cartao.vencimento ?? 15
+    const diaVencimento = Math.min(diaVencimentoCartao, ultimoDia)
 
     return new Date(anoVencimento, mesVencimento, diaVencimento)
   }
