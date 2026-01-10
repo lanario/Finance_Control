@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Remover hover branco/cinza claro dos gráficos Recharts - solução completa */
+.recharts-bar-rectangle {
+  cursor: default !important;
+  transition: none !important;
+}
+
+/* Remover qualquer mudança visual no hover - forçar cor original */
+.recharts-bar-rectangle:hover,
+.recharts-bar-rectangle:active,
+.recharts-bar-rectangle:focus,
+.recharts-bar-rectangle[class*="active"],
+.recharts-bar-rectangle[class*="hover"] {
+  opacity: 1 !important;
+  fill-opacity: 1 !important;
+  fill: inherit !important;
+  stroke: none !important;
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Sobrescrever estilos inline do Recharts no hover */
+.recharts-bar-rectangle[style]:hover {
+  fill: inherit !important;
+  opacity: 1 !important;
+}
+
+.recharts-active-bar,
+.recharts-active-bar:hover,
+.recharts-active-bar:active,
+.recharts-active-bar[class*="active"],
+.recharts-active-bar[style] {
+  opacity: 1 !important;
+  fill-opacity: 1 !important;
+  fill: inherit !important;
+  stroke: none !important;
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Remover o highlight cinza claro que aparece atrás da barra no hover */
+.recharts-bar,
+.recharts-bar:hover,
+.recharts-bar-rectangle,
+.recharts-bar-rectangle:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Remover qualquer elemento de background ou overlay */
+.recharts-bar > *,
+.recharts-bar-rectangle > *,
+.recharts-bar-rectangle::before,
+.recharts-bar-rectangle::after {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Remover qualquer highlight de fundo no hover - mais específico */
+.recharts-bar-rectangle:hover ~ *,
+.recharts-bar:hover .recharts-bar-rectangle,
+.recharts-bar-rectangle:hover {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Remover qualquer elemento de overlay que o Recharts cria */
+.recharts-tooltip-cursor,
+.recharts-active-shape,
+.recharts-reference-line,
+.recharts-tooltip-cursor-fill,
+.recharts-tooltip-cursor-stroke {
+  display: none !important;
+  fill: transparent !important;
+  stroke: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Remover o cursor/highlight do tooltip - todas as variações */
+.recharts-tooltip-wrapper .recharts-tooltip-cursor,
+.recharts-bar-chart .recharts-tooltip-cursor,
+.recharts-tooltip-cursor,
+.recharts-cartesian-grid-horizontal .recharts-tooltip-cursor,
+.recharts-cartesian-grid-vertical .recharts-tooltip-cursor,
+.recharts-bar .recharts-tooltip-cursor,
+svg .recharts-tooltip-cursor,
+.recharts-wrapper .recharts-tooltip-cursor {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  fill: transparent !important;
+  stroke: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Remover qualquer elemento retangular que apareça no hover */
+.recharts-tooltip-cursor-fill,
+.recharts-tooltip-cursor-stroke,
+.recharts-active-bar-fill {
+  display: none !important;
+  fill: transparent !important;
+  stroke: transparent !important;
+  opacity: 0 !important;
+}
+
+/* Forçar que a cor original seja mantida no hover - todas as variações */
+.recharts-bar .recharts-bar-rectangle:hover,
+.recharts-bar-rectangle:hover,
+svg .recharts-bar-rectangle:hover,
+.recharts-bar-rectangle[style]:hover {
+  fill: inherit !important;
+}
+
+/* Remover qualquer overlay ou highlight */
+.recharts-bar-rectangle::before,
+.recharts-bar-rectangle::after {
+  display: none !important;
+  content: none !important;
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 255, 255, 255;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+.animate-slide-in-delay {
+  animation: slide-in 0.3s ease-out 0.1s forwards;
+  opacity: 0;
+}

@@ -1,0 +1,46 @@
+# Financeiro Pessoal - Requisitos e Dependências
+# ================================================
+
+# REQUISITOS DO SISTEMA
+# ---------------------
+Node.js >= 18.0.0
+npm >= 9.0.0 (ou yarn >= 1.22.0)
+
+# DEPENDÊNCIAS PRINCIPAIS (Production)
+# -------------------------------------
+@supabase/supabase-js@^2.39.0
+next@14.0.4
+react@^18.2.0
+react-dom@^18.2.0
+react-icons@^4.12.0
+recharts@^2.10.3
+
+# DEPENDÊNCIAS DE DESENVOLVIMENTO (DevDependencies)
+# --------------------------------------------------
+@types/node@^20
+@types/react@^18
+@types/react-dom@^18
+autoprefixer@^10.0.1
+eslint@^8
+eslint-config-next@14.0.4
+postcss@^8
+tailwindcss@^3.3.0
+typescript@^5
+
+# SERVIÇOS EXTERNOS NECESSÁRIOS
+# ------------------------------
+Supabase (conta gratuita em https://supabase.com)
+
+# VARIÁVEIS DE AMBIENTE NECESSÁRIAS
+# ----------------------------------
+NEXT_PUBLIC_SUPABASE_URL=<sua_url_do_supabase>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<sua_chave_anon_do_supabase>
+
+# INSTRUÇÕES DE INSTALAÇÃO
+# ------------------------
+# 1. Instalar Node.js (https://nodejs.org/)
+# 2. Executar: npm install
+# 3. Configurar variáveis de ambiente no arquivo .env.local
+# 4. Executar o schema SQL no Supabase (supabase/migrations/001_initial_schema.sql)
+# 5. Executar: npm run dev
+
