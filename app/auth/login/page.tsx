@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { FiMail, FiLock, FiDollarSign, FiTrendingUp, FiCreditCard } from 'react-icons/fi'
@@ -13,6 +13,20 @@ export default function LoginPage() {
   const [success, setSuccess] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const router = useRouter()
+
+  // Verificar se o usuário veio de uma confirmação de email
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const confirmed = urlParams.get('confirmed')
+      if (confirmed === 'true') {
+        setSuccess('✅ Email confirmado com sucesso! Agora você pode fazer login.')
+        // Limpar o parâmetro da URL sem recarregar a página
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }
+    }
+  }, [])
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 6) {
@@ -85,9 +99,27 @@ export default function LoginPage() {
       console.log('🔍 Tentando criar conta...')
       console.log('URL:', supabaseUrl ? '✅' : '❌')
       
+      // Determinar a URL base da aplicação para redirecionamento após confirmação
+      const getRedirectUrl = () => {
+        // Se estiver no cliente, usar a URL atual
+        if (typeof window !== 'undefined') {
+          return `${window.location.origin}/auth/login?confirmed=true`
+        }
+        // Se estiver no servidor, usar variável de ambiente ou URL padrão da VPS
+        return process.env.NEXT_PUBLIC_SITE_URL 
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login?confirmed=true`
+          : 'http://69.62.87.91:3001/auth/login?confirmed=true'
+      }
+      
+      const redirectUrl = getRedirectUrl()
+      console.log('🔗 URL de redirecionamento:', redirectUrl)
+      
       const { error, data } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
       })
 
       if (error) {
