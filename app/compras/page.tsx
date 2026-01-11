@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/app/providers'
-import { FiPlus, FiEdit, FiTrash2, FiShoppingCart, FiTag, FiX } from 'react-icons/fi'
+import { FiPlus, FiEdit, FiTrash2, FiShoppingCart, FiTag, FiX, FiArrowUp, FiArrowDown, FiChevronUp, FiChevronDown } from 'react-icons/fi'
 
 interface Compra {
   id: string
@@ -17,6 +17,34 @@ interface Compra {
   user_id: string
   parcelada?: boolean
   total_parcelas?: number
+}
+
+interface Parcela {
+  id: string
+  compra_id: string | null
+  cartao_id: string | null
+  descricao: string
+  valor: number
+  numero_parcela: number
+  total_parcelas: number
+  data_vencimento: string
+  categoria: string
+  paga: boolean
+  user_id: string
+}
+
+interface ItemLista {
+  id: string
+  descricao: string
+  valor: number
+  data: string
+  cartao_id: string | null
+  categoria: string
+  metodo_pagamento: string
+  tipo: 'compra' | 'parcela'
+  parcelada?: boolean
+  total_parcelas?: number
+  numero_parcela?: number
 }
 
 interface Cartao {
@@ -41,10 +69,15 @@ interface TipoGasto {
 export default function ComprasPage() {
   const { session } = useAuth()
   const [compras, setCompras] = useState<Compra[]>([])
+  const [parcelas, setParcelas] = useState<Parcela[]>([])
+  const [itens, setItens] = useState<ItemLista[]>([])
   const [cartoes, setCartoes] = useState<Cartao[]>([])
   const [tiposGastos, setTiposGastos] = useState<TipoGasto[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'compras' | 'tipos'>('compras')
+  const [filtroMes, setFiltroMes] = useState<string>('')
+  const [filtroAno, setFiltroAno] = useState<string>('')
+  const [ordenacao, setOrdenacao] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'data', direcao: 'desc' })
   const [showModal, setShowModal] = useState(false)
   const [showTipoModal, setShowTipoModal] = useState(false)
   const [editingCompra, setEditingCompra] = useState<Compra | null>(null)
@@ -105,14 +138,74 @@ export default function ComprasPage() {
 
   const loadCompras = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true)
+      const userId = session?.user?.id
+
+      // Buscar compras
+      const { data: comprasData, error: comprasError } = await supabase
         .from('compras')
         .select('*')
-        .eq('user_id', session?.user?.id)
+        .eq('user_id', userId)
         .order('data', { ascending: false })
 
-      if (error) throw error
-      setCompras(data || [])
+      if (comprasError) throw comprasError
+
+      // Buscar parcelas em andamento (sem compra_id)
+      const { data: parcelasData, error: parcelasError } = await supabase
+        .from('parcelas')
+        .select('*')
+        .eq('user_id', userId)
+        .is('compra_id', null)
+        .order('data_vencimento', { ascending: false })
+
+      if (parcelasError) throw parcelasError
+
+      setCompras(comprasData || [])
+      setParcelas(parcelasData || [])
+
+      // Combinar compras e parcelas em uma lista unificada
+      const itensLista: ItemLista[] = []
+
+      // Adicionar compras
+      comprasData?.forEach((compra) => {
+        itensLista.push({
+          id: compra.id,
+          descricao: compra.descricao,
+          valor: compra.valor,
+          data: compra.data,
+          cartao_id: compra.cartao_id,
+          categoria: compra.categoria,
+          metodo_pagamento: compra.metodo_pagamento,
+          tipo: 'compra',
+          parcelada: compra.parcelada,
+          total_parcelas: compra.total_parcelas,
+        })
+      })
+
+      // Adicionar parcelas em andamento
+      parcelasData?.forEach((parcela) => {
+        itensLista.push({
+          id: parcela.id,
+          descricao: parcela.descricao,
+          valor: parcela.valor,
+          data: parcela.data_vencimento, // Usar data de vencimento como data de referência
+          cartao_id: parcela.cartao_id,
+          categoria: parcela.categoria,
+          metodo_pagamento: 'cartao',
+          tipo: 'parcela',
+          numero_parcela: parcela.numero_parcela,
+          total_parcelas: parcela.total_parcelas,
+        })
+      })
+
+      // Ordenar por data (mais recente primeiro)
+      itensLista.sort((a, b) => {
+        const dataA = new Date(a.data).getTime()
+        const dataB = new Date(b.data).getTime()
+        return dataB - dataA
+      })
+
+      setItens(itensLista)
     } catch (error) {
       console.error('Erro ao carregar compras:', error)
     } finally {
@@ -378,15 +471,26 @@ export default function ComprasPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta compra?')) return
+    if (!confirm('Tem certeza que deseja excluir este item?')) return
 
     try {
-      const { error } = await supabase.from('compras').delete().eq('id', id)
-      if (error) throw error
+      // Verificar se é uma compra ou parcela
+      const item = itens.find(i => i.id === id)
+      
+      if (item?.tipo === 'parcela') {
+        // Excluir parcela
+        const { error } = await supabase.from('parcelas').delete().eq('id', id)
+        if (error) throw error
+      } else {
+        // Excluir compra
+        const { error } = await supabase.from('compras').delete().eq('id', id)
+        if (error) throw error
+      }
+      
       loadCompras()
     } catch (error) {
-      console.error('Erro ao excluir compra:', error)
-      alert('Erro ao excluir compra')
+      console.error('Erro ao excluir item:', error)
+      alert('Erro ao excluir item')
     }
   }
 
@@ -461,7 +565,46 @@ export default function ComprasPage() {
         {/* Tab Content - Compras */}
         {activeTab === 'compras' && (
           <div className="space-y-6">
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              {/* Filtro de mês/ano */}
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <label className="text-gray-300 text-sm">Mês:</label>
+                  <select
+                    value={filtroMes}
+                    onChange={(e) => {
+                      setFiltroMes(e.target.value)
+                    }}
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Todos</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                  </select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <label className="text-gray-300 text-sm">Ano:</label>
+                  <input
+                    type="number"
+                    value={filtroAno}
+                    onChange={(e) => setFiltroAno(e.target.value)}
+                    placeholder="Ano"
+                    min="2000"
+                    max="2100"
+                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
               <button
                 onClick={() => {
                   setEditingCompra(null)
@@ -484,7 +627,7 @@ export default function ComprasPage() {
               </button>
             </div>
 
-            {compras.length === 0 ? (
+            {itens.length === 0 ? (
               <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
                 <FiShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-400 text-lg mb-2">
@@ -500,20 +643,85 @@ export default function ComprasPage() {
                   <table className="w-full">
                     <thead className="bg-primary text-white">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Descrição
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => {
+                            setOrdenacao(prev => ({
+                              campo: 'descricao',
+                              direcao: prev.campo === 'descricao' && prev.direcao === 'asc' ? 'desc' : 'asc'
+                            }))
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Descrição</span>
+                            {ordenacao.campo === 'descricao' && (
+                              ordenacao.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Valor
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => {
+                            setOrdenacao(prev => ({
+                              campo: 'valor',
+                              direcao: prev.campo === 'valor' && prev.direcao === 'asc' ? 'desc' : 'asc'
+                            }))
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Valor</span>
+                            {ordenacao.campo === 'valor' && (
+                              ordenacao.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Data
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => {
+                            setOrdenacao(prev => ({
+                              campo: 'data',
+                              direcao: prev.campo === 'data' && prev.direcao === 'asc' ? 'desc' : 'asc'
+                            }))
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Data</span>
+                            {ordenacao.campo === 'data' && (
+                              ordenacao.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Método de Pagamento
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => {
+                            setOrdenacao(prev => ({
+                              campo: 'metodo_pagamento',
+                              direcao: prev.campo === 'metodo_pagamento' && prev.direcao === 'asc' ? 'desc' : 'asc'
+                            }))
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Método de Pagamento</span>
+                            {ordenacao.campo === 'metodo_pagamento' && (
+                              ordenacao.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Categoria
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => {
+                            setOrdenacao(prev => ({
+                              campo: 'categoria',
+                              direcao: prev.campo === 'categoria' && prev.direcao === 'asc' ? 'desc' : 'asc'
+                            }))
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Categoria</span>
+                            {ordenacao.campo === 'categoria' && (
+                              ordenacao.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium uppercase">
                           Ações
@@ -521,78 +729,130 @@ export default function ComprasPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {compras.map((compra) => {
-                        const tipo = getTipoGasto(compra.categoria)
-                        return (
-                          <tr key={compra.id} className="hover:bg-gray-700/50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
-                              {compra.descricao}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-white font-semibold">
-                                R$ {compra.valor.toFixed(2)}
-                              </div>
-                              {compra.parcelada && compra.total_parcelas && (
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {compra.total_parcelas}x parcelas
+                      {itens
+                        .filter((item) => {
+                          if (!filtroMes && !filtroAno) return true
+                          
+                          const itemDate = new Date(item.data)
+                          const itemMes = String(itemDate.getMonth() + 1).padStart(2, '0')
+                          const itemAno = String(itemDate.getFullYear())
+                          
+                          const matchMes = !filtroMes || itemMes === filtroMes
+                          const matchAno = !filtroAno || itemAno === filtroAno
+                          
+                          return matchMes && matchAno
+                        })
+                        .sort((a, b) => {
+                          let comparacao = 0
+                          
+                          switch (ordenacao.campo) {
+                            case 'descricao':
+                              comparacao = a.descricao.localeCompare(b.descricao, 'pt-BR')
+                              break
+                            case 'valor':
+                              comparacao = a.valor - b.valor
+                              break
+                            case 'data':
+                              comparacao = new Date(a.data).getTime() - new Date(b.data).getTime()
+                              break
+                            case 'metodo_pagamento':
+                              comparacao = a.metodo_pagamento.localeCompare(b.metodo_pagamento, 'pt-BR')
+                              break
+                            case 'categoria':
+                              comparacao = a.categoria.localeCompare(b.categoria, 'pt-BR')
+                              break
+                            default:
+                              comparacao = 0
+                          }
+                          
+                          return ordenacao.direcao === 'asc' ? comparacao : -comparacao
+                        })
+                        .map((item) => {
+                          const tipo = getTipoGasto(item.categoria)
+                          const isParcela = item.tipo === 'parcela'
+                          
+                          return (
+                            <tr key={item.id} className="hover:bg-gray-700/50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                                {item.descricao}
+                                {isParcela && item.numero_parcela && (
+                                  <span className="text-xs text-gray-400 ml-2">
+                                    ({item.numero_parcela}/{item.total_parcelas})
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-white font-semibold">
+                                  R$ {item.valor.toFixed(2)}
                                 </div>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-400">
-                              {new Date(compra.data).toLocaleDateString('pt-BR')}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {compra.metodo_pagamento === 'pix' ? (
-                                <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium border border-green-500/40">
-                                  💳 PIX
-                                </span>
-                              ) : compra.metodo_pagamento === 'dinheiro' ? (
-                                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium border border-yellow-500/40">
-                                  💵 Dinheiro
-                                </span>
-                              ) : (
-                                <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium border border-blue-500/40">
-                                  💳 {getCartaoNome(compra.cartao_id || '')}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {tipo ? (
-                                <span
-                                  className="px-3 py-1 rounded-full text-xs font-medium"
-                                  style={{
-                                    backgroundColor: `${tipo.cor}20`,
-                                    color: tipo.cor,
-                                    border: `1px solid ${tipo.cor}40`,
-                                  }}
-                                >
-                                  {compra.categoria}
-                                </span>
-                              ) : (
-                                <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
-                                  {compra.categoria}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <div className="flex space-x-2">
-                                <button
-                                  onClick={() => handleEdit(compra)}
-                                  className="text-blue-400 hover:text-blue-300 transition-colors"
-                                >
-                                  <FiEdit className="w-5 h-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(compra.id)}
-                                  className="text-red-400 hover:text-red-300 transition-colors"
-                                >
-                                  <FiTrash2 className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
+                                {!isParcela && item.parcelada && item.total_parcelas && (
+                                  <div className="text-xs text-gray-400 mt-1">
+                                    {item.total_parcelas}x parcelas
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                                {new Date(item.data).toLocaleDateString('pt-BR')}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {item.metodo_pagamento === 'pix' ? (
+                                  <span className="px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium border border-green-500/40">
+                                    💳 PIX
+                                  </span>
+                                ) : item.metodo_pagamento === 'dinheiro' ? (
+                                  <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium border border-yellow-500/40">
+                                    💵 Dinheiro
+                                  </span>
+                                ) : (
+                                  <span className="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium border border-blue-500/40">
+                                    💳 {getCartaoNome(item.cartao_id || '')}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {tipo ? (
+                                  <span
+                                    className="px-3 py-1 rounded-full text-xs font-medium"
+                                    style={{
+                                      backgroundColor: `${tipo.cor}20`,
+                                      color: tipo.cor,
+                                      border: `1px solid ${tipo.cor}40`,
+                                    }}
+                                  >
+                                    {item.categoria}
+                                  </span>
+                                ) : (
+                                  <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
+                                    {item.categoria}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div className="flex space-x-2">
+                                  {!isParcela && (
+                                    <button
+                                      onClick={() => {
+                                        const compra = compras.find(c => c.id === item.id)
+                                        if (compra) handleEdit(compra)
+                                      }}
+                                      className="text-blue-400 hover:text-blue-300 transition-colors"
+                                      title="Editar"
+                                    >
+                                      <FiEdit className="w-5 h-5" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDelete(item.id)}
+                                    className="text-red-400 hover:text-red-300 transition-colors"
+                                    title={isParcela ? "Excluir parcela" : "Excluir compra"}
+                                  >
+                                    <FiTrash2 className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
                     </tbody>
                   </table>
                 </div>

@@ -97,12 +97,12 @@ export default function GastosPage() {
         return !isParcelada
       }) || []
 
-      // Buscar parcelas pendentes para incluir nos gastos mensais
+      // Buscar TODAS as parcelas para incluir nos gastos mensais (pagas e não pagas)
+      // As parcelas são contabilizadas no mês em que vencem, independente do status de pagamento
       const { data: parcelas, error: parcelasError } = await supabase
         .from('parcelas')
         .select('*')
         .eq('user_id', userId)
-        .eq('paga', false)
         .order('data_vencimento', { ascending: false })
 
       if (parcelasError) throw parcelasError
@@ -162,17 +162,33 @@ export default function GastosPage() {
         gastosAgrupados[key].total += parcela.valor
       })
 
-      // Converter para array e ordenar (mais recente primeiro)
+      // Converter para array e ordenar (mês mais próximo do atual primeiro)
+      const agora = new Date()
+      const anoAtual = agora.getFullYear()
+      const mesAtual = agora.getMonth() + 1
+      
       const gastosArray = Object.values(gastosAgrupados).sort((a, b) => {
-        if (a.ano !== b.ano) return b.ano - a.ano
-        return b.mes - a.mes
+        // Calcular distância em meses do mês atual
+        const distanciaA = (a.ano - anoAtual) * 12 + (a.mes - mesAtual)
+        const distanciaB = (b.ano - anoAtual) * 12 + (b.mes - mesAtual)
+        
+        // Usar valor absoluto para considerar tanto meses passados quanto futuros
+        const distanciaAbsA = Math.abs(distanciaA)
+        const distanciaAbsB = Math.abs(distanciaB)
+        
+        // Se a distância absoluta for igual, priorizar meses futuros (distância positiva)
+        if (distanciaAbsA === distanciaAbsB) {
+          return distanciaB - distanciaA // Positivo primeiro (futuro)
+        }
+        
+        // Ordenar por distância absoluta (mais próximo primeiro)
+        return distanciaAbsA - distanciaAbsB
       })
 
       setGastosPorMes(gastosArray)
 
-      // Abrir o mês atual por padrão
-      const agora = new Date()
-      const mesAtualKey = `${agora.getFullYear()}-${agora.getMonth() + 1}`
+      // Abrir o mês atual por padrão (reutilizando a variável agora já definida acima)
+      const mesAtualKey = `${anoAtual}-${mesAtual}`
       setMesesAbertos(new Set([mesAtualKey]))
     } catch (error) {
       console.error('Erro ao carregar gastos:', error)

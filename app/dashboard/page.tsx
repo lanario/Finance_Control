@@ -115,12 +115,12 @@ export default function DashboardPage() {
         return !isParcelada
       }) || []
 
-      // Buscar parcelas pendentes (não pagas) que vencem no mês atual
+      // Buscar TODAS as parcelas que vencem no mês atual (pagas e não pagas)
+      // As parcelas devem ser contabilizadas no mês em que vencem, independente do status de pagamento
       const { data: parcelasMes } = await supabase
         .from('parcelas')
         .select('*')
         .eq('user_id', userId)
-        .eq('paga', false)
         .gte('data_vencimento', startOfMonth.toISOString().split('T')[0])
         .lte('data_vencimento', endOfMonth.toISOString().split('T')[0])
 
@@ -148,12 +148,12 @@ export default function DashboardPage() {
         return !isParcelada
       }) || []
 
-      // Buscar todas as parcelas pendentes dos últimos 6 meses (baseado na data de vencimento)
+      // Buscar TODAS as parcelas dos últimos 6 meses (baseado na data de vencimento)
+      // Incluir todas as parcelas (pagas e não pagas) pois são despesas que vencem naquele mês
       const { data: parcelas6Meses } = await supabase
         .from('parcelas')
         .select('*')
         .eq('user_id', userId)
-        .eq('paga', false)
         .gte('data_vencimento', sixMonthsAgo.toISOString().split('T')[0])
         .order('data_vencimento', { ascending: true })
 
@@ -187,14 +187,13 @@ export default function DashboardPage() {
         }
       })
 
-      // Agregar parcelas por mês (baseado na data de vencimento) - APENAS parcelas não pagas
+      // Agregar parcelas por mês (baseado na data de vencimento) - TODAS as parcelas
+      // As parcelas são contabilizadas no mês em que vencem, independente do status de pagamento
       parcelas6Meses?.forEach((parcela) => {
-        if (!parcela.paga) {
-          const vencimentoDate = new Date(parcela.data_vencimento)
-          const key = `${vencimentoDate.getFullYear()}-${String(vencimentoDate.getMonth() + 1).padStart(2, '0')}`
-          if (gastosPorMes[key] !== undefined) {
-            gastosPorMes[key] += parcela.valor
-          }
+        const vencimentoDate = new Date(parcela.data_vencimento)
+        const key = `${vencimentoDate.getFullYear()}-${String(vencimentoDate.getMonth() + 1).padStart(2, '0')}`
+        if (gastosPorMes[key] !== undefined) {
+          gastosPorMes[key] += parcela.valor
         }
       })
 
@@ -260,12 +259,13 @@ export default function DashboardPage() {
         despesasPorCategoriaMap[categoria] += compra.valor
       })
       
-      // Agregar parcelas do mês por categoria
+      // Agregar parcelas do mês por categoria - TODAS as parcelas (pagas e não pagas)
       parcelasMes?.forEach((parcela) => {
         const categoria = parcela.categoria || 'Outros'
         if (!despesasPorCategoriaMap[categoria]) {
           despesasPorCategoriaMap[categoria] = 0
         }
+        // Contar todas as parcelas que vencem no mês, independente de estarem pagas
         despesasPorCategoriaMap[categoria] += parcela.valor
       })
       

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/app/providers'
-import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2 } from 'react-icons/fi'
+import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2, FiArrowUp, FiArrowDown } from 'react-icons/fi'
 
 interface Compra {
   id: string
@@ -63,6 +63,8 @@ export default function GastosMensaisPage() {
   const [tiposGastos, setTiposGastos] = useState<TipoGasto[]>([])
   const [loading, setLoading] = useState(true)
   const [totalMes, setTotalMes] = useState(0)
+  const [ordenacaoCompras, setOrdenacaoCompras] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'data', direcao: 'desc' })
+  const [ordenacaoParcelas, setOrdenacaoParcelas] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'data_vencimento', direcao: 'desc' })
 
   useEffect(() => {
     if (session && ano && mes) {
@@ -112,7 +114,8 @@ export default function GastosMensaisPage() {
         return !isParcelada
       }) || []
 
-      // Buscar parcelas que vencem no mês específico (baseado na data de vencimento)
+      // Buscar TODAS as parcelas que vencem no mês específico (baseado na data de vencimento)
+      // Incluir todas as parcelas (pagas e não pagas) pois são despesas que vencem naquele mês
       const { data: parcelasData, error: parcelasError } = await supabase
         .from('parcelas')
         .select('*')
@@ -126,9 +129,10 @@ export default function GastosMensaisPage() {
       setCompras(comprasData || [])
       setParcelas(parcelasData || [])
       
-      // Calcular total incluindo compras não parceladas e parcelas que vencem no mês
+      // Calcular total incluindo compras não parceladas e TODAS as parcelas que vencem no mês
+      // As parcelas são contabilizadas no mês em que vencem, independente do status de pagamento
       const totalCompras = comprasData?.reduce((sum, compra) => sum + compra.valor, 0) || 0
-      const totalParcelas = parcelasData?.reduce((sum, parcela) => sum + (parcela.paga ? 0 : parcela.valor), 0) || 0
+      const totalParcelas = parcelasData?.reduce((sum, parcela) => sum + parcela.valor, 0) || 0
       const total = totalCompras + totalParcelas
       setTotalMes(total)
     } catch (error) {
@@ -221,20 +225,50 @@ export default function GastosMensaisPage() {
                   <table className="w-full">
                     <thead className="bg-primary text-white">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Descrição
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => setOrdenacaoCompras(prev => ({ campo: 'descricao', direcao: prev.campo === 'descricao' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Descrição</span>
+                            {ordenacaoCompras.campo === 'descricao' && (ordenacaoCompras.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />)}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Valor
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => setOrdenacaoCompras(prev => ({ campo: 'valor', direcao: prev.campo === 'valor' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Valor</span>
+                            {ordenacaoCompras.campo === 'valor' && (ordenacaoCompras.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />)}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Data
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => setOrdenacaoCompras(prev => ({ campo: 'data', direcao: prev.campo === 'data' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Data</span>
+                            {ordenacaoCompras.campo === 'data' && (ordenacaoCompras.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />)}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Método de Pagamento
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => setOrdenacaoCompras(prev => ({ campo: 'metodo_pagamento', direcao: prev.campo === 'metodo_pagamento' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Método de Pagamento</span>
+                            {ordenacaoCompras.campo === 'metodo_pagamento' && (ordenacaoCompras.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />)}
+                          </div>
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium uppercase">
-                          Categoria
+                        <th 
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          onClick={() => setOrdenacaoCompras(prev => ({ campo: 'categoria', direcao: prev.campo === 'categoria' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span>Categoria</span>
+                            {ordenacaoCompras.campo === 'categoria' && (ordenacaoCompras.direcao === 'asc' ? <FiArrowUp className="w-4 h-4" /> : <FiArrowDown className="w-4 h-4" />)}
+                          </div>
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium uppercase">
                           Ações
@@ -242,7 +276,29 @@ export default function GastosMensaisPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                      {compras.map((compra) => {
+                      {compras
+                        .sort((a, b) => {
+                          let comparacao = 0
+                          switch (ordenacaoCompras.campo) {
+                            case 'descricao':
+                              comparacao = a.descricao.localeCompare(b.descricao, 'pt-BR')
+                              break
+                            case 'valor':
+                              comparacao = a.valor - b.valor
+                              break
+                            case 'data':
+                              comparacao = new Date(a.data).getTime() - new Date(b.data).getTime()
+                              break
+                            case 'metodo_pagamento':
+                              comparacao = a.metodo_pagamento.localeCompare(b.metodo_pagamento, 'pt-BR')
+                              break
+                            case 'categoria':
+                              comparacao = a.categoria.localeCompare(b.categoria, 'pt-BR')
+                              break
+                          }
+                          return ordenacaoCompras.direcao === 'asc' ? comparacao : -comparacao
+                        })
+                        .map((compra) => {
                         const tipo = getTipoGasto(compra.categoria)
                         return (
                           <tr key={compra.id} className="hover:bg-gray-700/50 transition-colors">

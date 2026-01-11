@@ -252,7 +252,9 @@ export default function CartoesPage() {
       }
     }
 
-    // Lógica normal de fatura baseada no dia de fechamento
+    // Lógica de fatura baseada no dia de fechamento do cartão
+    // Se a compra for feita ANTES do dia de fechamento: fatura do mês atual
+    // Se a compra for feita NO DIA ou DEPOIS do dia de fechamento: fatura do próximo mês
     let mesFatura = mes
     let anoFatura = ano
 
@@ -264,6 +266,7 @@ export default function CartoesPage() {
         anoFatura = ano + 1
       }
     }
+    // Se dia < cartao.fechamento, a compra fica na fatura do mês atual (mesFatura = mes)
 
     return { mes: mesFatura, ano: anoFatura }
   }
@@ -461,10 +464,12 @@ export default function CartoesPage() {
           })
         })
 
-        // Converter para array e ordenar faturas (mais recente primeiro)
+        // Converter para array e ordenar faturas por data de vencimento (mais próximo primeiro)
+        // Ordenar do mês mais próximo do atual para o mais distante
         const faturasArray = Object.values(faturasMapTemp).sort((a, b) => {
-          if (a.ano !== b.ano) return b.ano - a.ano
-          return b.mes - a.mes
+          const dataVencA = new Date(a.dataVencimento).getTime()
+          const dataVencB = new Date(b.dataVencimento).getTime()
+          return dataVencA - dataVencB // Mais próximo primeiro (data menor = mais próxima vem primeiro)
         })
 
         faturasMap[cartao.id] = faturasArray
@@ -624,21 +629,56 @@ export default function CartoesPage() {
     }
   }
 
+  const calcularDataVencimentoParcelaFutura = (dataInicial: Date, mesesAdicionar: number, cartaoId: string | null) => {
+    if (!cartaoId) {
+      const data = new Date(dataInicial)
+      data.setMonth(data.getMonth() + mesesAdicionar)
+      return data
+    }
+
+    const cartao = cartoes.find(c => c.id === cartaoId)
+    if (!cartao) {
+      const data = new Date(dataInicial)
+      data.setMonth(data.getMonth() + mesesAdicionar)
+      return data
+    }
+
+    const dataBase = new Date(dataInicial)
+    let mesVencimento = dataBase.getMonth() + mesesAdicionar
+    let anoVencimento = dataBase.getFullYear()
+
+    // Ajustar mês e ano se necessário
+    while (mesVencimento > 11) {
+      mesVencimento -= 12
+      anoVencimento += 1
+    }
+
+    const ultimoDia = new Date(anoVencimento, mesVencimento + 1, 0).getDate()
+    const diaVencimentoCartao = cartao.vencimento ?? 15
+    const diaVencimento = Math.min(diaVencimentoCartao, ultimoDia)
+
+    return new Date(anoVencimento, mesVencimento, diaVencimento)
+  }
+
   const handleSubmitParcela = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const parcelaData: any = {
-        cartao_id: parcelaFormData.cartao_id,
-        descricao: parcelaFormData.descricao,
-        valor: parseFloat(parcelaFormData.valor),
-        numero_parcela: parseInt(parcelaFormData.numero_parcela),
-        total_parcelas: parseInt(parcelaFormData.total_parcelas),
-        data_vencimento: parcelaFormData.data_vencimento,
-        categoria: parcelaFormData.categoria,
-      }
+      const numeroParcela = parseInt(parcelaFormData.numero_parcela)
+      const totalParcelas = parseInt(parcelaFormData.total_parcelas)
+      const valorParcela = parseFloat(parcelaFormData.valor)
 
       if (editingParcela) {
         // Atualizar parcela existente
+        const parcelaData: any = {
+          cartao_id: parcelaFormData.cartao_id,
+          descricao: parcelaFormData.descricao,
+          valor: valorParcela,
+          numero_parcela: numeroParcela,
+          total_parcelas: totalParcelas,
+          data_vencimento: parcelaFormData.data_vencimento,
+          categoria: parcelaFormData.categoria,
+        }
+
         const { error } = await supabase
           .from('parcelas')
           .update(parcelaData)
@@ -646,16 +686,58 @@ export default function CartoesPage() {
 
         if (error) throw error
       } else {
-        // Criar nova parcela
-        parcelaData.user_id = session?.user?.id
-        parcelaData.compra_id = null // Parcela individual sem compra associada
-        parcelaData.paga = false
+        // Criar novas parcelas (parcela atual + parcelas futuras)
+        if (!parcelaFormData.data_vencimento) {
+          alert('Por favor, informe a data de vencimento da primeira parcela')
+          return
+        }
 
-        const { error } = await supabase
+        const dataInicial = new Date(parcelaFormData.data_vencimento)
+        if (isNaN(dataInicial.getTime())) {
+          alert('Data de vencimento inválida')
+          return
+        }
+
+        const parcelasParaCriar = []
+
+        // Criar parcelas do numero_parcela atual até o total_parcelas
+        for (let i = numeroParcela; i <= totalParcelas; i++) {
+          // Calcular quantos meses adicionar à data inicial (0 para a primeira, 1 para a segunda, etc)
+          const mesesAdicionar = i - numeroParcela
+          
+          const dataVencimento = calcularDataVencimentoParcelaFutura(dataInicial, mesesAdicionar, parcelaFormData.cartao_id)
+          
+          parcelasParaCriar.push({
+            user_id: session?.user?.id,
+            compra_id: null, // Parcela individual sem compra associada
+            cartao_id: parcelaFormData.cartao_id,
+            descricao: totalParcelas > 1 ? `${parcelaFormData.descricao} - Parcela ${i}/${totalParcelas}` : parcelaFormData.descricao,
+            valor: valorParcela,
+            numero_parcela: i,
+            total_parcelas: totalParcelas,
+            data_vencimento: dataVencimento.toISOString().split('T')[0],
+            categoria: parcelaFormData.categoria,
+            paga: false,
+          })
+        }
+
+        if (parcelasParaCriar.length === 0) {
+          alert('Erro: Nenhuma parcela para criar')
+          return
+        }
+
+        const { data, error } = await supabase
           .from('parcelas')
-          .insert([parcelaData])
+          .insert(parcelasParaCriar)
+          .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('Erro ao inserir parcelas:', error)
+          alert(`Erro ao criar parcelas: ${error.message}`)
+          throw error
+        }
+
+        console.log(`Parcelas criadas com sucesso: ${parcelasParaCriar.length} parcelas`)
       }
 
       setShowParcelaModal(false)
@@ -1595,7 +1677,7 @@ export default function CartoesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Data de Vencimento
+                    Data da Compra
                   </label>
                   <input
                     type="date"
