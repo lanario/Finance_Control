@@ -846,6 +846,7 @@ export default function ComprasPage() {
                   setEditingCompra(null)
               setFormData({
                 descricao: '',
+                descricaoSelecionada: '',
                 valor: '',
                 data: new Date().toISOString().split('T')[0],
                 metodo_pagamento: 'cartao',
@@ -853,6 +854,8 @@ export default function ComprasPage() {
                 categoria: '',
                 parcelada: false,
                 total_parcelas: '1',
+                compra_recorrente: false,
+                dia_compra: new Date().getDate().toString(),
               })
                   setShowModal(true)
                 }}
