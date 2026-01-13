@@ -677,8 +677,10 @@ export default function ComprasPage() {
 
   const handleEdit = (compra: Compra) => {
     setEditingCompra(compra)
+    const descricaoNaLista = sugestoesDescricoes.find(s => s === compra.descricao)
     setFormData({
       descricao: compra.descricao,
+      descricaoSelecionada: descricaoNaLista ? compra.descricao : (compra.descricao ? 'PERSONALIZADO' : ''),
       valor: compra.valor.toString(),
       data: compra.data.split('T')[0],
       metodo_pagamento: compra.metodo_pagamento || 'cartao',
@@ -686,6 +688,8 @@ export default function ComprasPage() {
       categoria: compra.categoria,
       parcelada: (compra as any).parcelada || false,
       total_parcelas: ((compra as any).total_parcelas || 1).toString(),
+      compra_recorrente: false,
+      dia_compra: new Date().getDate().toString(),
     })
     setShowModal(true)
   }
