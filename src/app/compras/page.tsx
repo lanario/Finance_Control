@@ -1122,6 +1122,7 @@ export default function ComprasPage() {
                   setEditingTipo(null)
                   setTipoFormData({
                     nome: '',
+                    nomeSelecionado: '',
                     descricao: '',
                     cor: '#6b7280',
                   })

@@ -362,10 +362,11 @@ export default function Sidebar() {
     if (!session?.user?.id) return
     
     setDismissedNotifications(prev => {
-      const newSet = new Set([...prev, notificationId])
+      const newSet = new Set(prev)
+      newSet.add(notificationId)
       // Salvar no localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify([...newSet]))
+        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify(Array.from(newSet)))
       }
       return newSet
     })
@@ -377,10 +378,11 @@ export default function Sidebar() {
     
     const allIds = notifications.map(n => n.id)
     setDismissedNotifications(prev => {
-      const newSet = new Set([...prev, ...allIds])
+      const newSet = new Set(prev)
+      allIds.forEach(id => newSet.add(id))
       // Salvar no localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify([...newSet]))
+        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify(Array.from(newSet)))
       }
       return newSet
     })

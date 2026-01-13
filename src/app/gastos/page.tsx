@@ -801,6 +801,7 @@ export default function GastosPage() {
               setEditingCompra(null)
               setFormData({
                 descricao: '',
+                descricaoSelecionada: '',
                 valor: '',
                 data: new Date().toISOString().split('T')[0],
                 metodo_pagamento: 'cartao',
