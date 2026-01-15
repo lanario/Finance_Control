@@ -3,7 +3,7 @@
  * Calcula e retorna notificações relevantes para o usuário
  */
 
-import { supabase } from '@/lib/supabase'
+import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 
 export interface Notification {
   id: string
@@ -59,7 +59,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
               type: 'error',
               title: 'Fatura Vencida',
               message: `A fatura do cartão ${cartao.nome} está vencida há ${Math.abs(diasRestantes)} dia(s)`,
-              link: '/cartoes',
+              link: '/pessoal/cartoes',
             })
           } else if (diasRestantes <= 3) {
             notifications.push({
@@ -67,7 +67,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
               type: 'warning',
               title: 'Fatura Próxima do Vencimento',
               message: `A fatura do cartão ${cartao.nome} vence em ${diasRestantes} dia(s)`,
-              link: '/cartoes',
+              link: '/pessoal/cartoes',
             })
           }
         }
@@ -98,7 +98,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
           type: 'warning',
           title: 'Parcela Próxima do Vencimento',
           message: `${parcela.descricao} - R$ ${parcela.valor.toFixed(2)} vence em ${diasRestantes} dia(s)`,
-          link: '/compras',
+          link: '/pessoal/compras',
         })
       })
     }
@@ -123,7 +123,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
           type: 'error',
           title: 'Parcela Vencida',
           message: `${parcela.descricao} - R$ ${parcela.valor.toFixed(2)} está vencida há ${diasVencidos} dia(s)`,
-          link: '/compras',
+          link: '/pessoal/compras',
         })
       })
     }
@@ -221,7 +221,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
               type: 'warning',
               title: 'Limite de Cartão Próximo',
               message: `O cartão ${cartao.nome} está com ${percentualLimite.toFixed(1)}% do limite utilizado (R$ ${totalGasto.toFixed(2)} / R$ ${Number(cartaoCompleto.limite).toFixed(2)})`,
-              link: '/cartoes',
+              link: '/pessoal/cartoes',
             })
           } else if (percentualLimite >= 100) {
             notifications.push({
@@ -229,7 +229,7 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
               type: 'error',
               title: 'Limite de Cartão Excedido',
               message: `O cartão ${cartao.nome} excedeu o limite em R$ ${(totalGasto - Number(cartaoCompleto.limite)).toFixed(2)}`,
-              link: '/cartoes',
+              link: '/pessoal/cartoes',
             })
           }
         }

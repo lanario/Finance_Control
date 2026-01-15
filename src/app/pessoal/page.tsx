@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { FiTrendingUp, FiBriefcase } from 'react-icons/fi'
+import { FiTrendingUp, FiBriefcase, FiUsers } from 'react-icons/fi'
 
 export default function HomePage() {
   const router = useRouter()

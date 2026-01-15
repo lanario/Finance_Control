@@ -64,7 +64,7 @@ npm install
 #### 3.2. Execute as Migrations do Banco de Dados
 
 1. No dashboard do Supabase, vá em **SQL Editor**
-2. Abra os arquivos SQL na pasta `supabase/migrations` na seguinte ordem:
+2. Abra os arquivos SQL na pasta `supabase/migrations/pessoal` na seguinte ordem:
    - `001_initial_schema.sql`
    - `002_tipos_gastos.sql`
    - `003_adicionar_pix.sql`
@@ -75,7 +75,13 @@ npm install
    - `008_investimentos_rendimento.sql`
    - `009_corrigir_constraint_periodicidade.sql`
    - `010_adicionar_dividend_yield.sql`
+   - `011_despesas_fixas.sql`
+   - `012_perfis.sql`
+   - `013_compras_recorrentes.sql`
+   - `014_sonhos.sql`
 3. Execute cada script no SQL Editor do Supabase (clique em "Run")
+
+> ⚠️ **Importante**: Execute as migrations da pasta `pessoal/` apenas no projeto Supabase do Financeiro Pessoal. As migrations do empresarial estão em `supabase/migrations/empresarial/`
 
 #### 3.3. Obtenha as Credenciais do Supabase
 

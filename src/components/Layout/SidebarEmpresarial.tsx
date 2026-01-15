@@ -4,41 +4,42 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
+import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/app/pessoal/providers'
-import { loadNotifications, Notification } from './NotificationsSystem'
+import { useAuth } from '@/app/empresarial/providers'
 import Cropper from 'react-easy-crop'
 import type { Area, Point } from 'react-easy-crop'
 import {
   FiHome,
-  FiCreditCard,
-  FiShoppingCart,
+  FiTrendingDown,
   FiTrendingUp,
   FiDollarSign,
   FiLogOut,
-  FiPieChart,
   FiUser,
-  FiSettings,
   FiX,
-  FiBell,
-  FiAlertCircle,
   FiCheck,
-  FiTrash2,
-  FiTarget,
+  FiBriefcase,
+  FiUsers,
+  FiShoppingBag,
+  FiActivity,
+  FiFileText,
+  FiLayers,
 } from 'react-icons/fi'
 
 const menuItems = [
-  { href: '/pessoal/dashboard', label: 'Dashboard', icon: FiHome },
-  { href: '/pessoal/cartoes', label: 'Cartões', icon: FiCreditCard },
-  { href: '/pessoal/compras', label: 'Compras', icon: FiShoppingCart },
-  { href: '/pessoal/receitas', label: 'Receitas', icon: FiDollarSign },
-  { href: '/pessoal/gastos', label: 'Despesas', icon: FiTrendingUp },
-  { href: '/pessoal/investimentos', label: 'Investimentos', icon: FiPieChart },
-  { href: '/pessoal/sonhos', label: 'Sonhos Infinity', icon: FiTarget },
+  { href: '/empresarial/dashboard', label: 'Dashboard', icon: FiHome },
+  { href: '/empresarial/perfil', label: 'Perfil', icon: FiUser },
+  { href: '/empresarial/contas-a-pagar', label: 'Contas a Pagar', icon: FiTrendingDown },
+  { href: '/empresarial/contas-a-receber', label: 'Contas a Receber', icon: FiTrendingUp },
+  { href: '/empresarial/vendas', label: 'Vendas', icon: FiShoppingBag },
+  { href: '/empresarial/orcamentos', label: 'Orçamentos', icon: FiFileText },
+  { href: '/empresarial/orcamentos/estilo', label: 'Orçamento (estilo)', icon: FiLayers },
+  { href: '/empresarial/fornecedores', label: 'Fornecedores', icon: FiBriefcase },
+  { href: '/empresarial/clientes', label: 'Clientes', icon: FiUsers },
+  { href: '/empresarial/fluxo-caixa', label: 'Fluxo de Caixa', icon: FiActivity },
 ]
 
-export default function Sidebar() {
+export default function SidebarEmpresarial() {
   const pathname = usePathname()
   const router = useRouter()
   const { session } = useAuth()
@@ -52,38 +53,10 @@ export default function Sidebar() {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [notificationsCount, setNotificationsCount] = useState(0)
-  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (session?.user) {
       loadProfile()
-      // Carregar notificações descartadas do localStorage primeiro
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(`dismissedNotifications_${session.user.id}`)
-        if (saved) {
-          try {
-            const ids = JSON.parse(saved)
-            setDismissedNotifications(new Set(ids))
-          } catch (e) {
-            console.error('Erro ao carregar notificações descartadas:', e)
-          }
-        }
-      }
-      // Carregar notificações depois
-      loadNotificationsData()
-    }
-  }, [session])
-
-  useEffect(() => {
-    // Recarregar notificações a cada minuto
-    if (session?.user) {
-      const interval = setInterval(() => {
-        loadNotificationsData()
-      }, 60000) // 1 minuto
-      return () => clearInterval(interval)
     }
   }, [session])
 
@@ -91,7 +64,6 @@ export default function Sidebar() {
     if (!session?.user?.id) return
 
     try {
-      // Buscar perfil do usuário
       const { data: profile } = await supabase
         .from('perfis')
         .select('foto_url, nome')
@@ -110,7 +82,6 @@ export default function Sidebar() {
     }
   }
 
-  // Função auxiliar para criar imagem
   const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
       const image = new window.Image()
@@ -119,7 +90,6 @@ export default function Sidebar() {
       image.src = url
     })
 
-  // Função para obter a imagem cortada
   const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<Blob> => {
     const image = await createImage(imageSrc)
     const canvas = document.createElement('canvas')
@@ -159,19 +129,16 @@ export default function Sidebar() {
     const file = e.target.files?.[0]
     if (!file || !session?.user?.id) return
 
-    // Validar tipo de arquivo
     if (!file.type.startsWith('image/')) {
       alert('Por favor, selecione apenas imagens.')
       return
     }
 
-    // Validar tamanho (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       alert('A imagem deve ter no máximo 5MB.')
       return
     }
 
-    // Criar URL da imagem para o cropper
     const imageUrl = URL.createObjectURL(file)
     setImageToCrop(imageUrl)
     setShowCropModal(true)
@@ -179,7 +146,6 @@ export default function Sidebar() {
     setZoom(1)
     setCroppedAreaPixels(null)
     
-    // Limpar o input
     e.target.value = ''
   }
 
@@ -192,15 +158,12 @@ export default function Sidebar() {
 
     setUploading(true)
     try {
-      // Obter a imagem cortada como blob
       const croppedImage = await getCroppedImg(imageToCrop, croppedAreaPixels)
       
-      // Criar um arquivo a partir do blob
       const file = new File([croppedImage], `avatar-${Date.now()}.jpg`, {
         type: 'image/jpeg',
       })
 
-      // Upload para Supabase Storage
       const fileName = `${session.user.id}-${Date.now()}.jpg`
       const filePath = `${session.user.id}/${fileName}`
 
@@ -213,12 +176,10 @@ export default function Sidebar() {
         throw new Error(uploadError.message || 'Erro ao fazer upload da imagem')
       }
 
-      // Obter URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath)
 
-      // Salvar no banco de dados
       const { data: existingProfile } = await supabase
         .from('perfis')
         .select('id')
@@ -290,7 +251,6 @@ export default function Sidebar() {
     if (!session?.user?.id) return
 
     try {
-      // Verificar se o perfil já existe
       const { data: existingProfile } = await supabase
         .from('perfis')
         .select('id')
@@ -299,7 +259,6 @@ export default function Sidebar() {
 
       let error = null
       if (existingProfile) {
-        // Atualizar perfil existente
         const { error: updateError } = await supabase
           .from('perfis')
           .update({
@@ -309,7 +268,6 @@ export default function Sidebar() {
           .eq('user_id', session.user.id)
         error = updateError
       } else {
-        // Inserir novo perfil
         const { error: insertError } = await supabase
           .from('perfis')
           .insert({
@@ -322,7 +280,6 @@ export default function Sidebar() {
 
       if (error) throw error
 
-      // Recarregar o perfil
       await loadProfile()
       setShowProfileModal(false)
     } catch (error) {
@@ -331,74 +288,14 @@ export default function Sidebar() {
     }
   }
 
-  const loadNotificationsData = async () => {
-    if (!session?.user?.id) return
-
-    try {
-      const notifs = await loadNotifications(session.user.id)
-      setNotifications(notifs)
-      
-      // Carregar notificações descartadas do localStorage para filtrar
-      let dismissedIds = dismissedNotifications
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(`dismissedNotifications_${session.user.id}`)
-        if (saved) {
-          try {
-            const ids = JSON.parse(saved)
-            dismissedIds = new Set(ids)
-          } catch (e) {
-            // Ignorar erro, usar o estado atual
-          }
-        }
-      }
-      
-      // Filtrar notificações descartadas antes de contar
-      const visibleNotifs = notifs.filter(n => !dismissedIds.has(n.id))
-      setNotificationsCount(visibleNotifs.length)
-    } catch (error) {
-      console.error('Erro ao carregar notificações:', error)
-    }
-  }
-
-  const handleDismissNotification = (notificationId: string) => {
-    if (!session?.user?.id) return
-    
-    setDismissedNotifications(prev => {
-      const newSet = new Set(prev)
-      newSet.add(notificationId)
-      // Salvar no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify(Array.from(newSet)))
-      }
-      return newSet
-    })
-    setNotificationsCount(prev => Math.max(0, prev - 1))
-  }
-
-  const handleClearAllNotifications = () => {
-    if (!session?.user?.id) return
-    
-    const allIds = notifications.map(n => n.id)
-    setDismissedNotifications(prev => {
-      const newSet = new Set(prev)
-      allIds.forEach(id => newSet.add(id))
-      // Salvar no localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify(Array.from(newSet)))
-      }
-      return newSet
-    })
-    setNotificationsCount(0)
-  }
-
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/pessoal/auth/login')
+    router.push('/empresarial/auth/login')
   }
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-300 ease-in-out z-50 flex flex-col ${
+      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900 transition-all duration-300 ease-in-out z-50 flex flex-col ${
         isHovered ? 'w-64' : 'w-20'
       }`}
       onMouseEnter={() => setIsHovered(true)}
@@ -421,7 +318,7 @@ export default function Sidebar() {
                 Infinity Lines
               </h1>
               <p className="text-white/80 text-sm whitespace-nowrap animate-slide-in-delay">
-                Controle Total
+                Empresarial
               </p>
             </div>
           )}
@@ -438,8 +335,8 @@ export default function Sidebar() {
               href={item.href}
               className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-200 relative ${
                 isActive
-                  ? 'bg-primary-light text-white shadow-lg'
-                  : 'text-white hover:bg-primary-light/50 hover:text-white hover:shadow-md'
+                  ? 'bg-purple-800/80 text-white shadow-lg'
+                  : 'text-white hover:bg-purple-800/40 hover:text-white hover:shadow-md'
               }`}
             >
               {isActive && (
@@ -457,178 +354,10 @@ export default function Sidebar() {
       </nav>
 
       <div className={`${isHovered ? 'px-3' : 'px-0'} pb-6 mt-auto space-y-2`}>
-        {/* Notificações */}
-        <div className="relative">
-          <button
-            onClick={() => {
-              setShowNotifications(!showNotifications)
-              if (!showNotifications) {
-                // Quando abrir o modal, zerar o contador (notificações visualizadas)
-                setNotificationsCount(0)
-              }
-            }}
-            className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-200 relative`}
-          >
-            <div className="relative flex-shrink-0">
-              <FiBell className="w-5 h-5" />
-              {notificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {notificationsCount > 9 ? '9+' : notificationsCount}
-                </span>
-              )}
-            </div>
-            {isHovered && (
-              <span className="whitespace-nowrap animate-slide-in">
-                Notificações
-              </span>
-            )}
-          </button>
-
-          {/* Modal de Notificações - Balão ao lado */}
-          {showNotifications && (
-            <>
-              {/* Overlay para fechar */}
-              <div 
-                className="fixed inset-0 z-40"
-                onClick={() => setShowNotifications(false)}
-              />
-              <div 
-                className="fixed z-50 w-96 flex flex-col"
-                style={{ 
-                  left: isHovered ? '16rem' : '5rem',
-                  top: '1rem',
-                  maxHeight: 'calc(100vh - 2rem)',
-                  marginLeft: '0.75rem',
-                  animation: 'scaleInVertical 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                }}
-              >
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-700/50">
-                  {/* Header */}
-                  <div className="flex justify-between items-center p-6 border-b border-gray-700/50 bg-gray-800/50">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <FiBell className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-bold text-white">Notificações</h2>
-                        {notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 && (
-                          <p className="text-xs text-gray-400">
-                            {notifications.filter(n => !dismissedNotifications.has(n.id)).length} {notifications.filter(n => !dismissedNotifications.has(n.id)).length === 1 ? 'notificação' : 'notificações'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 && (
-                        <button
-                          onClick={handleClearAllNotifications}
-                          className="px-3 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-all duration-200 flex items-center space-x-1"
-                          title="Limpar todas"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                          <span>Limpar todas</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setShowNotifications(false)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/50 transition-all duration-200"
-                      >
-                        <FiX className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-                    {notifications.filter(n => !dismissedNotifications.has(n.id)).length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="w-16 h-16 rounded-full bg-gray-700/30 flex items-center justify-center mx-auto mb-4">
-                          <FiBell className="w-8 h-8 text-gray-600" />
-                        </div>
-                        <p className="text-gray-400 font-medium">Nenhuma notificação no momento</p>
-                        <p className="text-gray-500 text-sm mt-1">Você está em dia!</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        {notifications.filter(n => !dismissedNotifications.has(n.id)).map((notif, index) => (
-                          <div
-                            key={notif.id}
-                            className={`group relative overflow-hidden rounded-xl p-4 border backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
-                              notif.type === 'error'
-                                ? 'bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20 hover:border-red-500/40'
-                                : notif.type === 'warning'
-                                ? 'bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 border-yellow-500/20 hover:border-yellow-500/40'
-                                : 'bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20 hover:border-blue-500/40'
-                            }`}
-                            style={{ animationDelay: `${index * 50}ms` }}
-                          >
-                            {/* Decorative gradient overlay */}
-                            <div className={`absolute top-0 left-0 w-1 h-full ${
-                              notif.type === 'error' ? 'bg-red-500' : notif.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-                            }`}></div>
-                            
-                            <div className="flex items-start space-x-4 pl-2">
-                              {/* Icon */}
-                              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                                notif.type === 'error' 
-                                  ? 'bg-red-500/20 text-red-400' 
-                                  : notif.type === 'warning' 
-                                  ? 'bg-yellow-500/20 text-yellow-400' 
-                                  : 'bg-blue-500/20 text-blue-400'
-                              }`}>
-                                <FiAlertCircle className="w-5 h-5" />
-                              </div>
-                              
-                              {/* Content */}
-                              <div className="flex-1 min-w-0 relative group/notif">
-                                {/* Botão de fechar */}
-                                <button
-                                  onClick={() => handleDismissNotification(notif.id)}
-                                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-700/80 hover:bg-gray-600 flex items-center justify-center text-gray-400 hover:text-white transition-all duration-200 opacity-0 group-hover/notif:opacity-100 z-10"
-                                  title="Remover notificação"
-                                >
-                                  <FiX className="w-3.5 h-3.5" />
-                                </button>
-                                <h3 className={`font-semibold text-sm mb-1.5 ${
-                                  notif.type === 'error' ? 'text-red-200' : notif.type === 'warning' ? 'text-yellow-200' : 'text-blue-200'
-                                }`}>
-                                  {notif.title}
-                                </h3>
-                                <p className="text-sm text-gray-300 leading-relaxed mb-3">{notif.message}</p>
-                                {notif.link && (
-                                  <button
-                                    onClick={() => {
-                                      router.push(notif.link!)
-                                      setShowNotifications(false)
-                                    }}
-                                    className={`inline-flex items-center text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${
-                                      notif.type === 'error'
-                                        ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30 hover:text-red-200'
-                                        : notif.type === 'warning'
-                                        ? 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 hover:text-yellow-200'
-                                        : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200'
-                                    }`}
-                                  >
-                                    Ver detalhes
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
         {/* Perfil do Usuário */}
         <button
           onClick={() => setShowProfileModal(true)}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-200`}
+          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-purple-800/40 transition-all duration-200`}
         >
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
             {profilePhoto ? (
@@ -723,7 +452,7 @@ export default function Sidebar() {
                 </button>
                 <button
                   onClick={handleCropComplete}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                  className="px-4 py-2 bg-purple-800 text-white rounded-lg hover:bg-purple-900 transition-colors flex items-center space-x-2"
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -782,7 +511,7 @@ export default function Sidebar() {
                     disabled={uploading}
                     className="hidden"
                   />
-                  <span className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors inline-block">
+                  <span className="px-4 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-lg transition-colors inline-block">
                     {uploading ? 'Enviando...' : 'Alterar Foto'}
                   </span>
                 </label>
@@ -797,7 +526,7 @@ export default function Sidebar() {
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-700"
                   placeholder="Seu nome"
                 />
               </div>
@@ -826,7 +555,7 @@ export default function Sidebar() {
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  className="flex-1 px-4 py-2 bg-purple-800 text-white rounded-lg hover:bg-purple-900 transition-colors"
                 >
                   Salvar
                 </button>
@@ -838,4 +567,3 @@ export default function Sidebar() {
     </div>
   )
 }
-

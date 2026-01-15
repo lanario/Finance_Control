@@ -1,11 +1,11 @@
 'use client'
 
-import { useAuth } from '@/app/pessoal/providers'
+import { useAuth } from '@/app/empresarial/providers'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import Sidebar from './Sidebar'
+import SidebarEmpresarial from './SidebarEmpresarial'
 
-export default function MainLayout({
+export default function MainLayoutEmpresarial({
   children,
 }: {
   children: React.ReactNode
@@ -15,7 +15,7 @@ export default function MainLayout({
 
   useEffect(() => {
     if (!loading && !session) {
-      router.push('/pessoal/auth/login')
+      router.push('/empresarial/auth/login')
     }
   }, [session, loading, router])
 
@@ -33,9 +33,8 @@ export default function MainLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-900">
-      <Sidebar />
+      <SidebarEmpresarial />
       <main className="flex-1 p-8 ml-20 transition-all duration-300 min-h-screen">{children}</main>
     </div>
   )
 }
-

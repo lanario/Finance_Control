@@ -8,6 +8,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        bungee: ['var(--font-bungee)', 'sans-serif'],
+      },
       colors: {
         primary: {
           DEFAULT: '#1e3a5f', // Azul marinho
