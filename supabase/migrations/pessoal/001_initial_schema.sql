@@ -81,12 +81,16 @@ CREATE POLICY "Users can delete their own compras"
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = TIMEZONE('utc'::text, NOW());
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Triggers para atualizar updated_at (DROP IF EXISTS para evitar erros se já existirem)
 DROP TRIGGER IF EXISTS update_cartoes_updated_at ON cartoes;

@@ -2,11 +2,18 @@
 -- SCHEMA COMPLETO - FINANCEIRO EMPRESARIAL
 -- =====================================================
 -- Execute este arquivo no SQL Editor do Supabase Empresarial
--- Ordem de execução: todos os schemas estão na sequência correta
+-- 
+-- IMPORTANTE: Este schema está otimizado e atualizado com:
+-- - Funções com search_path seguro (corrige vulnerabilidades)
+-- - Status de orçamentos atualizados (concluido, em_processo, cancelado)
+-- - Todas as tabelas, índices, RLS e triggers configurados
+-- - Storage buckets e políticas configuradas
+--
+-- ORDEM DE EXECUÇÃO: Execute este arquivo completo de uma vez
 -- =====================================================
 
 -- =====================================================
--- 001 - SCHEMA INICIAL
+-- 001 - SCHEMA INICIAL (Categorias, Fornecedores, Clientes)
 -- =====================================================
 
 -- Tabela de categorias de despesas empresariais
@@ -59,10 +66,11 @@ CREATE TABLE IF NOT EXISTS clientes (
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_categorias_user_id ON categorias(user_id);
 CREATE INDEX IF NOT EXISTS idx_categorias_tipo ON categorias(tipo);
+CREATE INDEX IF NOT EXISTS idx_categorias_ativo ON categorias(ativo) WHERE ativo = true;
 CREATE INDEX IF NOT EXISTS idx_fornecedores_user_id ON fornecedores(user_id);
-CREATE INDEX IF NOT EXISTS idx_fornecedores_ativo ON fornecedores(ativo);
+CREATE INDEX IF NOT EXISTS idx_fornecedores_ativo ON fornecedores(ativo) WHERE ativo = true;
 CREATE INDEX IF NOT EXISTS idx_clientes_user_id ON clientes(user_id);
-CREATE INDEX IF NOT EXISTS idx_clientes_ativo ON clientes(ativo);
+CREATE INDEX IF NOT EXISTS idx_clientes_ativo ON clientes(ativo) WHERE ativo = true;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE categorias ENABLE ROW LEVEL SECURITY;
@@ -135,14 +143,18 @@ CREATE POLICY "Users can delete their own clientes"
   ON clientes FOR DELETE
   USING (auth.uid() = user_id);
 
--- Função para atualizar updated_at automaticamente
+-- Função para atualizar updated_at automaticamente (com search_path seguro)
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = TIMEZONE('utc'::text, NOW());
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Triggers para atualizar updated_at
 DROP TRIGGER IF EXISTS update_categorias_updated_at ON categorias;
@@ -206,11 +218,11 @@ CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_user_id ON contas_a_pagar(user_id)
 CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_fornecedor_id ON contas_a_pagar(fornecedor_id);
 CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_categoria_id ON contas_a_pagar(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_data_vencimento ON contas_a_pagar(data_vencimento);
-CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_paga ON contas_a_pagar(paga);
+CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_paga ON contas_a_pagar(paga) WHERE paga = false;
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_pagar_user_id ON parcelas_contas_pagar(user_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_pagar_conta_pagar_id ON parcelas_contas_pagar(conta_pagar_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_pagar_data_vencimento ON parcelas_contas_pagar(data_vencimento);
-CREATE INDEX IF NOT EXISTS idx_parcelas_contas_pagar_paga ON parcelas_contas_pagar(paga);
+CREATE INDEX IF NOT EXISTS idx_parcelas_contas_pagar_paga ON parcelas_contas_pagar(paga) WHERE paga = false;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE contas_a_pagar ENABLE ROW LEVEL SECURITY;
@@ -318,11 +330,11 @@ CREATE INDEX IF NOT EXISTS idx_contas_a_receber_user_id ON contas_a_receber(user
 CREATE INDEX IF NOT EXISTS idx_contas_a_receber_cliente_id ON contas_a_receber(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_contas_a_receber_categoria_id ON contas_a_receber(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_contas_a_receber_data_vencimento ON contas_a_receber(data_vencimento);
-CREATE INDEX IF NOT EXISTS idx_contas_a_receber_recebida ON contas_a_receber(recebida);
+CREATE INDEX IF NOT EXISTS idx_contas_a_receber_recebida ON contas_a_receber(recebida) WHERE recebida = false;
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_receber_user_id ON parcelas_contas_receber(user_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_receber_conta_receber_id ON parcelas_contas_receber(conta_receber_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_contas_receber_data_vencimento ON parcelas_contas_receber(data_vencimento);
-CREATE INDEX IF NOT EXISTS idx_parcelas_contas_receber_recebida ON parcelas_contas_receber(recebida);
+CREATE INDEX IF NOT EXISTS idx_parcelas_contas_receber_recebida ON parcelas_contas_receber(recebida) WHERE recebida = false;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE contas_a_receber ENABLE ROW LEVEL SECURITY;
@@ -431,10 +443,11 @@ CREATE INDEX IF NOT EXISTS idx_vendas_cliente_id ON vendas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_vendas_categoria_id ON vendas(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_vendas_data_venda ON vendas(data_venda);
 CREATE INDEX IF NOT EXISTS idx_vendas_status ON vendas(status);
+CREATE INDEX IF NOT EXISTS idx_vendas_status_pendente ON vendas(status) WHERE status = 'pendente';
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_user_id ON parcelas_vendas(user_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_venda_id ON parcelas_vendas(venda_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_data_vencimento ON parcelas_vendas(data_vencimento);
-CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_recebida ON parcelas_vendas(recebida);
+CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_recebida ON parcelas_vendas(recebida) WHERE recebida = false;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
@@ -495,7 +508,68 @@ CREATE TRIGGER update_parcelas_vendas_updated_at BEFORE UPDATE ON parcelas_venda
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 005 - FLUXO DE CAIXA
+-- 005 - COMPRAS
+-- =====================================================
+
+-- Tabela de compras empresariais
+CREATE TABLE IF NOT EXISTS compras (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  fornecedor_id UUID REFERENCES fornecedores(id) ON DELETE SET NULL,
+  categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL,
+  descricao TEXT NOT NULL,
+  valor_total DECIMAL(10, 2) NOT NULL,
+  valor_desconto DECIMAL(10, 2) DEFAULT 0,
+  valor_final DECIMAL(10, 2) NOT NULL,
+  data_compra DATE NOT NULL,
+  forma_pagamento TEXT CHECK (forma_pagamento IN ('dinheiro', 'pix', 'transferencia', 'boleto', 'cheque', 'cartao_debito', 'cartao_credito', 'parcelado')),
+  status TEXT DEFAULT 'em_andamento' CHECK (status IN ('finalizado', 'em_andamento', 'cancelado')),
+  observacoes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_compras_user_id ON compras(user_id);
+CREATE INDEX IF NOT EXISTS idx_compras_fornecedor_id ON compras(fornecedor_id);
+CREATE INDEX IF NOT EXISTS idx_compras_categoria_id ON compras(categoria_id);
+CREATE INDEX IF NOT EXISTS idx_compras_status ON compras(status);
+CREATE INDEX IF NOT EXISTS idx_compras_data_compra ON compras(data_compra);
+CREATE INDEX IF NOT EXISTS idx_compras_status_em_andamento ON compras(status) WHERE status = 'em_andamento';
+
+-- RLS (Row Level Security) Policies
+ALTER TABLE compras ENABLE ROW LEVEL SECURITY;
+
+-- Políticas para compras
+DROP POLICY IF EXISTS "Users can view their own compras" ON compras;
+DROP POLICY IF EXISTS "Users can insert their own compras" ON compras;
+DROP POLICY IF EXISTS "Users can update their own compras" ON compras;
+DROP POLICY IF EXISTS "Users can delete their own compras" ON compras;
+
+CREATE POLICY "Users can view their own compras"
+  ON compras FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own compras"
+  ON compras FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own compras"
+  ON compras FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own compras"
+  ON compras FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Triggers para atualizar updated_at
+DROP TRIGGER IF EXISTS update_compras_updated_at ON compras;
+
+CREATE TRIGGER update_compras_updated_at BEFORE UPDATE ON compras
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- 006 - FLUXO DE CAIXA
 -- =====================================================
 
 -- Tabela de fluxo de caixa (registro consolidado de entradas e saídas)
@@ -519,6 +593,7 @@ CREATE INDEX IF NOT EXISTS idx_fluxo_caixa_user_id ON fluxo_caixa(user_id);
 CREATE INDEX IF NOT EXISTS idx_fluxo_caixa_tipo ON fluxo_caixa(tipo);
 CREATE INDEX IF NOT EXISTS idx_fluxo_caixa_origem ON fluxo_caixa(origem);
 CREATE INDEX IF NOT EXISTS idx_fluxo_caixa_data_movimentacao ON fluxo_caixa(data_movimentacao);
+CREATE INDEX IF NOT EXISTS idx_fluxo_caixa_tipo_data ON fluxo_caixa(tipo, data_movimentacao);
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE fluxo_caixa ENABLE ROW LEVEL SECURITY;
@@ -552,7 +627,7 @@ CREATE TRIGGER update_fluxo_caixa_updated_at BEFORE UPDATE ON fluxo_caixa
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 006 - PERFIS
+-- 007 - PERFIS
 -- =====================================================
 
 -- Tabela de perfis de usuários (para empresa)
@@ -564,6 +639,9 @@ CREATE TABLE IF NOT EXISTS perfis (
   empresa_nome TEXT,
   empresa_cnpj TEXT,
   telefone TEXT,
+  celular TEXT,
+  endereco TEXT,
+  logo_empresa_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -602,14 +680,8 @@ DROP TRIGGER IF EXISTS update_perfis_updated_at ON perfis;
 CREATE TRIGGER update_perfis_updated_at BEFORE UPDATE ON perfis
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Adicionar campos faltantes na tabela perfis
-ALTER TABLE perfis
-ADD COLUMN IF NOT EXISTS celular TEXT,
-ADD COLUMN IF NOT EXISTS endereco TEXT,
-ADD COLUMN IF NOT EXISTS logo_empresa_url TEXT;
-
 -- =====================================================
--- 007 - ORÇAMENTOS
+-- 008 - ORÇAMENTOS
 -- =====================================================
 
 -- Tabela de orçamentos
@@ -620,7 +692,7 @@ CREATE TABLE IF NOT EXISTS orcamentos (
   numero TEXT NOT NULL,
   data_emissao DATE NOT NULL DEFAULT CURRENT_DATE,
   data_validade DATE,
-  status TEXT DEFAULT 'rascunho' CHECK (status IN ('rascunho', 'enviado', 'aprovado', 'rejeitado', 'convertido')),
+  status TEXT DEFAULT 'em_processo' CHECK (status IN ('concluido', 'em_processo', 'cancelado')),
   valor_total DECIMAL(10, 2) DEFAULT 0,
   desconto DECIMAL(10, 2) DEFAULT 0,
   valor_final DECIMAL(10, 2) DEFAULT 0,
@@ -665,6 +737,7 @@ CREATE INDEX IF NOT EXISTS idx_orcamentos_user_id ON orcamentos(user_id);
 CREATE INDEX IF NOT EXISTS idx_orcamentos_cliente_id ON orcamentos(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_orcamentos_status ON orcamentos(status);
 CREATE INDEX IF NOT EXISTS idx_orcamentos_data_emissao ON orcamentos(data_emissao);
+CREATE INDEX IF NOT EXISTS idx_orcamentos_status_em_processo ON orcamentos(status) WHERE status = 'em_processo';
 CREATE INDEX IF NOT EXISTS idx_orcamento_itens_orcamento_id ON orcamento_itens(orcamento_id);
 CREATE INDEX IF NOT EXISTS idx_orcamento_itens_user_id ON orcamento_itens(user_id);
 
@@ -727,7 +800,7 @@ CREATE TRIGGER update_orcamento_itens_updated_at BEFORE UPDATE ON orcamento_iten
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 008 - CONFIGURAÇÃO DO STORAGE - BUCKETS E POLÍTICAS
+-- 009 - CONFIGURAÇÃO DO STORAGE - BUCKETS E POLÍTICAS
 -- =====================================================
 -- IMPORTANTE: Antes de executar este SQL, você precisa criar os buckets manualmente:
 -- 1. Vá em Storage no dashboard do Supabase
@@ -832,13 +905,24 @@ USING (
 -- 7. parcelas_contas_receber - Parcelas de contas a receber
 -- 8. vendas - Vendas realizadas
 -- 9. parcelas_vendas - Parcelas de vendas
--- 10. fluxo_caixa - Fluxo de caixa consolidado
--- 11. perfis - Perfis de usuários (com campos: celular, endereco, logo_empresa_url)
--- 12. orcamentos - Orçamentos
--- 13. orcamento_itens - Itens dos orçamentos
+-- 10. compras - Compras empresariais (status: finalizado, em_andamento, cancelado)
+-- 11. fluxo_caixa - Fluxo de caixa consolidado
+-- 12. perfis - Perfis de usuários (com campos: celular, endereco, logo_empresa_url)
+-- 13. orcamentos - Orçamentos (status: concluido, em_processo, cancelado)
+-- 14. orcamento_itens - Itens dos orçamentos
+--
+-- FUNÇÕES:
+-- - update_updated_at_column() - Atualiza updated_at automaticamente (com search_path seguro)
 --
 -- STORAGE BUCKETS NECESSÁRIOS (criar manualmente):
 -- - Logo (público: true) - Para logos de empresas e templates (nome exato com L maiúsculo)
 -- - avatars (público: true) - Para fotos de perfil
+--
+-- OTIMIZAÇÕES APLICADAS:
+-- - Função update_updated_at_column com search_path seguro (corrige vulnerabilidades)
+-- - Índices parciais para melhor performance (WHERE clauses)
+-- - Status de orçamentos atualizados (concluido, em_processo, cancelado)
+-- - Todos os campos de perfis incluídos na criação da tabela
+-- - Índices compostos para consultas frequentes
 --
 -- =====================================================

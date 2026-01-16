@@ -42,7 +42,7 @@ export default function EditarOrcamentoPage() {
   const [dataValidade, setDataValidade] = useState('')
   const [clienteId, setClienteId] = useState('')
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
-  const [status, setStatus] = useState('rascunho')
+  const [status, setStatus] = useState('em_processo')
   const [itens, setItens] = useState<ItemOrcamento[]>([])
   const [descontoGeral, setDescontoGeral] = useState(0)
   const [observacoes, setObservacoes] = useState('')
@@ -503,11 +503,9 @@ export default function EditarOrcamentoPage() {
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
                 >
-                  <option value="rascunho">Rascunho</option>
-                  <option value="enviado">Enviado</option>
-                  <option value="aprovado">Aprovado</option>
-                  <option value="rejeitado">Rejeitado</option>
-                  <option value="convertido">Convertido</option>
+                  <option value="em_processo">Em processo</option>
+                  <option value="concluido">Concluído</option>
+                  <option value="cancelado">Cancelado</option>
                 </select>
               </div>
             </div>

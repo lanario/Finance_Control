@@ -24,38 +24,69 @@ export default function OrcamentoEstiloPage() {
   const [fonteTituloSecao, setFonteTituloSecao] = useState(12)
   const [fonteFamilia, setFonteFamilia] = useState('Arial')
 
-  // Estilo - Marca d'água
-  const [marcaDaguaOpacidade, setMarcaDaguaOpacidade] = useState(100)
-  const [marcaDaguaRotacao, setMarcaDaguaRotacao] = useState(0)
-  const [marcaDaguaPosicaoPersonalizada, setMarcaDaguaPosicaoPersonalizada] = useState(true)
-  const [marcaDaguaPosicaoX, setMarcaDaguaPosicaoX] = useState(10)
-  const [marcaDaguaPosicaoY, setMarcaDaguaPosicaoY] = useState(10)
-  const [marcaDaguaTamanho, setMarcaDaguaTamanho] = useState(120)
-  const [marcaDaguaFormato, setMarcaDaguaFormato] = useState('quadrado')
-  const [marcaDaguaUrl, setMarcaDaguaUrl] = useState<string | null>(null)
+  // Estilo - Marca d'água (valores fixos, sempre usa logo do perfil)
+  const marcaDaguaOpacidade = 30 // 30% de opacidade fixa
+  const marcaDaguaRotacao = -45 // -45 graus fixo (diagonal)
+  const marcaDaguaPosicaoPersonalizada = false // Sempre centralizada
+  const marcaDaguaTamanho = 200 // 200px fixo
+  const marcaDaguaFormato = 'quadrado' // Formato fixo
+  const [marcaDaguaUrl, setMarcaDaguaUrl] = useState<string | null>(null) // Sempre carregada do perfil
 
-  // Estilo - Layout
-  const [paddingPagina, setPaddingPagina] = useState(28)
-  const [paddingHeader, setPaddingHeader] = useState(14)
-  const [espacamentoSecoes, setEspacamentoSecoes] = useState(14)
+  // Estilo - Layout (valores fixos para consistência)
+  const paddingPagina = 20 // px - padding fixo da página
+  const paddingHeader = 16 // px - padding do header
+  const espacamentoSecoes = 16 // px - espaçamento entre seções
 
   // Logo
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  
+  // Dados da empresa
+  const [empresaNome, setEmpresaNome] = useState<string>('')
 
   // Seções colapsadas
   const [coresExpandida, setCoresExpandida] = useState(true)
   const [fontesExpandida, setFontesExpandida] = useState(false)
-  const [marcaDaguaExpandida, setMarcaDaguaExpandida] = useState(true)
-  const [layoutExpandido, setLayoutExpandido] = useState(true)
   const [logoExpandido, setLogoExpandido] = useState(false)
 
   const [saving, setSaving] = useState(false)
 
+  // Função para carregar logo e nome da empresa do perfil
+  const loadLogoFromProfile = async () => {
+    if (!session?.user?.id) return null
+
+    try {
+      const { data: perfil, error } = await supabase
+        .from('perfis')
+        .select('logo_empresa_url, empresa_nome')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar logo do perfil:', error)
+        return null
+      }
+
+      // Atualizar nome da empresa se disponível
+      if (perfil?.empresa_nome) {
+        setEmpresaNome(perfil.empresa_nome)
+      }
+
+      return perfil?.logo_empresa_url || null
+    } catch (error) {
+      console.error('Erro ao carregar logo do perfil:', error)
+      return null
+    }
+  }
+
   // Carregar configurações salvas
   useEffect(() => {
-    if (session?.user?.id) {
+    async function loadConfig() {
+      if (!session?.user?.id) return
+
       const estiloSalvo = localStorage.getItem(`orcamento_template_${session.user.id}`)
+      let logoFromTemplate = null
+
       if (estiloSalvo) {
         try {
           const estilo = JSON.parse(estiloSalvo)
@@ -69,23 +100,50 @@ export default function OrcamentoEstiloPage() {
           setFonteTituloHeader(estilo.fonteTituloHeader || 18)
           setFonteTituloSecao(estilo.fonteTituloSecao || 12)
           setFonteFamilia(estilo.fonteFamilia || 'Arial')
-          setMarcaDaguaOpacidade(estilo.marcaDaguaOpacidade || 100)
-          setMarcaDaguaRotacao(estilo.marcaDaguaRotacao || 0)
-          setMarcaDaguaPosicaoPersonalizada(estilo.marcaDaguaPosicaoPersonalizada !== undefined ? estilo.marcaDaguaPosicaoPersonalizada : true)
-          setMarcaDaguaPosicaoX(estilo.marcaDaguaPosicaoX || 10)
-          setMarcaDaguaPosicaoY(estilo.marcaDaguaPosicaoY || 10)
-          setMarcaDaguaTamanho(estilo.marcaDaguaTamanho || 120)
-          setMarcaDaguaFormato(estilo.marcaDaguaFormato || 'quadrado')
-          setMarcaDaguaUrl(estilo.marcaDaguaUrl || null)
-          setPaddingPagina(estilo.paddingPagina || 28)
-          setPaddingHeader(estilo.paddingHeader || 14)
-          setEspacamentoSecoes(estilo.espacamentoSecoes || 14)
-          setLogoUrl(estilo.logoUrl || null)
+          // Marca d'água usa valores fixos, não carregar do template
+          // Layout usa valores fixos, não carregar do template
+          logoFromTemplate = estilo.logoUrl || null
+          if (estilo.empresaNome) {
+            setEmpresaNome(estilo.empresaNome)
+          }
         } catch (e) {
           console.error('Erro ao carregar template:', e)
         }
       }
+
+      // Se não houver logo no template, carregar do perfil
+      if (!logoFromTemplate) {
+        console.log('🔍 Não há logo no template, carregando do perfil...')
+        const logoFromProfile = await loadLogoFromProfile()
+        if (logoFromProfile) {
+          console.log('✅ Logo do perfil carregada:', logoFromProfile)
+          setLogoUrl(logoFromProfile)
+        } else {
+          console.log('⚠️ Nenhuma logo encontrada no perfil')
+        }
+      } else {
+        console.log('✅ Logo do template carregada:', logoFromTemplate)
+        setLogoUrl(logoFromTemplate)
+      }
+
+      // Carregar nome da empresa e logo do perfil (para marca d'água)
+      const { data: perfil } = await supabase
+        .from('perfis')
+        .select('empresa_nome, logo_empresa_url')
+        .eq('user_id', session.user.id)
+        .single()
+      
+      if (perfil?.empresa_nome && !empresaNome) {
+        setEmpresaNome(perfil.empresa_nome)
+      }
+      
+      // A marca d'água sempre será a logo do perfil (se existir)
+      if (perfil?.logo_empresa_url) {
+        setMarcaDaguaUrl(perfil.logo_empresa_url)
+      }
     }
+
+    loadConfig()
   }, [session])
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,16 +180,13 @@ export default function OrcamentoEstiloPage() {
 
       if (uploadError) {
         console.error('Erro detalhado do upload:', uploadError)
-        console.error('Código do erro:', uploadError.statusCode)
         console.error('Mensagem do erro:', uploadError.message)
         
         // Mensagens de erro mais específicas
-        if (uploadError.message?.includes('Bucket') || uploadError.message?.includes('bucket') || uploadError.message?.includes('not found') || uploadError.statusCode === '404') {
+        if (uploadError.message?.includes('Bucket') || uploadError.message?.includes('bucket') || uploadError.message?.includes('not found')) {
           throw new Error('Bucket "Logo" não encontrado ou não acessível. Verifique:\n1. Se o bucket existe no Storage\n2. Se está usando o projeto correto do Supabase\n3. Se as variáveis de ambiente estão corretas')
-        } else if (uploadError.message?.includes('policy') || uploadError.message?.includes('permission') || uploadError.message?.includes('row-level security') || uploadError.statusCode === '403') {
+        } else if (uploadError.message?.includes('policy') || uploadError.message?.includes('permission') || uploadError.message?.includes('row-level security')) {
           throw new Error('Erro de permissão. Execute o SQL de políticas do Storage (016_configurar_storage.sql) no SQL Editor do Supabase.')
-        } else if (uploadError.statusCode === '401') {
-          throw new Error('Erro de autenticação. Faça login novamente.')
         } else {
           throw new Error(`Erro: ${uploadError.message || 'Erro desconhecido'}`)
         }
@@ -172,18 +227,17 @@ export default function OrcamentoEstiloPage() {
         fonteTituloHeader,
         fonteTituloSecao,
         fonteFamilia,
-        marcaDaguaOpacidade,
-        marcaDaguaRotacao,
-        marcaDaguaPosicaoPersonalizada,
-        marcaDaguaPosicaoX,
-        marcaDaguaPosicaoY,
-        marcaDaguaTamanho,
-        marcaDaguaFormato,
-        marcaDaguaUrl,
-        paddingPagina,
-        paddingHeader,
-        espacamentoSecoes,
+        marcaDaguaOpacidade: 30,
+        marcaDaguaRotacao: -45,
+        marcaDaguaPosicaoPersonalizada: false,
+        marcaDaguaTamanho: 200,
+        marcaDaguaFormato: 'quadrado',
+        marcaDaguaUrl: marcaDaguaUrl, // Sempre carregada do perfil
+        paddingPagina: 20,
+        paddingHeader: 16,
+        espacamentoSecoes: 16,
         logoUrl,
+        empresaNome,
       }
 
       localStorage.setItem(`orcamento_template_${session.user.id}`, JSON.stringify(templateConfig))
@@ -432,108 +486,6 @@ export default function OrcamentoEstiloPage() {
             )}
           </div>
 
-          {/* Marca d'água */}
-          <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => setMarcaDaguaExpandida(!marcaDaguaExpandida)}
-              className="w-full flex items-center justify-between text-white font-medium mb-4"
-            >
-              <span>Marca d'água</span>
-              {marcaDaguaExpandida ? <FiChevronUp /> : <FiChevronDown />}
-            </button>
-            {marcaDaguaExpandida && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Opacidade: {marcaDaguaOpacidade}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={marcaDaguaOpacidade}
-                    onChange={(e) => setMarcaDaguaOpacidade(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Controla a transparência da marca d'água</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Rotação: {marcaDaguaRotacao}°
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="360"
-                    value={marcaDaguaRotacao}
-                    onChange={(e) => setMarcaDaguaRotacao(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Rotação da marca d'água em graus (0-360)</p>
-                </div>
-                <div>
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={marcaDaguaPosicaoPersonalizada}
-                      onChange={(e) => setMarcaDaguaPosicaoPersonalizada(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-white text-sm">Usar posição personalizada</span>
-                  </label>
-                </div>
-                {marcaDaguaPosicaoPersonalizada && (
-                  <>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Posição X (px)</label>
-                      <input
-                        type="number"
-                        value={marcaDaguaPosicaoX}
-                        onChange={(e) => setMarcaDaguaPosicaoX(parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-2">Posição Y (px)</label>
-                      <input
-                        type="number"
-                        value={marcaDaguaPosicaoY}
-                        onChange={(e) => setMarcaDaguaPosicaoY(parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                      />
-                    </div>
-                  </>
-                )}
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Tamanho: {marcaDaguaTamanho}px
-                  </label>
-                  <input
-                    type="range"
-                    min="50"
-                    max="300"
-                    value={marcaDaguaTamanho}
-                    onChange={(e) => setMarcaDaguaTamanho(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Tamanho da marca d'água em pixels</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Formato</label>
-                  <select
-                    value={marcaDaguaFormato}
-                    onChange={(e) => setMarcaDaguaFormato(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-                  >
-                    <option value="quadrado">Quadrado</option>
-                    <option value="circular">Circular</option>
-                    <option value="retangular">Retangular</option>
-                  </select>
-                </div>
-              </div>
-            )}
-          </div>
 
           {/* Logo */}
           <div className="mb-6">
@@ -551,7 +503,10 @@ export default function OrcamentoEstiloPage() {
                   <label className="block text-sm text-gray-400 mb-2">
                     Logo do Orçamento
                   </label>
-                  <div className="flex items-center space-x-4">
+                  <p className="text-xs text-gray-500 mb-3">
+                    Use a logo do seu perfil ou faça upload de uma nova logo específica para orçamentos.
+                  </p>
+                  <div className="flex items-center space-x-4 mb-3">
                     {logoUrl && (
                       <div className="relative">
                         <Image
@@ -560,6 +515,12 @@ export default function OrcamentoEstiloPage() {
                           width={100}
                           height={100}
                           className="object-contain rounded-lg border border-gray-600"
+                          unoptimized
+                          onError={(e) => {
+                            console.error('Erro ao carregar logo:', logoUrl)
+                            const target = e.target as HTMLImageElement
+                            target.style.display = 'none'
+                          }}
                         />
                         <button
                           type="button"
@@ -570,79 +531,43 @@ export default function OrcamentoEstiloPage() {
                         </button>
                       </div>
                     )}
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleLogoUpload}
-                        disabled={uploadingLogo}
-                        className="hidden"
-                      />
-                      <span className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
-                        <FiImage className="w-5 h-5" />
-                        <span>{uploadingLogo ? 'Enviando...' : logoUrl ? 'Alterar Logo' : 'Adicionar Logo'}</span>
-                      </span>
-                    </label>
+                    <div className="flex flex-col space-y-2">
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoUpload}
+                          disabled={uploadingLogo}
+                          className="hidden"
+                        />
+                        <span className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                          <FiImage className="w-5 h-5" />
+                          <span>{uploadingLogo ? 'Enviando...' : logoUrl ? 'Alterar Logo' : 'Adicionar Logo'}</span>
+                        </span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const logoFromProfile = await loadLogoFromProfile()
+                          if (logoFromProfile) {
+                            setLogoUrl(logoFromProfile)
+                            alert('Logo do perfil carregada com sucesso!')
+                          } else {
+                            alert('Nenhuma logo encontrada no seu perfil. Adicione uma logo na página de Perfil primeiro.')
+                          }
+                        }}
+                        className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-lg transition-colors text-sm"
+                      >
+                        <FiImage className="w-4 h-4" />
+                        <span>Usar Logo do Perfil</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Layout */}
-          <div className="mb-6">
-            <button
-              type="button"
-              onClick={() => setLayoutExpandido(!layoutExpandido)}
-              className="w-full flex items-center justify-between text-white font-medium mb-4"
-            >
-              <span>Layout</span>
-              {layoutExpandido ? <FiChevronUp /> : <FiChevronDown />}
-            </button>
-            {layoutExpandido && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Padding da Página: {paddingPagina}px
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={paddingPagina}
-                    onChange={(e) => setPaddingPagina(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Padding do Header: {paddingHeader}px
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    value={paddingHeader}
-                    onChange={(e) => setPaddingHeader(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">
-                    Espaçamento entre Seções: {espacamentoSecoes}px
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    value={espacamentoSecoes}
-                    onChange={(e) => setEspacamentoSecoes(parseInt(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Painel Direito - Preview */}
@@ -659,7 +584,7 @@ export default function OrcamentoEstiloPage() {
             </div>
           )}
           
-          <div className="rounded-lg shadow-lg p-8" style={{ fontFamily: fonteFamilia, backgroundColor: corFundo }}>
+          <div className="rounded-lg shadow-lg p-8 relative" style={{ fontFamily: fonteFamilia, backgroundColor: corFundo }}>
             {/* Header */}
             <div
               style={{
@@ -668,41 +593,52 @@ export default function OrcamentoEstiloPage() {
                 padding: `${paddingHeader}px`,
                 borderBottom: `2px solid ${corPrimaria}`,
                 marginBottom: `${espacamentoSecoes}px`,
-                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 minHeight: logoUrl ? '140px' : 'auto',
               }}
             >
-              {/* Logo no canto superior esquerdo */}
+              {/* Logo à esquerda */}
               {logoUrl && (
                 <div
                   style={{
-                    position: 'absolute',
-                    top: `${paddingHeader}px`,
-                    left: `${paddingHeader}px`,
-                    zIndex: 10,
                     width: '120px',
                     height: '120px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    flexShrink: 0,
                   }}
                 >
-                  <img
+                  <Image
                     src={logoUrl}
                     alt="Logo"
-                    style={{ 
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
+                    width={120}
+                    height={120}
+                    className="object-contain"
+                    unoptimized
+                    onError={(e) => {
+                      console.error('Erro ao carregar logo no preview:', logoUrl)
+                      const target = e.target as HTMLImageElement
+                      target.style.display = 'none'
+                    }}
+                    onLoad={() => {
+                      console.log('Logo carregada com sucesso no preview:', logoUrl)
                     }}
                   />
                 </div>
               )}
               
-              {/* Conteúdo do header com espaçamento para logo */}
+              {/* Nome da empresa e datas à direita */}
               <div style={{ 
-                marginLeft: logoUrl ? '140px' : '0',
-                paddingTop: logoUrl ? '0' : '0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                justifyContent: 'center',
+                flex: 1,
+                marginLeft: logoUrl ? '24px' : '0',
+                minWidth: 0, // Permite que o texto quebre se necessário
               }}>
                 <h1
                   style={{
@@ -710,11 +646,16 @@ export default function OrcamentoEstiloPage() {
                     fontWeight: 'bold',
                     color: corTextoHeader,
                     marginBottom: '8px',
+                    textAlign: 'right',
                   }}
                 >
-                  Orçamento
+                  {empresaNome || 'Nome da Empresa'}
                 </h1>
-                <div style={{ fontSize: '12px', color: corTextoHeader }}>
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: corTextoHeader,
+                  textAlign: 'right',
+                }}>
                   EMISSÃO: {formatarData(dataEmissao)} • VALIDADE: {formatarData(dataValidade)}
                 </div>
               </div>
@@ -832,6 +773,41 @@ export default function OrcamentoEstiloPage() {
               </h3>
               <p style={{ color: corTexto, fontSize: '12px' }}>Este é um exemplo de orçamento gerado automaticamente.</p>
             </div>
+
+            {/* Marca d'água (sempre visível se houver logo no perfil) */}
+            {marcaDaguaUrl && (
+              <div
+                style={{
+                  position: 'absolute',
+                  opacity: marcaDaguaOpacidade / 100,
+                  transform: `rotate(${marcaDaguaRotacao}deg)`,
+                  left: '50%',
+                  top: '50%',
+                  transformOrigin: 'center',
+                  width: `${marcaDaguaTamanho}px`,
+                  height: `${marcaDaguaTamanho}px`,
+                  marginLeft: `-${marcaDaguaTamanho / 2}px`,
+                  marginTop: `-${marcaDaguaTamanho / 2}px`,
+                  borderRadius: '0',
+                  pointerEvents: 'none',
+                  zIndex: 1,
+                }}
+              >
+                <Image
+                  src={marcaDaguaUrl}
+                  alt="Marca d'água"
+                  width={marcaDaguaTamanho}
+                  height={marcaDaguaTamanho}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '0',
+                  }}
+                  unoptimized
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

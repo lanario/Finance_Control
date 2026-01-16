@@ -129,12 +129,16 @@ CREATE POLICY "Users can delete their own clientes"
 
 -- Função para atualizar updated_at automaticamente (se não existir)
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = TIMEZONE('utc'::text, NOW());
   RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Triggers para atualizar updated_at
 DROP TRIGGER IF EXISTS update_categorias_updated_at ON categorias;

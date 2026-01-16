@@ -40,12 +40,16 @@ CREATE INDEX IF NOT EXISTS idx_investimentos_tipo ON investimentos(tipo);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     NEW.updated_at = TIMEZONE('utc'::text, NOW());
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Trigger para atualizar updated_at
 CREATE TRIGGER update_investimentos_updated_at BEFORE UPDATE ON investimentos

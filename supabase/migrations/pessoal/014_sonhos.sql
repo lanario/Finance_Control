@@ -92,7 +92,11 @@ CREATE TRIGGER update_sonhos_updated_at BEFORE UPDATE ON sonhos
 
 -- Função para atualizar valor_atual quando houver depósito
 CREATE OR REPLACE FUNCTION atualizar_valor_atual_sonho()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   sonho_id_uuid UUID;
 BEGIN
@@ -118,7 +122,7 @@ BEGIN
     RETURN NEW;
   END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger para atualizar valor_atual quando inserir/atualizar/deletar depósito
 DROP TRIGGER IF EXISTS trigger_atualizar_valor_atual_sonho ON sonhos_depositos;

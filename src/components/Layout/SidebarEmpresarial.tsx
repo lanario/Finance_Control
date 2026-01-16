@@ -21,7 +21,6 @@ import {
   FiBriefcase,
   FiUsers,
   FiShoppingBag,
-  FiActivity,
   FiFileText,
   FiLayers,
 } from 'react-icons/fi'
@@ -29,14 +28,14 @@ import {
 const menuItems = [
   { href: '/empresarial/dashboard', label: 'Dashboard', icon: FiHome },
   { href: '/empresarial/perfil', label: 'Perfil', icon: FiUser },
-  { href: '/empresarial/contas-a-pagar', label: 'Contas a Pagar', icon: FiTrendingDown },
-  { href: '/empresarial/contas-a-receber', label: 'Contas a Receber', icon: FiTrendingUp },
+  { href: '/empresarial/despesas', label: 'Despesas', icon: FiTrendingDown },
+  { href: '/empresarial/receitas', label: 'Receitas', icon: FiTrendingUp },
   { href: '/empresarial/vendas', label: 'Vendas', icon: FiShoppingBag },
   { href: '/empresarial/orcamentos', label: 'Orçamentos', icon: FiFileText },
   { href: '/empresarial/orcamentos/estilo', label: 'Orçamento (estilo)', icon: FiLayers },
   { href: '/empresarial/fornecedores', label: 'Fornecedores', icon: FiBriefcase },
   { href: '/empresarial/clientes', label: 'Clientes', icon: FiUsers },
-  { href: '/empresarial/fluxo-caixa', label: 'Fluxo de Caixa', icon: FiActivity },
+  { href: '/empresarial/compras', label: 'Compras', icon: FiShoppingBag },
 ]
 
 export default function SidebarEmpresarial() {

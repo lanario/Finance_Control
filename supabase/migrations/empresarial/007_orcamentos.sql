@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS orcamentos (
   numero TEXT NOT NULL,
   data_emissao DATE NOT NULL DEFAULT CURRENT_DATE,
   data_validade DATE,
-  status TEXT DEFAULT 'rascunho' CHECK (status IN ('rascunho', 'enviado', 'aprovado', 'rejeitado', 'convertido')),
+  status TEXT DEFAULT 'em_processo' CHECK (status IN ('concluido', 'em_processo', 'cancelado')),
   valor_total DECIMAL(10, 2) DEFAULT 0,
   desconto DECIMAL(10, 2) DEFAULT 0,
   valor_final DECIMAL(10, 2) DEFAULT 0,

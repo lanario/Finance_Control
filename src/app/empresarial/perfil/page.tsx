@@ -22,6 +22,7 @@ export default function PerfilPage() {
   const [endereco, setEndereco] = useState('')
   const [email, setEmail] = useState('')
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (session) {
@@ -80,6 +81,10 @@ export default function PerfilPage() {
       return
     }
 
+    // Criar preview temporário
+    const tempUrl = URL.createObjectURL(file)
+    setPreviewUrl(tempUrl)
+
     setUploadingLogo(true)
     try {
       console.log('Iniciando upload do logo...')
@@ -123,12 +128,62 @@ export default function PerfilPage() {
         .getPublicUrl(filePath)
 
       console.log('URL pública gerada:', publicUrl)
+      
+      // Salvar a URL no banco de dados imediatamente
+      const { data: existingProfile } = await supabase
+        .from('perfis')
+        .select('id')
+        .eq('user_id', session.user.id)
+        .single()
+
+      let dbError = null
+      if (existingProfile) {
+        const { error } = await supabase
+          .from('perfis')
+          .update({
+            logo_empresa_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', session.user.id)
+        dbError = error
+      } else {
+        const { error } = await supabase
+          .from('perfis')
+          .insert({
+            user_id: session.user.id,
+            logo_empresa_url: publicUrl,
+            updated_at: new Date().toISOString(),
+          })
+        dbError = error
+      }
+
+      if (dbError) {
+        console.error('Erro ao salvar logo no banco:', dbError)
+        throw new Error(`Erro ao salvar logo no banco de dados: ${dbError.message}`)
+      }
+
+      // Limpar preview temporário
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
+      
+      // Atualizar o estado local
       setLogoUrl(publicUrl)
-      alert('Logo enviado com sucesso!')
+      
+      // Recarregar o perfil para garantir sincronização
+      await loadPerfil()
+      
+      alert('Logo enviado e salvo com sucesso!')
     } catch (error: any) {
       console.error('Erro completo ao fazer upload do logo:', error)
       const errorMessage = error?.message || error?.error?.message || JSON.stringify(error) || 'Erro desconhecido ao fazer upload'
       alert(`Erro ao fazer upload do logo:\n\n${errorMessage}\n\nVerifique o console do navegador (F12) para mais detalhes.`)
+      // Limpar preview em caso de erro
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+        setPreviewUrl(null)
+      }
     } finally {
       setUploadingLogo(false)
       e.target.value = ''
@@ -342,19 +397,62 @@ export default function PerfilPage() {
                   Logo da Empresa
                 </label>
                 <div className="flex items-center space-x-4">
-                  {logoUrl && (
-                    <div className="relative">
+                  {(logoUrl || previewUrl) && (
+                    <div className="relative w-[120px] h-[120px] flex items-center justify-center">
                       <Image
-                        src={logoUrl}
+                        key={logoUrl || previewUrl}
+                        src={previewUrl || logoUrl || ''}
                         alt="Logo da empresa"
                         width={120}
                         height={120}
                         className="object-contain rounded-lg border border-gray-600 bg-white p-2"
+                        unoptimized
+                        onLoad={() => {
+                          console.log('✅ Logo carregada com sucesso:', previewUrl || logoUrl)
+                        }}
+                        onError={(e) => {
+                          console.error('❌ Erro ao carregar logo:', previewUrl || logoUrl)
+                          const target = e.target as HTMLImageElement
+                          target.style.display = 'none'
+                          if (!previewUrl) {
+                            alert('Erro ao carregar a logo. Verifique se a URL está correta e se o bucket está público.')
+                          }
+                        }}
                       />
                       <button
                         type="button"
-                        onClick={() => setLogoUrl(null)}
-                        className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                        onClick={async () => {
+                          // Se for preview temporário, apenas limpar
+                          if (previewUrl) {
+                            URL.revokeObjectURL(previewUrl)
+                            setPreviewUrl(null)
+                            return
+                          }
+                          
+                          // Se for logo salva, remover do banco
+                          if (confirm('Tem certeza que deseja remover a logo?')) {
+                            setLogoUrl(null)
+                            // Atualizar no banco também
+                            if (session?.user?.id) {
+                              const { error } = await supabase
+                                .from('perfis')
+                                .update({
+                                  logo_empresa_url: null,
+                                  updated_at: new Date().toISOString(),
+                                })
+                                .eq('user_id', session.user.id)
+                              if (error) {
+                                console.error('Erro ao remover logo:', error)
+                                alert('Erro ao remover logo. Tente novamente.')
+                              } else {
+                                await loadPerfil()
+                              }
+                            }
+                          }
+                        }}
+                        className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                        title={previewUrl ? "Cancelar upload" : "Remover logo"}
+                        disabled={uploadingLogo}
                       >
                         <FiX className="w-4 h-4" />
                       </button>

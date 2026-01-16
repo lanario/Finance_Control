@@ -107,12 +107,16 @@ CREATE INDEX IF NOT EXISTS idx_investimentos_data_proxima_liquidacao
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
     NEW.updated_at = TIMEZONE('utc'::text, NOW());
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- ============================================================================
 -- 6. TRIGGER PARA ATUALIZAR updated_at

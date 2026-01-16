@@ -15,29 +15,32 @@ import {
   FiCalendar,
   FiDollarSign,
   FiAlertCircle,
-  FiTrendingDown,
+  FiTrendingUp,
   FiSearch,
+  FiEye,
 } from 'react-icons/fi'
 
-interface ContaPagar {
+interface ContaReceber {
   id: string
-  fornecedor_id: string | null
+  cliente_id: string | null
   categoria_id: string | null
   descricao: string
   valor: number
   data_vencimento: string
-  data_pagamento: string | null
-  paga: boolean
-  forma_pagamento: string | null
+  data_recebimento: string | null
+  recebida: boolean
+  forma_recebimento: string | null
   observacoes: string | null
   parcelada: boolean
   total_parcelas: number
   parcela_atual: number
-  fornecedor_nome?: string | null
+  cliente_nome?: string | null
   categoria_nome?: string | null
+  origem?: 'conta' | 'orcamento' // Identifica se é uma conta a receber ou um orçamento
+  orcamento_numero?: string | null // Número do orçamento se for origem orçamento
 }
 
-interface Fornecedor {
+interface Cliente {
   id: string
   nome: string
 }
@@ -48,32 +51,33 @@ interface Categoria {
 }
 
 interface ResumoContas {
-  totalAPagar: number
+  totalAReceber: number
   totalVencidas: number
-  totalPagas: number
+  totalRecebidas: number
   totalPendentes: number
 }
 
-export default function DespesasPage() {
+export default function ReceitasPage() {
   const { session } = useAuth()
   const router = useRouter()
-  const [contas, setContas] = useState<ContaPagar[]>([])
-  const [parcelas, setParcelas] = useState<ContaPagar[]>([])
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
+  const [contas, setContas] = useState<ContaReceber[]>([])
+  const [parcelas, setParcelas] = useState<ContaReceber[]>([])
+  const [todasContas, setTodasContas] = useState<ContaReceber[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [editingConta, setEditingConta] = useState<ContaPagar | null>(null)
+  const [editingConta, setEditingConta] = useState<ContaReceber | null>(null)
   const [resumo, setResumo] = useState<ResumoContas>({
-    totalAPagar: 0,
+    totalAReceber: 0,
     totalVencidas: 0,
-    totalPagas: 0,
+    totalRecebidas: 0,
     totalPendentes: 0,
   })
 
   // Filtros
-  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendentes' | 'pagas' | 'vencidas'>('todas')
-  const [filtroFornecedor, setFiltroFornecedor] = useState<string>('')
+  const [filtroStatus, setFiltroStatus] = useState<'todas' | 'pendentes' | 'recebidas' | 'vencidas'>('todas')
+  const [filtroCliente, setFiltroCliente] = useState<string>('')
   const [filtroCategoria, setFiltroCategoria] = useState<string>('')
   const [filtroDataInicio, setFiltroDataInicio] = useState<string>('')
   const [filtroDataFim, setFiltroDataFim] = useState<string>('')
@@ -81,12 +85,12 @@ export default function DespesasPage() {
 
   // Formulário
   const [formData, setFormData] = useState({
-    fornecedor_id: '',
+    cliente_id: '',
     categoria_id: '',
     descricao: '',
     valor: '',
     data_vencimento: new Date().toISOString().split('T')[0],
-    forma_pagamento: 'pix',
+    forma_recebimento: 'pix',
     observacoes: '',
     parcelada: false,
     total_parcelas: '1',
@@ -102,22 +106,22 @@ export default function DespesasPage() {
     try {
       const userId = session?.user?.id
       
-      // Carregar fornecedores
-      const { data: fornecedoresData } = await supabase
-        .from('fornecedores')
+      // Carregar clientes
+      const { data: clientesData } = await supabase
+        .from('clientes')
         .select('id, nome')
         .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome', { ascending: true })
 
-      setFornecedores(fornecedoresData || [])
+      setClientes(clientesData || [])
 
       // Carregar categorias
       const { data: categoriasData } = await supabase
         .from('categorias')
         .select('id, nome')
         .eq('user_id', userId)
-        .eq('tipo', 'despesa')
+        .eq('tipo', 'receita')
         .eq('ativo', true)
         .order('nome', { ascending: true })
 
@@ -139,7 +143,7 @@ export default function DespesasPage() {
 
       // Buscar contas não parceladas
       let query = supabase
-        .from('contas_a_pagar')
+        .from('contas_a_receber')
         .select('*')
         .eq('user_id', userId)
         .eq('parcelada', false)
@@ -147,15 +151,15 @@ export default function DespesasPage() {
 
       // Aplicar filtros
       if (filtroStatus === 'pendentes') {
-        query = query.eq('paga', false)
-      } else if (filtroStatus === 'pagas') {
-        query = query.eq('paga', true)
+        query = query.eq('recebida', false)
+      } else if (filtroStatus === 'recebidas') {
+        query = query.eq('recebida', true)
       } else if (filtroStatus === 'vencidas') {
-        query = query.eq('paga', false).lt('data_vencimento', hoje)
+        query = query.eq('recebida', false).lt('data_vencimento', hoje)
       }
 
-      if (filtroFornecedor) {
-        query = query.eq('fornecedor_id', filtroFornecedor)
+      if (filtroCliente) {
+        query = query.eq('cliente_id', filtroCliente)
       }
 
       if (filtroCategoria) {
@@ -176,22 +180,22 @@ export default function DespesasPage() {
 
       // Buscar parcelas
       let parcelasQuery = supabase
-        .from('parcelas_contas_pagar')
+        .from('parcelas_contas_receber')
         .select('*')
         .eq('user_id', userId)
         .order('data_vencimento', { ascending: true })
 
       // Aplicar mesmos filtros nas parcelas
       if (filtroStatus === 'pendentes') {
-        parcelasQuery = parcelasQuery.eq('paga', false)
-      } else if (filtroStatus === 'pagas') {
-        parcelasQuery = parcelasQuery.eq('paga', true)
+        parcelasQuery = parcelasQuery.eq('recebida', false)
+      } else if (filtroStatus === 'recebidas') {
+        parcelasQuery = parcelasQuery.eq('recebida', true)
       } else if (filtroStatus === 'vencidas') {
-        parcelasQuery = parcelasQuery.eq('paga', false).lt('data_vencimento', hoje)
+        parcelasQuery = parcelasQuery.eq('recebida', false).lt('data_vencimento', hoje)
       }
 
-      if (filtroFornecedor) {
-        parcelasQuery = parcelasQuery.eq('fornecedor_id', filtroFornecedor)
+      if (filtroCliente) {
+        parcelasQuery = parcelasQuery.eq('cliente_id', filtroCliente)
       }
 
       if (filtroCategoria) {
@@ -210,23 +214,128 @@ export default function DespesasPage() {
 
       if (parcelasError) throw parcelasError
 
-      // Processar dados - buscar nomes de fornecedores e categorias
-      const fornecedoresMap = new Map(fornecedores.map(f => [f.id, f.nome]))
+      // Buscar orçamentos pendentes (em processo) - serão adicionados como receitas pendentes
+      let orcamentosPendentesQuery = supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'em_processo')
+
+      // Aplicar filtros de data nos orçamentos
+      if (filtroDataInicio) {
+        orcamentosPendentesQuery = orcamentosPendentesQuery.gte('data_emissao', filtroDataInicio)
+      }
+      if (filtroDataFim) {
+        orcamentosPendentesQuery = orcamentosPendentesQuery.lte('data_emissao', filtroDataFim)
+      }
+      if (filtroCliente) {
+        orcamentosPendentesQuery = orcamentosPendentesQuery.eq('cliente_id', filtroCliente)
+      }
+
+      const { data: orcamentosPendentes, error: orcamentosPendentesError } = await orcamentosPendentesQuery
+      if (orcamentosPendentesError) console.error('Erro ao carregar orçamentos pendentes:', orcamentosPendentesError)
+
+      // Buscar orçamentos concluídos - serão adicionados como receitas recebidas
+      let orcamentosConcluidosQuery = supabase
+        .from('orcamentos')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'concluido')
+
+      // Aplicar filtros de data nos orçamentos
+      if (filtroDataInicio) {
+        orcamentosConcluidosQuery = orcamentosConcluidosQuery.gte('data_emissao', filtroDataInicio)
+      }
+      if (filtroDataFim) {
+        orcamentosConcluidosQuery = orcamentosConcluidosQuery.lte('data_emissao', filtroDataFim)
+      }
+      if (filtroCliente) {
+        orcamentosConcluidosQuery = orcamentosConcluidosQuery.eq('cliente_id', filtroCliente)
+      }
+
+      const { data: orcamentosConcluidos, error: orcamentosConcluidosError } = await orcamentosConcluidosQuery
+      if (orcamentosConcluidosError) console.error('Erro ao carregar orçamentos concluídos:', orcamentosConcluidosError)
+
+      // Processar dados - buscar nomes de clientes e categorias
+      const clientesMap = new Map(clientes.map(c => [c.id, c.nome]))
       const categoriasMap = new Map(categorias.map(c => [c.id, c.nome]))
 
       const contasProcessadas = (contasData || []).map((conta: any) => ({
         ...conta,
-        fornecedor_nome: conta.fornecedor_id ? fornecedoresMap.get(conta.fornecedor_id) || null : null,
+        cliente_nome: conta.cliente_id ? clientesMap.get(conta.cliente_id) || null : null,
         categoria_nome: conta.categoria_id ? categoriasMap.get(conta.categoria_id) || null : null,
+        origem: 'conta' as const,
       }))
 
       const parcelasProcessadas = (parcelasData || []).map((parcela: any) => ({
         ...parcela,
-        fornecedor_nome: parcela.fornecedor_id ? fornecedoresMap.get(parcela.fornecedor_id) || null : null,
+        cliente_nome: parcela.cliente_id ? clientesMap.get(parcela.cliente_id) || null : null,
         categoria_nome: parcela.categoria_id ? categoriasMap.get(parcela.categoria_id) || null : null,
+        origem: 'conta' as const,
       }))
 
-      let todasContas = [...contasProcessadas, ...parcelasProcessadas]
+      // Converter orçamentos pendentes em receitas pendentes
+      const orcamentosPendentesProcessados = (orcamentosPendentes || []).map((orcamento: any) => {
+        // Para orçamentos em processo, usar data_validade se existir, senão usar uma data futura (30 dias da emissão)
+        let dataVencimento = orcamento.data_validade
+        if (!dataVencimento) {
+          const dataEmissao = new Date(orcamento.data_emissao)
+          dataEmissao.setDate(dataEmissao.getDate() + 30) // Adiciona 30 dias da data de emissão
+          dataVencimento = dataEmissao.toISOString().split('T')[0]
+        }
+        
+        return {
+          id: `orcamento_${orcamento.id}`,
+          cliente_id: orcamento.cliente_id,
+          categoria_id: null,
+          descricao: `Orçamento ${orcamento.numero}`,
+          valor: Number(orcamento.valor_final || orcamento.valor_total || 0),
+          data_vencimento: dataVencimento,
+          data_recebimento: null,
+          recebida: false,
+          forma_recebimento: null,
+          observacoes: orcamento.observacoes,
+          parcelada: false,
+          total_parcelas: 1,
+          parcela_atual: 1,
+          cliente_nome: orcamento.cliente_nome || (orcamento.cliente_id ? clientesMap.get(orcamento.cliente_id) || null : null),
+          categoria_nome: null,
+          origem: 'orcamento' as const,
+          orcamento_numero: orcamento.numero,
+        }
+      })
+
+      // Converter orçamentos concluídos em receitas recebidas
+      const orcamentosConcluidosProcessados = (orcamentosConcluidos || []).map((orcamento: any) => ({
+        id: `orcamento_${orcamento.id}`,
+        cliente_id: orcamento.cliente_id,
+        categoria_id: null,
+        descricao: `Orçamento ${orcamento.numero}`,
+        valor: Number(orcamento.valor_final || orcamento.valor_total || 0),
+        data_vencimento: orcamento.data_validade || orcamento.data_emissao,
+        data_recebimento: orcamento.updated_at ? orcamento.updated_at.split('T')[0] : orcamento.data_emissao,
+        recebida: true,
+        forma_recebimento: null,
+        observacoes: orcamento.observacoes,
+        parcelada: false,
+        total_parcelas: 1,
+        parcela_atual: 1,
+        cliente_nome: orcamento.cliente_nome || (orcamento.cliente_id ? clientesMap.get(orcamento.cliente_id) || null : null),
+        categoria_nome: null,
+        origem: 'orcamento' as const,
+        orcamento_numero: orcamento.numero,
+      }))
+
+      // Aplicar filtros de status nos orçamentos
+      let orcamentosFiltrados: ContaReceber[] = []
+      if (filtroStatus === 'todas' || filtroStatus === 'pendentes' || filtroStatus === 'vencidas') {
+        orcamentosFiltrados = [...orcamentosFiltrados, ...orcamentosPendentesProcessados]
+      }
+      if (filtroStatus === 'todas' || filtroStatus === 'recebidas') {
+        orcamentosFiltrados = [...orcamentosFiltrados, ...orcamentosConcluidosProcessados]
+      }
+
+      let todasContas = [...contasProcessadas, ...parcelasProcessadas, ...orcamentosFiltrados]
 
       // Aplicar busca por texto
       if (buscaTexto) {
@@ -234,44 +343,54 @@ export default function DespesasPage() {
         todasContas = todasContas.filter(
           (conta) =>
             conta.descricao.toLowerCase().includes(buscaLower) ||
-            conta.fornecedor_nome?.toLowerCase().includes(buscaLower) ||
-            conta.categoria_nome?.toLowerCase().includes(buscaLower)
+            conta.cliente_nome?.toLowerCase().includes(buscaLower) ||
+            conta.categoria_nome?.toLowerCase().includes(buscaLower) ||
+            conta.orcamento_numero?.toLowerCase().includes(buscaLower)
         )
       }
 
       setContas(contasProcessadas)
       setParcelas(parcelasProcessadas)
+      setTodasContas(todasContas.sort((a, b) => 
+        new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
+      ))
 
-      // Calcular resumo
-      calcularResumo(contasProcessadas, parcelasProcessadas, hoje)
+      // Calcular resumo incluindo orçamentos
+      calcularResumo(contasProcessadas, parcelasProcessadas, hoje, orcamentosPendentesProcessados, orcamentosConcluidosProcessados)
     } catch (error) {
       console.error('Erro ao carregar contas:', error)
     }
   }
 
-  const calcularResumo = (contas: ContaPagar[], parcelas: ContaPagar[], hoje: string) => {
-    const todas = [...contas, ...parcelas]
+  const calcularResumo = (
+    contas: ContaReceber[], 
+    parcelas: ContaReceber[], 
+    hoje: string,
+    orcamentosPendentes: ContaReceber[] = [],
+    orcamentosConcluidos: ContaReceber[] = []
+  ) => {
+    const todas = [...contas, ...parcelas, ...orcamentosPendentes, ...orcamentosConcluidos]
     
-    const totalAPagar = todas
-      .filter((c) => !c.paga)
+    const totalAReceber = todas
+      .filter((c) => !c.recebida)
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
     const totalVencidas = todas
-      .filter((c) => !c.paga && c.data_vencimento < hoje)
+      .filter((c) => !c.recebida && c.data_vencimento < hoje)
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
-    const totalPagas = todas
-      .filter((c) => c.paga)
+    const totalRecebidas = todas
+      .filter((c) => c.recebida)
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
     const totalPendentes = todas
-      .filter((c) => !c.paga && c.data_vencimento >= hoje)
+      .filter((c) => !c.recebida && c.data_vencimento >= hoje)
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
     setResumo({
-      totalAPagar,
+      totalAReceber,
       totalVencidas,
-      totalPagas,
+      totalRecebidas,
       totalPendentes,
     })
   }
@@ -280,7 +399,7 @@ export default function DespesasPage() {
     if (session) {
       loadContas()
     }
-  }, [filtroStatus, filtroFornecedor, filtroCategoria, filtroDataInicio, filtroDataFim, buscaTexto, session])
+  }, [filtroStatus, filtroCliente, filtroCategoria, filtroDataInicio, filtroDataFim, buscaTexto, session])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -291,14 +410,14 @@ export default function DespesasPage() {
       if (editingConta) {
         // Editar conta existente
         const { error } = await supabase
-          .from('contas_a_pagar')
+          .from('contas_a_receber')
           .update({
-            fornecedor_id: formData.fornecedor_id || null,
+            cliente_id: formData.cliente_id || null,
             categoria_id: formData.categoria_id || null,
             descricao: formData.descricao,
             valor: valor,
             data_vencimento: formData.data_vencimento,
-            forma_pagamento: formData.forma_pagamento,
+            forma_recebimento: formData.forma_recebimento,
             observacoes: formData.observacoes || null,
             parcelada: formData.parcelada,
             total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
@@ -311,9 +430,9 @@ export default function DespesasPage() {
         if (formData.parcelada) {
           // Deletar parcelas antigas
           await supabase
-            .from('parcelas_contas_pagar')
+            .from('parcelas_contas_receber')
             .delete()
-            .eq('conta_pagar_id', editingConta.id)
+            .eq('conta_receber_id', editingConta.id)
 
           // Criar novas parcelas
           const totalParcelas = parseInt(formData.total_parcelas)
@@ -324,15 +443,15 @@ export default function DespesasPage() {
             const dataVencimentoParcela = new Date(dataVencimento)
             dataVencimentoParcela.setMonth(dataVencimentoParcela.getMonth() + i)
 
-            await supabase.from('parcelas_contas_pagar').insert({
+            await supabase.from('parcelas_contas_receber').insert({
               user_id: userId,
-              conta_pagar_id: editingConta.id,
-              fornecedor_id: formData.fornecedor_id || null,
+              conta_receber_id: editingConta.id,
+              cliente_id: formData.cliente_id || null,
               categoria_id: formData.categoria_id || null,
               descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelas}`,
               valor: valorParcela,
               data_vencimento: dataVencimentoParcela.toISOString().split('T')[0],
-              forma_pagamento: formData.forma_pagamento,
+              forma_recebimento: formData.forma_recebimento,
               parcela_numero: i + 1,
               total_parcelas: totalParcelas,
             })
@@ -341,15 +460,15 @@ export default function DespesasPage() {
       } else {
         // Criar nova conta
         const { data: novaConta, error } = await supabase
-          .from('contas_a_pagar')
+          .from('contas_a_receber')
           .insert({
             user_id: userId,
-            fornecedor_id: formData.fornecedor_id || null,
+            cliente_id: formData.cliente_id || null,
             categoria_id: formData.categoria_id || null,
             descricao: formData.descricao,
             valor: valor,
             data_vencimento: formData.data_vencimento,
-            forma_pagamento: formData.forma_pagamento,
+            forma_recebimento: formData.forma_recebimento,
             observacoes: formData.observacoes || null,
             parcelada: formData.parcelada,
             total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
@@ -369,15 +488,15 @@ export default function DespesasPage() {
             const dataVencimentoParcela = new Date(dataVencimento)
             dataVencimentoParcela.setMonth(dataVencimentoParcela.getMonth() + i)
 
-            await supabase.from('parcelas_contas_pagar').insert({
+            await supabase.from('parcelas_contas_receber').insert({
               user_id: userId,
-              conta_pagar_id: novaConta.id,
-              fornecedor_id: formData.fornecedor_id || null,
+              conta_receber_id: novaConta.id,
+              cliente_id: formData.cliente_id || null,
               categoria_id: formData.categoria_id || null,
               descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelas}`,
               valor: valorParcela,
               data_vencimento: dataVencimentoParcela.toISOString().split('T')[0],
-              forma_pagamento: formData.forma_pagamento,
+              forma_recebimento: formData.forma_recebimento,
               parcela_numero: i + 1,
               total_parcelas: totalParcelas,
             })
@@ -395,9 +514,9 @@ export default function DespesasPage() {
     }
   }
 
-  const handleEdit = (conta: ContaPagar) => {
-    // Verificar se é uma parcela (tem conta_pagar_id)
-    const isParcela = 'conta_pagar_id' in conta
+  const handleEdit = (conta: ContaReceber) => {
+    // Verificar se é uma parcela (tem conta_receber_id)
+    const isParcela = 'conta_receber_id' in conta
     
     if (isParcela) {
       alert('Para editar uma parcela, edite a conta principal que gerou as parcelas.')
@@ -406,12 +525,12 @@ export default function DespesasPage() {
 
     setEditingConta(conta)
     setFormData({
-      fornecedor_id: conta.fornecedor_id || '',
+      cliente_id: conta.cliente_id || '',
       categoria_id: conta.categoria_id || '',
       descricao: conta.descricao,
       valor: conta.valor.toString(),
       data_vencimento: conta.data_vencimento,
-      forma_pagamento: conta.forma_pagamento || 'pix',
+      forma_recebimento: conta.forma_recebimento || 'pix',
       observacoes: conta.observacoes || '',
       parcelada: conta.parcelada,
       total_parcelas: conta.total_parcelas.toString(),
@@ -424,10 +543,10 @@ export default function DespesasPage() {
 
     try {
       // Deletar parcelas primeiro
-      await supabase.from('parcelas_contas_pagar').delete().eq('conta_pagar_id', id)
+      await supabase.from('parcelas_contas_receber').delete().eq('conta_receber_id', id)
       
       // Deletar conta
-      const { error } = await supabase.from('contas_a_pagar').delete().eq('id', id)
+      const { error } = await supabase.from('contas_a_receber').delete().eq('id', id)
       if (error) throw error
 
       loadContas()
@@ -437,16 +556,16 @@ export default function DespesasPage() {
     }
   }
 
-  const handleMarcarComoPaga = async (id: string, isParcela: boolean = false) => {
+  const handleMarcarComoRecebida = async (id: string, isParcela: boolean = false) => {
     try {
       const hoje = new Date().toISOString().split('T')[0]
-      const table = isParcela ? 'parcelas_contas_pagar' : 'contas_a_pagar'
+      const table = isParcela ? 'parcelas_contas_receber' : 'contas_a_receber'
 
       const { error } = await supabase
         .from(table)
         .update({
-          paga: true,
-          data_pagamento: hoje,
+          recebida: true,
+          data_recebimento: hoje,
         })
         .eq('id', id)
 
@@ -454,19 +573,19 @@ export default function DespesasPage() {
 
       loadContas()
     } catch (error) {
-      console.error('Erro ao marcar como paga:', error)
-      alert('Erro ao marcar como paga')
+      console.error('Erro ao marcar como recebida:', error)
+      alert('Erro ao marcar como recebida')
     }
   }
 
   const resetForm = () => {
     setFormData({
-      fornecedor_id: '',
+      cliente_id: '',
       categoria_id: '',
       descricao: '',
       valor: '',
       data_vencimento: new Date().toISOString().split('T')[0],
-      forma_pagamento: 'pix',
+      forma_recebimento: 'pix',
       observacoes: '',
       parcelada: false,
       total_parcelas: '1',
@@ -474,12 +593,21 @@ export default function DespesasPage() {
     setEditingConta(null)
   }
 
-  const getStatusBadge = (conta: ContaPagar) => {
+  const getStatusBadge = (conta: ContaReceber) => {
     const hoje = new Date().toISOString().split('T')[0]
     
-    if (conta.paga) {
-      return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Paga</span>
-    } else if (conta.data_vencimento < hoje) {
+    if (conta.recebida) {
+      return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Recebida</span>
+    }
+    
+    // Para orçamentos em processo, sempre mostrar como pendente, não como vencido
+    // pois um orçamento em processo não é necessariamente uma dívida vencida
+    if (conta.origem === 'orcamento') {
+      return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
+    }
+    
+    // Para contas normais, verificar se está vencida
+    if (conta.data_vencimento < hoje) {
       return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencida</span>
     } else {
       return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
@@ -497,9 +625,6 @@ export default function DespesasPage() {
     }).format(valor)
   }
 
-  const todasContas = [...contas, ...parcelas].sort((a, b) => 
-    new Date(a.data_vencimento).getTime() - new Date(b.data_vencimento).getTime()
-  )
 
   if (loading) {
     return (
@@ -517,8 +642,8 @@ export default function DespesasPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Despesas</h1>
-            <p className="text-gray-400">Gerencie todas as despesas da sua empresa</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Receitas</h1>
+            <p className="text-gray-400">Gerencie todas as receitas da sua empresa</p>
           </div>
           <button
             onClick={() => {
@@ -528,7 +653,7 @@ export default function DespesasPage() {
             className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <FiPlus className="w-5 h-5" />
-            <span>Nova Despesa</span>
+            <span>Nova Receita</span>
           </button>
         </div>
 
@@ -537,8 +662,8 @@ export default function DespesasPage() {
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total a Pagar</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatarMoeda(resumo.totalAPagar)}</p>
+                <p className="text-gray-400 text-sm">Total a Receber</p>
+                <p className="text-2xl font-bold text-white mt-1">{formatarMoeda(resumo.totalAReceber)}</p>
               </div>
               <FiDollarSign className="w-8 h-8 text-purple-400" />
             </div>
@@ -567,8 +692,8 @@ export default function DespesasPage() {
           <div className="bg-gray-800 rounded-lg p-4 border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Pagas</p>
-                <p className="text-2xl font-bold text-green-400 mt-1">{formatarMoeda(resumo.totalPagas)}</p>
+                <p className="text-gray-400 text-sm">Recebidas</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{formatarMoeda(resumo.totalRecebidas)}</p>
               </div>
               <FiCheck className="w-8 h-8 text-green-400" />
             </div>
@@ -590,7 +715,7 @@ export default function DespesasPage() {
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Descrição, fornecedor..."
+                  placeholder="Descrição, cliente..."
                   value={buscaTexto}
                   onChange={(e) => setBuscaTexto(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
@@ -609,22 +734,22 @@ export default function DespesasPage() {
                 <option value="todas">Todas</option>
                 <option value="pendentes">Pendentes</option>
                 <option value="vencidas">Vencidas</option>
-                <option value="pagas">Pagas</option>
+                <option value="recebidas">Recebidas</option>
               </select>
             </div>
 
-            {/* Filtro por fornecedor */}
+            {/* Filtro por cliente */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Fornecedor</label>
+              <label className="block text-sm text-gray-400 mb-1">Cliente</label>
               <select
-                value={filtroFornecedor}
-                onChange={(e) => setFiltroFornecedor(e.target.value)}
+                value={filtroCliente}
+                onChange={(e) => setFiltroCliente(e.target.value)}
                 className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
               >
                 <option value="">Todos</option>
-                {fornecedores.map((fornecedor) => (
-                  <option key={fornecedor.id} value={fornecedor.id}>
-                    {fornecedor.nome}
+                {clientes.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome}
                   </option>
                 ))}
               </select>
@@ -681,7 +806,7 @@ export default function DespesasPage() {
                     Descrição
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Fornecedor
+                    Cliente
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Categoria
@@ -704,14 +829,21 @@ export default function DespesasPage() {
                 {todasContas.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
-                      Nenhuma conta encontrada
+                      Nenhuma receita encontrada
                     </td>
                   </tr>
                 ) : (
                   todasContas.map((conta) => (
                     <tr key={conta.id} className="hover:bg-gray-700/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-white">{conta.descricao}</div>
+                        <div className="flex items-center space-x-2">
+                          <div className="text-sm text-white">{conta.descricao}</div>
+                          {conta.origem === 'orcamento' && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                              Orçamento
+                            </span>
+                          )}
+                        </div>
                         {conta.parcelada && (
                           <div className="text-xs text-gray-400">
                             Parcela {conta.parcela_atual || 1}/{conta.total_parcelas}
@@ -719,7 +851,7 @@ export default function DespesasPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {conta.fornecedor_nome || '-'}
+                        {conta.cliente_nome || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {conta.categoria_nome || '-'}
@@ -733,31 +865,40 @@ export default function DespesasPage() {
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(conta)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center space-x-2">
-                          {!conta.paga && (
+                          {!conta.recebida && conta.origem === 'conta' && (
                             <button
-                              onClick={() => handleMarcarComoPaga(conta.id, 'conta_pagar_id' in conta)}
+                              onClick={() => handleMarcarComoRecebida(conta.id, 'conta_receber_id' in conta)}
                               className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Marcar como paga"
+                              title="Marcar como recebida"
                             >
                               <FiCheck className="w-5 h-5" />
                             </button>
                           )}
-                          {!('conta_pagar_id' in conta) && (
-                            <button
-                              onClick={() => handleEdit(conta)}
-                              className="text-blue-400 hover:text-blue-300 transition-colors"
-                              title="Editar"
-                            >
-                              <FiEdit className="w-5 h-5" />
-                            </button>
+                          {!('conta_receber_id' in conta) && conta.origem === 'conta' && (
+                            <>
+                              <button
+                                onClick={() => handleEdit(conta)}
+                                className="text-blue-400 hover:text-blue-300 transition-colors"
+                                title="Editar"
+                              >
+                                <FiEdit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(conta.id)}
+                                className="text-red-400 hover:text-red-300 transition-colors"
+                                title="Excluir"
+                              >
+                                <FiTrash2 className="w-5 h-5" />
+                              </button>
+                            </>
                           )}
-                          {!('conta_pagar_id' in conta) && (
+                          {conta.origem === 'orcamento' && (
                             <button
-                              onClick={() => handleDelete(conta.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                              title="Excluir"
+                              onClick={() => router.push(`/empresarial/orcamentos/${conta.id.replace('orcamento_', '')}`)}
+                              className="text-purple-400 hover:text-purple-300 transition-colors"
+                              title="Ver orçamento"
                             >
-                              <FiTrash2 className="w-5 h-5" />
+                              <FiEye className="w-5 h-5" />
                             </button>
                           )}
                         </div>
@@ -777,7 +918,7 @@ export default function DespesasPage() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-white">
-                    {editingConta ? 'Editar Despesa' : 'Nova Despesa'}
+                    {editingConta ? 'Editar Receita' : 'Nova Receita'}
                   </h2>
                   <button
                     onClick={() => {
@@ -793,16 +934,16 @@ export default function DespesasPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Fornecedor</label>
+                      <label className="block text-sm text-gray-400 mb-1">Cliente</label>
                       <select
-                        value={formData.fornecedor_id}
-                        onChange={(e) => setFormData({ ...formData, fornecedor_id: e.target.value })}
+                        value={formData.cliente_id}
+                        onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                       >
-                        <option value="">Selecione um fornecedor</option>
-                        {fornecedores.map((fornecedor) => (
-                          <option key={fornecedor.id} value={fornecedor.id}>
-                            {fornecedor.nome}
+                        <option value="">Selecione um cliente</option>
+                        {clientes.map((cliente) => (
+                          <option key={cliente.id} value={cliente.id}>
+                            {cliente.nome}
                           </option>
                         ))}
                       </select>
@@ -833,7 +974,7 @@ export default function DespesasPage() {
                       value={formData.descricao}
                       onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Ex: Pagamento de fornecedor"
+                      placeholder="Ex: Recebimento de cliente"
                     />
                   </div>
 
@@ -865,10 +1006,10 @@ export default function DespesasPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Forma de Pagamento</label>
+                      <label className="block text-sm text-gray-400 mb-1">Forma de Recebimento</label>
                       <select
-                        value={formData.forma_pagamento}
-                        onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
+                        value={formData.forma_recebimento}
+                        onChange={(e) => setFormData({ ...formData, forma_recebimento: e.target.value })}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                       >
                         <option value="dinheiro">Dinheiro</option>
@@ -933,7 +1074,7 @@ export default function DespesasPage() {
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingConta ? 'Salvar Alterações' : 'Criar Despesa'}
+                      {editingConta ? 'Salvar Alterações' : 'Criar Receita'}
                     </button>
                   </div>
                 </form>
@@ -945,3 +1086,4 @@ export default function DespesasPage() {
     </MainLayoutEmpresarial>
   )
 }
+

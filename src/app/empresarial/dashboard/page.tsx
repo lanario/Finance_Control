@@ -127,7 +127,7 @@ export default function DashboardEmpresarialPage() {
         .eq('user_id', userId)
         .eq('ativo', true)
 
-      // Buscar contas a pagar do mês
+      // Buscar despesas do mês
       const { data: contasPagarMes } = await supabase
         .from('contas_a_pagar')
         .select('*')
@@ -143,7 +143,7 @@ export default function DashboardEmpresarialPage() {
         .gte('data_vencimento', startOfMonth.toISOString().split('T')[0])
         .lte('data_vencimento', endOfMonth.toISOString().split('T')[0])
 
-      // Buscar contas a receber do mês
+      // Buscar receitas do mês
       const { data: contasReceberMes } = await supabase
         .from('contas_a_receber')
         .select('*')
@@ -209,7 +209,7 @@ export default function DashboardEmpresarialPage() {
         
         const mesNome = monthDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
         
-        // Buscar entradas (contas a receber + vendas)
+        // Buscar entradas (receitas + vendas)
         const { data: receitasMes } = await supabase
           .from('contas_a_receber')
           .select('valor')
@@ -231,7 +231,7 @@ export default function DashboardEmpresarialPage() {
         const entradas = (receitasMes?.reduce((sum, r) => sum + Number(r.valor), 0) || 0) +
           (vendasMesPeriodo?.reduce((sum, v) => sum + Number(v.valor_final), 0) || 0)
 
-        // Buscar saídas (contas a pagar)
+        // Buscar saídas (despesas)
         const { data: pagasMes } = await supabase
           .from('contas_a_pagar')
           .select('valor')
@@ -388,7 +388,7 @@ export default function DashboardEmpresarialPage() {
         
         const mesNome = monthDate.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
         
-        // Buscar receitas (contas a receber + vendas)
+        // Buscar receitas (receitas + vendas)
         const { data: receitasLucro } = await supabase
           .from('contas_a_receber')
           .select('valor')
@@ -419,7 +419,7 @@ export default function DashboardEmpresarialPage() {
           (vendasLucro?.reduce((sum, v) => sum + Number(v.valor_final), 0) || 0) +
           (parcelasVendasLucro?.reduce((sum, p) => sum + Number(p.valor), 0) || 0)
 
-        // Buscar despesas (contas a pagar)
+        // Buscar despesas (despesas)
         const { data: despesasLucro } = await supabase
           .from('contas_a_pagar')
           .select('valor')
@@ -507,7 +507,7 @@ export default function DashboardEmpresarialPage() {
 
   const statCards = [
     {
-      title: 'Contas a Pagar',
+      title: 'Despesas',
       value: `R$ ${stats.contasPagarMes.toFixed(2)}`,
       icon: FiTrendingDown,
       color: 'text-red-400',
@@ -515,7 +515,7 @@ export default function DashboardEmpresarialPage() {
       clickable: false,
     },
     {
-      title: 'Contas a Receber',
+      title: 'Receitas',
       value: `R$ ${stats.contasReceberMes.toFixed(2)}`,
       icon: FiTrendingUp,
       color: 'text-green-400',

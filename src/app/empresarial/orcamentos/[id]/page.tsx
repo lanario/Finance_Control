@@ -6,6 +6,7 @@ import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import { FiArrowLeft, FiEdit, FiDownload } from 'react-icons/fi'
+import Image from 'next/image'
 
 interface Orcamento {
   id: string
@@ -51,6 +52,12 @@ export default function VisualizarOrcamentoPage() {
   const [orcamento, setOrcamento] = useState<Orcamento | null>(null)
   const [itens, setItens] = useState<ItemOrcamento[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Dados do template e perfil
+  const [templateConfig, setTemplateConfig] = useState<any>(null)
+  const [perfilData, setPerfilData] = useState<any>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [empresaNome, setEmpresaNome] = useState<string>('')
 
   useEffect(() => {
     if (session && orcamentoId) {
@@ -61,6 +68,32 @@ export default function VisualizarOrcamentoPage() {
   const loadOrcamento = async () => {
     try {
       const userId = session?.user?.id
+      if (!userId) return
+
+      // Carregar template de estilo
+      if (typeof window !== 'undefined') {
+        const estiloSalvo = localStorage.getItem(`orcamento_template_${userId}`)
+        if (estiloSalvo) {
+          try {
+            setTemplateConfig(JSON.parse(estiloSalvo))
+          } catch (e) {
+            console.error('Erro ao carregar template:', e)
+          }
+        }
+      }
+
+      // Carregar perfil
+      const { data: perfil } = await supabase
+        .from('perfis')
+        .select('empresa_nome, empresa_cnpj, telefone, celular, endereco, logo_empresa_url')
+        .eq('user_id', userId)
+        .single()
+
+      if (perfil) {
+        setPerfilData(perfil)
+        setEmpresaNome(perfil.empresa_nome || templateConfig?.empresaNome || 'Nome da Empresa')
+        setLogoUrl(templateConfig?.logoUrl || perfil.logo_empresa_url || null)
+      }
 
       // Carregar orçamento
       const { data: orcamentoData, error: orcamentoError } = await supabase
@@ -92,16 +125,25 @@ export default function VisualizarOrcamentoPage() {
     }
   }
 
+  const formatarData = (data: string) => {
+    return new Date(data).toLocaleDateString('pt-BR')
+  }
+
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(valor)
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'aprovado':
+      case 'concluido':
         return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'enviado':
+      case 'em_processo':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-      case 'rejeitado':
+      case 'cancelado':
         return 'bg-red-500/20 text-red-400 border-red-500/30'
-      case 'convertido':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
     }
@@ -109,11 +151,9 @@ export default function VisualizarOrcamentoPage() {
 
   const getStatusLabel = (status: string) => {
     const labels: { [key: string]: string } = {
-      rascunho: 'Rascunho',
-      enviado: 'Enviado',
-      aprovado: 'Aprovado',
-      rejeitado: 'Rejeitado',
-      convertido: 'Convertido',
+      concluido: 'Concluído',
+      em_processo: 'Em processo',
+      cancelado: 'Cancelado',
     }
     return labels[status] || status
   }
@@ -178,129 +218,273 @@ export default function VisualizarOrcamentoPage() {
           </div>
         </div>
 
-        {/* Informações do Orçamento */}
+        {/* Preview do Orçamento */}
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Informações do Orçamento</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Número</label>
-              <p className="text-white font-semibold">{orcamento.numero}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(orcamento.status)}`}>
-                {getStatusLabel(orcamento.status)}
-              </span>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Data de Emissão</label>
-              <p className="text-white">{new Date(orcamento.data_emissao).toLocaleDateString('pt-BR')}</p>
-            </div>
-            {orcamento.data_validade && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Data de Validade</label>
-                <p className="text-white">{new Date(orcamento.data_validade).toLocaleDateString('pt-BR')}</p>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Cliente</label>
-              <p className="text-white">{orcamento.cliente_nome || 'Não informado'}</p>
-            </div>
-            {orcamento.cliente_email && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Email do Cliente</label>
-                <p className="text-white">{orcamento.cliente_email}</p>
-              </div>
-            )}
-            {orcamento.cliente_telefone && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Telefone do Cliente</label>
-                <p className="text-white">{orcamento.cliente_telefone}</p>
-              </div>
-            )}
-            {orcamento.cliente_endereco && (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-400 mb-1">Endereço do Cliente</label>
-                <p className="text-white">{orcamento.cliente_endereco}</p>
-              </div>
-            )}
-          </div>
-        </div>
+          <h2 className="text-xl font-semibold text-white mb-4">Preview do Orçamento</h2>
+          
+          {templateConfig && orcamento && (
+            <div
+              className="rounded-lg shadow-lg p-8"
+              style={{
+                fontFamily: templateConfig.fonteFamilia || 'Arial',
+                backgroundColor: templateConfig.corFundo || '#FFFFFF',
+              }}
+            >
+              {/* Usar valores do template ou padrões consistentes com a página de estilo */}
+              {(() => {
+                const corPrimaria = templateConfig.corPrimaria || '#111827'
+                const corSecundaria = templateConfig.corSecundaria || '#111827'
+                const corTexto = templateConfig.corTexto || '#111827'
+                const corFundo = templateConfig.corFundo || '#FFFFFF'
+                const corBordas = templateConfig.corBordas || '#111827'
+                const corHeader = templateConfig.corHeader || '#FFFFFF'
+                const corTextoHeader = templateConfig.corTextoHeader || '#111827'
+                const fonteTituloHeader = templateConfig.fonteTituloHeader || 18
+                const fonteTituloSecao = templateConfig.fonteTituloSecao || 12
+                const paddingHeader = 16
+                const espacamentoSecoes = 16
+                
+                return (
+                  <>
+                    {/* Header */}
+                    <div
+                    style={{
+                      backgroundColor: corHeader,
+                      color: corTextoHeader,
+                      padding: `${paddingHeader}px`,
+                      borderBottom: `2px solid ${corPrimaria}`,
+                      marginBottom: `${espacamentoSecoes}px`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      minHeight: logoUrl ? '140px' : 'auto',
+                    }}
+                  >
+                {/* Logo à esquerda */}
+                {logoUrl && (
+                  <div className="relative w-[120px] h-[120px] flex items-center justify-center">
+                    <Image
+                      key={logoUrl}
+                      src={logoUrl}
+                      alt="Logo"
+                      width={120}
+                      height={120}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                )}
 
-        {/* Itens do Orçamento */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Itens do Orçamento</h2>
-          {itens.length === 0 ? (
-            <p className="text-gray-400 text-center py-8">Nenhum item encontrado</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-900/50 border-b border-gray-700">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">#</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Descrição</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Quantidade</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Unidade</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Valor Unitário</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Desconto</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700">
-                  {itens.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-700/30">
-                      <td className="px-4 py-3 text-gray-300">{item.item_numero}</td>
-                      <td className="px-4 py-3 text-white">{item.descricao}</td>
-                      <td className="px-4 py-3 text-gray-300">{item.quantidade}</td>
-                      <td className="px-4 py-3 text-gray-300">{item.unidade}</td>
-                      <td className="px-4 py-3 text-gray-300">R$ {item.valor_unitario.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-red-400">R$ {item.desconto.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-white font-semibold text-right">R$ {item.valor_total.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                {/* Nome da empresa e datas à direita */}
+                <div className="flex flex-col items-end justify-center flex-1 ml-6">
+                    <h1
+                      style={{
+                        fontSize: `${fonteTituloHeader}px`,
+                        fontWeight: 'bold',
+                        color: corTextoHeader,
+                        marginBottom: '8px',
+                        textAlign: 'right',
+                      }}
+                    >
+                      {empresaNome || 'Nome da Empresa'}
+                    </h1>
+                    <div
+                      style={{
+                        fontSize: '12px',
+                        color: corTextoHeader,
+                        textAlign: 'right',
+                      }}
+                    >
+                      EMISSÃO: {formatarData(orcamento.data_emissao)} • VALIDADE:{' '}
+                      {orcamento.data_validade ? formatarData(orcamento.data_validade) : 'Não informada'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Prestador e Cliente */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: `${espacamentoSecoes}px`,
+                    marginBottom: `${espacamentoSecoes}px`,
+                    padding: '20px',
+                    border: `1px solid ${corBordas}`,
+                    borderRadius: '4px',
+                  }}
+                >
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: `${fonteTituloSecao}px`,
+                        fontWeight: 'bold',
+                        color: corSecundaria,
+                        marginBottom: '8px',
+                      }}
+                    >
+                      PRESTADOR
+                    </h3>
+                    {perfilData?.empresa_nome && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        EMPRESA: {perfilData.empresa_nome}
+                      </p>
+                    )}
+                    {perfilData?.empresa_cnpj && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        CNPJ: {perfilData.empresa_cnpj}
+                      </p>
+                    )}
+                    {session?.user?.email && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        EMAIL: {session.user.email}
+                      </p>
+                    )}
+                    {perfilData?.telefone && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        TELEFONE: {perfilData.telefone}
+                      </p>
+                    )}
+                    {perfilData?.celular && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        CELULAR: {perfilData.celular}
+                      </p>
+                    )}
+                    {perfilData?.endereco && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        ENDEREÇO: {perfilData.endereco}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: `${fonteTituloSecao}px`,
+                        fontWeight: 'bold',
+                        color: corSecundaria,
+                        marginBottom: '8px',
+                      }}
+                    >
+                      CLIENTE
+                    </h3>
+                    {orcamento.cliente_nome && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        NOME: {orcamento.cliente_nome}
+                      </p>
+                    )}
+                    {orcamento.cliente_email && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        EMAIL: {orcamento.cliente_email}
+                      </p>
+                    )}
+                    {orcamento.cliente_telefone && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        TELEFONE: {orcamento.cliente_telefone}
+                      </p>
+                    )}
+                    {orcamento.cliente_endereco && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>
+                        ENDEREÇO: {orcamento.cliente_endereco}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tabela de Produtos */}
+                <div style={{ marginBottom: `${espacamentoSecoes}px` }}>
+                  <h3
+                    style={{
+                      fontSize: `${fonteTituloSecao}px`,
+                      fontWeight: 'bold',
+                      color: corSecundaria,
+                      marginBottom: '8px',
+                    }}
+                  >
+                    PRODUTOS/SERVIÇOS
+                  </h3>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: `1px solid ${corBordas}` }}>
+                    <thead>
+                      <tr style={{ backgroundColor: corPrimaria + '20' }}>
+                        <th style={{ padding: '8px', textAlign: 'left', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                          QTD.
+                        </th>
+                        <th style={{ padding: '8px', textAlign: 'left', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                          DESCRIÇÃO
+                        </th>
+                        <th style={{ padding: '8px', textAlign: 'right', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                          VALOR
+                        </th>
+                        <th style={{ padding: '8px', textAlign: 'right', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                          SUBTOTAL
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itens.map((item, index) => (
+                        <tr key={item.id}>
+                          <td style={{ padding: '8px', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                            {item.quantidade}
+                          </td>
+                          <td style={{ padding: '8px', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px' }}>
+                            {item.descricao}
+                          </td>
+                          <td style={{ padding: '8px', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px', textAlign: 'right' }}>
+                            {formatarMoeda(item.valor_unitario)}
+                          </td>
+                          <td style={{ padding: '8px', border: `1px solid ${corBordas}`, color: corTexto, fontSize: '12px', textAlign: 'right' }}>
+                            {formatarMoeda(item.valor_total)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totais */}
+                <div
+                  style={{
+                    marginBottom: `${espacamentoSecoes}px`,
+                    padding: '20px',
+                    border: `1px solid ${corBordas}`,
+                    borderRadius: '4px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: corTexto, fontSize: '12px' }}>Quantidade Total: {itens.reduce((sum, item) => sum + item.quantidade, 0)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: corTexto, fontSize: '12px' }}>Subtotal:</span>
+                    <span style={{ color: corTexto, fontSize: '12px' }}>
+                      {formatarMoeda(orcamento.valor_total)}
+                    </span>
+                  </div>
+                  {orcamento.desconto > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ color: corTexto, fontSize: '12px' }}>Desconto:</span>
+                      <span style={{ color: corTexto, fontSize: '12px' }}>
+                        {formatarMoeda(orcamento.desconto)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      marginTop: '8px',
+                      paddingTop: '8px',
+                      borderTop: `1px solid ${corBordas}`,
+                    }}
+                  >
+                    <span style={{ color: corTexto, fontSize: '14px', fontWeight: 'bold' }}>TOTAL:</span>
+                    <span style={{ color: corTexto, fontSize: '14px', fontWeight: 'bold' }}>
+                      {formatarMoeda(orcamento.valor_final)}
+                    </span>
+                  </div>
+                </div>
+                  </>
+                )
+              })()}
             </div>
           )}
-        </div>
-
-        {/* Totais e Observações */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Totais e Informações Adicionais</h2>
-          <div className="space-y-4">
-            <div className="bg-gray-900/50 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Subtotal:</span>
-                <span className="text-white font-semibold">R$ {orcamento.valor_total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-300">Desconto:</span>
-                <span className="text-red-400">- R$ {orcamento.desconto.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                <span className="text-white font-bold text-lg">Total:</span>
-                <span className="text-white font-bold text-lg">R$ {orcamento.valor_final.toFixed(2)}</span>
-              </div>
-            </div>
-            {orcamento.condicoes_pagamento && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Condições de Pagamento</label>
-                <p className="text-white">{orcamento.condicoes_pagamento}</p>
-              </div>
-            )}
-            {orcamento.prazo_entrega && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Prazo de Entrega</label>
-                <p className="text-white">{orcamento.prazo_entrega}</p>
-              </div>
-            )}
-            {orcamento.observacoes && (
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Observações</label>
-                <p className="text-white whitespace-pre-wrap">{orcamento.observacoes}</p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </MainLayoutEmpresarial>
