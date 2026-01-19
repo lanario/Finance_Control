@@ -377,8 +377,8 @@ export default function DashboardEmpresarialPage() {
         const despesasPorCategoriaMap: { [key: string]: number } = {}
         categoriasDespesasResult.data.forEach((categoria, index) => {
           const baseIndex = index * 2
-          const contasNaoParceladas = categoriaResults[baseIndex]?.data || []
-          const parcelas = categoriaResults[baseIndex + 1]?.data || []
+          const contasNaoParceladas = (categoriaResults[baseIndex]?.data || []) as Array<{ valor: number }>
+          const parcelas = (categoriaResults[baseIndex + 1]?.data || []) as Array<{ valor: number }>
           
           const valor = 
             contasNaoParceladas.reduce((sum, c) => sum + Number(c.valor || 0), 0) +
@@ -431,8 +431,8 @@ export default function DashboardEmpresarialPage() {
         const vendasPorCategoriaMap: { [key: string]: number } = {}
         categoriasReceitasResult.data.forEach((categoria, index) => {
           const baseIndex = index * 2
-          const vendasNaoParceladas = categoriaResults[baseIndex]?.data || []
-          const parcelas = categoriaResults[baseIndex + 1]?.data || []
+          const vendasNaoParceladas = (categoriaResults[baseIndex]?.data || []) as Array<{ valor_final: number }>
+          const parcelas = (categoriaResults[baseIndex + 1]?.data || []) as Array<{ valor: number }>
           
           const valor = 
             vendasNaoParceladas.reduce((sum, v) => sum + Number(v.valor_final || 0), 0) +

@@ -82,6 +82,8 @@ export default function NovoOrcamentoPage() {
         empresa_nome: perfil?.empresa_nome || null,
         empresa_cnpj: perfil?.empresa_cnpj || null,
         telefone: perfil?.telefone || null,
+        celular: perfil?.celular || null,
+        endereco: perfil?.endereco || null,
         email: session.user.email || null,
       })
     } catch (error) {

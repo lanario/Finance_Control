@@ -106,15 +106,14 @@ export default function PerfilPage() {
 
       if (uploadError) {
         console.error('Erro detalhado do upload:', uploadError)
-        console.error('Código do erro:', uploadError.statusCode)
         console.error('Mensagem do erro:', uploadError.message)
         
         // Mensagens de erro mais específicas
-        if (uploadError.message?.includes('Bucket') || uploadError.message?.includes('bucket') || uploadError.message?.includes('not found') || uploadError.statusCode === '404') {
+        if (uploadError.message?.includes('Bucket') || uploadError.message?.includes('bucket') || uploadError.message?.includes('not found') || uploadError.message?.includes('404')) {
           throw new Error('Bucket "Logo" não encontrado ou não acessível. Verifique:\n1. Se o bucket existe no Storage\n2. Se está usando o projeto correto do Supabase\n3. Se as variáveis de ambiente estão corretas')
-        } else if (uploadError.message?.includes('policy') || uploadError.message?.includes('permission') || uploadError.message?.includes('row-level security') || uploadError.statusCode === '403') {
+        } else if (uploadError.message?.includes('policy') || uploadError.message?.includes('permission') || uploadError.message?.includes('row-level security') || uploadError.message?.includes('403')) {
           throw new Error('Erro de permissão. Execute o SQL de políticas do Storage (016_configurar_storage.sql) no SQL Editor do Supabase.')
-        } else if (uploadError.statusCode === '401') {
+        } else if (uploadError.message?.includes('401') || uploadError.message?.includes('authentication') || uploadError.message?.includes('Unauthorized')) {
           throw new Error('Erro de autenticação. Faça login novamente.')
         } else {
           throw new Error(`Erro: ${uploadError.message || 'Erro desconhecido'}`)
