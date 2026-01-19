@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -25,17 +25,29 @@ import {
   FiLayers,
 } from 'react-icons/fi'
 
-const menuItems = [
-  { href: '/empresarial/dashboard', label: 'Dashboard', icon: FiHome },
-  { href: '/empresarial/perfil', label: 'Perfil', icon: FiUser },
-  { href: '/empresarial/despesas', label: 'Despesas', icon: FiTrendingDown },
-  { href: '/empresarial/receitas', label: 'Receitas', icon: FiTrendingUp },
-  { href: '/empresarial/vendas', label: 'Vendas', icon: FiShoppingBag },
-  { href: '/empresarial/orcamentos', label: 'Orçamentos', icon: FiFileText },
-  { href: '/empresarial/orcamentos/estilo', label: 'Orçamento (estilo)', icon: FiLayers },
-  { href: '/empresarial/fornecedores', label: 'Fornecedores', icon: FiBriefcase },
-  { href: '/empresarial/clientes', label: 'Clientes', icon: FiUsers },
-  { href: '/empresarial/compras', label: 'Compras', icon: FiShoppingBag },
+const menuSections = [
+  {
+    title: 'Pessoal',
+    items: [
+      { href: '/empresarial/dashboard', label: 'Dashboard', icon: FiHome },
+      { href: '/empresarial/perfil', label: 'Perfil', icon: FiUser },
+      { href: '/empresarial/fornecedores', label: 'Fornecedores', icon: FiBriefcase },
+      { href: '/empresarial/clientes', label: 'Clientes', icon: FiUsers },
+    ],
+  },
+  {
+    title: 'Finanças',
+    items: [
+      { href: '/empresarial/despesas', label: 'Despesas', icon: FiTrendingDown },
+      { href: '/empresarial/receitas', label: 'Receitas', icon: FiTrendingUp },
+      { href: '/empresarial/vendas', label: 'Vendas', icon: FiShoppingBag },
+      { href: '/empresarial/compras', label: 'Compras', icon: FiShoppingBag },
+      { href: '/empresarial/fluxo-caixa', label: 'Fluxo de Caixa', icon: FiDollarSign },
+      { href: '/empresarial/contas-a-pagar', label: 'Contas a Pagar', icon: FiTrendingDown },
+      { href: '/empresarial/orcamentos', label: 'Orçamentos', icon: FiFileText },
+      { href: '/empresarial/orcamentos/estilo', label: 'Orçamento (estilo)', icon: FiLayers },
+    ],
+  },
 ]
 
 export default function SidebarEmpresarial() {
@@ -53,33 +65,35 @@ export default function SidebarEmpresarial() {
   const [zoom, setZoom] = useState(1)
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null)
 
-  useEffect(() => {
-    if (session?.user) {
-      loadProfile()
-    }
-  }, [session])
+  const userId = session?.user?.id
 
-  const loadProfile = async () => {
-    if (!session?.user?.id) return
+  const loadProfile = useCallback(async () => {
+    if (!userId) return
 
     try {
       const { data: profile } = await supabase
         .from('perfis')
         .select('foto_url, nome')
-        .eq('user_id', session.user.id)
-        .single()
+        .eq('user_id', userId)
+        .maybeSingle()
 
       if (profile) {
         setProfilePhoto(profile.foto_url)
-        setProfileName(profile.nome || session.user.email?.split('@')[0] || 'Usuário')
+        setProfileName(profile.nome || session?.user?.email?.split('@')[0] || 'Usuário')
       } else {
-        setProfileName(session.user.email?.split('@')[0] || 'Usuário')
+        setProfileName(session?.user?.email?.split('@')[0] || 'Usuário')
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error)
-      setProfileName(session.user.email?.split('@')[0] || 'Usuário')
+      setProfileName(session?.user?.email?.split('@')[0] || 'Usuário')
     }
-  }
+  }, [userId, session?.user?.email])
+
+  useEffect(() => {
+    if (userId && !profilePhoto && !profileName) {
+      loadProfile()
+    }
+  }, [userId, profilePhoto, profileName, loadProfile])
 
   const createImage = (url: string): Promise<HTMLImageElement> =>
     new Promise((resolve, reject) => {
@@ -294,13 +308,14 @@ export default function SidebarEmpresarial() {
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900 transition-all duration-300 ease-in-out z-50 flex flex-col ${
+      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900 transition-all duration-150 ease-out z-50 flex flex-col ${
         isHovered ? 'w-64' : 'w-20'
       }`}
+      style={{ willChange: 'width' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`py-6 transition-all duration-300 ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
+      <div className={`py-6 transition-all duration-150 ease-out ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
         <div className={`flex items-center ${isHovered ? 'space-x-3' : 'justify-center'}`}>
           <div className="flex-shrink-0">
             <Image
@@ -324,39 +339,55 @@ export default function SidebarEmpresarial() {
         </div>
       </div>
 
-      <nav className={`flex-1 space-y-2 ${isHovered ? 'px-3' : 'px-0'}`}>
-        {menuItems.map((item) => {
-          const Icon = item.icon
-          const isActive = pathname === item.href
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-200 relative ${
-                isActive
-                  ? 'bg-purple-800/80 text-white shadow-lg'
-                  : 'text-white hover:bg-purple-800/40 hover:text-white hover:shadow-md'
-              }`}
-            >
-              {isActive && (
-                <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
-              )}
-              <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+      <nav className={`flex-1 overflow-y-auto ${isHovered ? 'px-3' : 'px-0'}`}>
+        <div className="space-y-6">
+          {menuSections.map((section, sectionIndex) => (
+            <div key={section.title} className="space-y-2">
+              {/* Título da Seção */}
               {isHovered && (
-                <span className={`whitespace-nowrap animate-slide-in ${isActive ? 'font-semibold' : ''}`}>
-                  {item.label}
-                </span>
+                <div className="px-4 py-2">
+                  <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider animate-slide-in">
+                    {section.title}
+                  </h3>
+                </div>
               )}
-            </Link>
-          )
-        })}
+              
+              {/* Itens do Menu */}
+              {section.items.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-150 ease-out relative ${
+                      isActive
+                        ? 'bg-purple-800/80 text-white shadow-lg'
+                        : 'text-white hover:bg-purple-800/40 hover:text-white hover:shadow-md'
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
+                    )}
+                    <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    {isHovered && (
+                      <span className={`whitespace-nowrap animate-slide-in ${isActive ? 'font-semibold' : ''}`}>
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </div>
       </nav>
 
       <div className={`${isHovered ? 'px-3' : 'px-0'} pb-6 mt-auto space-y-2`}>
         {/* Perfil do Usuário */}
         <button
           onClick={() => setShowProfileModal(true)}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-purple-800/40 transition-all duration-200`}
+          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-purple-800/40 transition-all duration-150 ease-out`}
         >
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
             {profilePhoto ? (
@@ -386,9 +417,9 @@ export default function SidebarEmpresarial() {
         {/* Botão Sair */}
         <button
           onClick={handleLogout}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-red-500/20 hover:text-red-200 transition-all duration-200`}
+          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-red-500/20 hover:text-red-200 transition-all duration-150 ease-out`}
         >
-          <FiLogOut className="w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:rotate-12" />
+          <FiLogOut className="w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out group-hover:rotate-12" />
           {isHovered && (
             <span className="whitespace-nowrap animate-slide-in">Sair</span>
           )}

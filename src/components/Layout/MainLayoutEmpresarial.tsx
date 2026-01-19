@@ -34,7 +34,7 @@ export default function MainLayoutEmpresarial({
   return (
     <div className="flex min-h-screen bg-gray-900">
       <SidebarEmpresarial />
-      <main className="flex-1 p-8 ml-20 transition-all duration-300 min-h-screen">{children}</main>
+      <main className="flex-1 p-8 ml-20 transition-all duration-150 ease-out min-h-screen">{children}</main>
     </div>
   )
 }

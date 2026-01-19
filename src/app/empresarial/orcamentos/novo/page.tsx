@@ -193,25 +193,56 @@ export default function NovoOrcamentoPage() {
       return
     }
 
+    // Validar itens antes de salvar
+    const itensInvalidos = itens.filter(item => !item.descricao || !item.descricao.trim())
+    if (itensInvalidos.length > 0) {
+      alert('Por favor, preencha a descrição de todos os itens.')
+      return
+    }
+
+    const itensSemValor = itens.filter(item => !item.valor_unitario || item.valor_unitario <= 0)
+    if (itensSemValor.length > 0) {
+      alert('Por favor, informe um valor unitário válido (maior que zero) para todos os itens.')
+      return
+    }
+
+    if (!numero || !numero.trim()) {
+      alert('O número do orçamento é obrigatório.')
+      return
+    }
+
+    if (!dataEmissao) {
+      alert('A data de emissão é obrigatória.')
+      return
+    }
+
+    // Validar status - garantir que é um dos valores permitidos
+    const statusValidos = ['concluido', 'em_processo', 'cancelado']
+    const statusFinal = statusValidos.includes(status) ? status : 'em_processo'
+
     setLoading(true)
     try {
       const userId = session?.user?.id
+      if (!userId) {
+        throw new Error('Usuário não autenticado.')
+      }
+
       const { valorTotal, valorFinal } = calcularTotais()
 
       // Salvar orçamento
       const orcamentoData = {
         user_id: userId,
         cliente_id: clienteId || null,
-        numero,
+        numero: numero.trim(),
         data_emissao: dataEmissao,
         data_validade: dataValidade || null,
-        status,
-        valor_total: valorTotal,
-        desconto: descontoGeral,
-        valor_final: valorFinal,
-        observacoes: observacoes || null,
-        condicoes_pagamento: condicoesPagamento || null,
-        prazo_entrega: prazoEntrega || null,
+        status: statusFinal,
+        valor_total: Number(valorTotal.toFixed(2)),
+        desconto: Number(descontoGeral.toFixed(2)),
+        valor_final: Number(valorFinal.toFixed(2)),
+        observacoes: observacoes?.trim() || null,
+        condicoes_pagamento: condicoesPagamento?.trim() || null,
+        prazo_entrega: prazoEntrega?.trim() || null,
         cliente_nome: clienteSelecionado?.nome || null,
         cliente_email: clienteSelecionado?.email || null,
         cliente_telefone: clienteSelecionado?.telefone || null,
@@ -231,13 +262,13 @@ export default function NovoOrcamentoPage() {
         orcamento_id: orcamento.id,
         user_id: userId,
         item_numero: item.item_numero,
-        descricao: item.descricao,
-        quantidade: item.quantidade,
-        unidade: item.unidade,
-        valor_unitario: item.valor_unitario,
-        desconto: item.desconto,
-        valor_total: item.valor_total,
-        observacoes: item.observacoes || null,
+        descricao: item.descricao.trim(),
+        quantidade: Number(item.quantidade),
+        unidade: item.unidade || 'un',
+        valor_unitario: Number(item.valor_unitario.toFixed(2)),
+        desconto: Number((item.desconto || 0).toFixed(2)),
+        valor_total: Number(item.valor_total.toFixed(2)),
+        observacoes: item.observacoes?.trim() || null,
       }))
 
       const { error: itensError } = await supabase
@@ -247,9 +278,10 @@ export default function NovoOrcamentoPage() {
       if (itensError) throw itensError
 
       router.push('/empresarial/orcamentos')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar orçamento:', error)
-      alert('Erro ao salvar orçamento')
+      const errorMessage = error?.message || error?.error?.message || JSON.stringify(error) || 'Erro desconhecido'
+      alert(`Erro ao salvar orçamento:\n\n${errorMessage}`)
     } finally {
       setLoading(false)
     }

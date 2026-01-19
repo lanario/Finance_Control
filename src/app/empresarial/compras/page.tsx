@@ -6,8 +6,6 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import {
   FiPlus,
-  FiEdit,
-  FiTrash2,
   FiCheck,
   FiX,
   FiFilter,
@@ -18,6 +16,7 @@ import {
   FiSearch,
   FiXCircle,
 } from 'react-icons/fi'
+import ActionButtons from '@/components/Empresarial/ActionButtons'
 
 interface Compra {
   id: string
@@ -649,22 +648,10 @@ export default function ComprasPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(compra.status)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => handleEdit(compra)}
-                            className="text-blue-400 hover:text-blue-300 transition-colors"
-                            title="Editar"
-                          >
-                            <FiEdit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(compra.id)}
-                            className="text-red-400 hover:text-red-300 transition-colors"
-                            title="Excluir"
-                          >
-                            <FiTrash2 className="w-5 h-5" />
-                          </button>
-                        </div>
+                        <ActionButtons
+                          onEdit={() => handleEdit(compra)}
+                          onDelete={() => handleDelete(compra.id)}
+                        />
                       </td>
                     </tr>
                   ))

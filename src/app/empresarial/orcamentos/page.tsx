@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
-import { FiPlus, FiEdit, FiTrash2, FiFileText, FiEye, FiDownload } from 'react-icons/fi'
+import { FiPlus, FiFileText } from 'react-icons/fi'
+import ActionButtons from '@/components/Empresarial/ActionButtons'
 
 interface Orcamento {
   id: string
@@ -198,35 +199,15 @@ export default function OrcamentosPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => router.push(`/empresarial/orcamentos/${orcamento.id}`)}
-                            className="p-2 text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors"
-                            title="Visualizar"
-                          >
-                            <FiEye className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => router.push(`/empresarial/orcamentos/${orcamento.id}/editar`)}
-                            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
-                            title="Editar"
-                          >
-                            <FiEdit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => router.push(`/empresarial/orcamentos/${orcamento.id}/pdf`)}
-                            className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors"
-                            title="Baixar PDF"
-                          >
-                            <FiDownload className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(orcamento.id)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                            title="Excluir"
-                          >
-                            <FiTrash2 className="w-5 h-5" />
-                          </button>
+                        <div className="flex items-center justify-end">
+                          <ActionButtons
+                            onView={() => router.push(`/empresarial/orcamentos/${orcamento.id}`)}
+                            onEdit={() => router.push(`/empresarial/orcamentos/${orcamento.id}/editar`)}
+                            onDownload={() => router.push(`/empresarial/orcamentos/${orcamento.id}/pdf`)}
+                            onDelete={() => handleDelete(orcamento.id)}
+                            showView={true}
+                            showDownload={true}
+                          />
                         </div>
                       </td>
                     </tr>

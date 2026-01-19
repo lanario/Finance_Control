@@ -7,8 +7,6 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import {
   FiPlus,
-  FiEdit,
-  FiTrash2,
   FiCheck,
   FiX,
   FiFilter,
@@ -18,7 +16,10 @@ import {
   FiTrendingUp,
   FiSearch,
   FiEye,
+  FiTrash2,
+  FiFileText,
 } from 'react-icons/fi'
+import ActionButtons from '@/components/Empresarial/ActionButtons'
 
 interface ContaReceber {
   id: string
@@ -34,6 +35,7 @@ interface ContaReceber {
   parcelada: boolean
   total_parcelas: number
   parcela_atual: number
+  status?: 'pendente' | 'aprovado' | 'cancelado'
   cliente_nome?: string | null
   categoria_nome?: string | null
   origem?: 'conta' | 'orcamento' // Identifica se é uma conta a receber ou um orçamento
@@ -50,11 +52,30 @@ interface Categoria {
   nome: string
 }
 
+interface Contrato {
+  id: string
+  cliente_id: string | null
+  categoria_id: string | null
+  nome_contrato: string
+  descricao: string | null
+  valor_mensal: number
+  data_inicio: string
+  data_fim: string | null
+  dia_vencimento: number
+  forma_recebimento: string | null
+  observacoes: string | null
+  detalhes_contrato: string | null
+  ativo: boolean
+  cliente_nome?: string | null
+  categoria_nome?: string | null
+}
+
 interface ResumoContas {
   totalAReceber: number
   totalVencidas: number
   totalRecebidas: number
   totalPendentes: number
+  saldoAtual: number
 }
 
 export default function ReceitasPage() {
@@ -65,14 +86,20 @@ export default function ReceitasPage() {
   const [todasContas, setTodasContas] = useState<ContaReceber[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [contratos, setContratos] = useState<Contrato[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showModalCliente, setShowModalCliente] = useState(false)
+  const [showModalCategoria, setShowModalCategoria] = useState(false)
+  const [showModalContrato, setShowModalContrato] = useState(false)
   const [editingConta, setEditingConta] = useState<ContaReceber | null>(null)
+  const [editingContrato, setEditingContrato] = useState<Contrato | null>(null)
   const [resumo, setResumo] = useState<ResumoContas>({
     totalAReceber: 0,
     totalVencidas: 0,
     totalRecebidas: 0,
     totalPendentes: 0,
+    saldoAtual: 0,
   })
 
   // Filtros
@@ -94,6 +121,41 @@ export default function ReceitasPage() {
     observacoes: '',
     parcelada: false,
     total_parcelas: '1',
+  })
+
+  // Formulário de cliente
+  const [formDataCliente, setFormDataCliente] = useState({
+    nome: '',
+    razao_social: '',
+    cnpj: '',
+    cpf: '',
+    email: '',
+    telefone: '',
+    endereco: '',
+    observacoes: '',
+  })
+
+  // Formulário de categoria
+  const [formDataCategoria, setFormDataCategoria] = useState({
+    nome: '',
+    descricao: '',
+    cor: '#6366f1',
+  })
+
+  // Formulário de contrato
+  const [formDataContrato, setFormDataContrato] = useState({
+    cliente_id: '',
+    categoria_id: '',
+    nome_contrato: '',
+    descricao: '',
+    valor_mensal: '',
+    data_inicio: new Date().toISOString().split('T')[0],
+    data_fim: '',
+    dia_vencimento: new Date().getDate().toString(),
+    forma_recebimento: 'pix',
+    observacoes: '',
+    detalhes_contrato: '',
+    ativo: true,
   })
 
   useEffect(() => {
@@ -127,11 +189,133 @@ export default function ReceitasPage() {
 
       setCategorias(categoriasData || [])
 
+      // Carregar contratos (passar clientes e categorias como parâmetro)
+      await loadContratos(clientesData || [], categoriasData || [])
+
       await loadContas()
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadContratos = async (clientesList: Cliente[] = [], categoriasList: Categoria[] = []) => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Se não foram passados, buscar do estado
+      const clientesParaUsar = clientesList.length > 0 ? clientesList : clientes
+      const categoriasParaUsar = categoriasList.length > 0 ? categoriasList : categorias
+
+      const { data: contratosData, error } = await supabase
+        .from('contratos')
+        .select('*')
+        .eq('user_id', userId)
+        .order('nome_contrato', { ascending: true })
+
+      if (error) throw error
+
+      // Processar contratos - buscar nomes de clientes e categorias
+      const clientesMap = new Map(clientesParaUsar.map(c => [c.id, c.nome]))
+      const categoriasMap = new Map(categoriasParaUsar.map(c => [c.id, c.nome]))
+
+      const contratosProcessados = (contratosData || []).map((contrato: any) => ({
+        ...contrato,
+        cliente_nome: contrato.cliente_id ? clientesMap.get(contrato.cliente_id) || null : null,
+        categoria_nome: contrato.categoria_id ? categoriasMap.get(contrato.categoria_id) || null : null,
+      }))
+
+      setContratos(contratosProcessados)
+
+      // Gerar receitas dos contratos ativos automaticamente
+      await gerarReceitasContratos(contratosProcessados)
+    } catch (error) {
+      console.error('Erro ao carregar contratos:', error)
+    }
+  }
+
+  const gerarReceitasContratos = async (contratosList: Contrato[]) => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const hoje = new Date()
+      hoje.setHours(0, 0, 0, 0) // Zerar horas para comparação
+      const anoAtual = hoje.getFullYear()
+      const mesAtual = hoje.getMonth() + 1
+
+      // Filtrar apenas contratos ativos
+      const contratosAtivos = contratosList.filter(c => c.ativo)
+
+      for (const contrato of contratosAtivos) {
+        // Verificar se a data de início já passou
+        const dataInicio = new Date(contrato.data_inicio)
+        dataInicio.setHours(0, 0, 0, 0)
+        if (dataInicio > hoje) continue
+
+        // Verificar se tem data de fim e se já passou
+        if (contrato.data_fim) {
+          const dataFim = new Date(contrato.data_fim)
+          dataFim.setHours(23, 59, 59, 999) // Fim do dia
+          if (dataFim < hoje) continue
+        }
+
+        // Verificar se já foi gerada receita para este mês
+        const { data: jaGerada } = await supabase
+          .from('contratos_receitas_geradas')
+          .select('id')
+          .eq('contrato_id', contrato.id)
+          .eq('ano', anoAtual)
+          .eq('mes', mesAtual)
+          .single()
+
+        if (jaGerada) continue // Já foi gerada para este mês
+
+        // Calcular data de vencimento (dia do mês especificado)
+        const ultimoDiaMes = new Date(anoAtual, mesAtual, 0).getDate()
+        const diaVencimento = Math.min(contrato.dia_vencimento, ultimoDiaMes)
+        const dataVencimento = new Date(anoAtual, mesAtual - 1, diaVencimento)
+
+        // Criar receita para este mês
+        const { data: novaReceita, error: receitaError } = await supabase
+          .from('contas_a_receber')
+          .insert({
+            user_id: userId,
+            cliente_id: contrato.cliente_id,
+            categoria_id: contrato.categoria_id,
+            descricao: `${contrato.nome_contrato} - ${mesAtual.toString().padStart(2, '0')}/${anoAtual}`,
+            valor: Number(contrato.valor_mensal),
+            data_vencimento: dataVencimento.toISOString().split('T')[0],
+            forma_recebimento: contrato.forma_recebimento || 'pix',
+            observacoes: contrato.observacoes || `Receita gerada automaticamente do contrato: ${contrato.nome_contrato}`,
+            parcelada: false,
+            total_parcelas: 1,
+          })
+          .select()
+          .single()
+
+        if (receitaError) {
+          console.error('Erro ao criar receita do contrato:', receitaError)
+          continue
+        }
+
+        // Registrar que foi gerada
+        await supabase
+          .from('contratos_receitas_geradas')
+          .insert({
+            contrato_id: contrato.id,
+            ano: anoAtual,
+            mes: mesAtual,
+            conta_receber_id: novaReceita.id,
+          })
+      }
+
+      // Recarregar contas após gerar receitas
+      await loadContas()
+    } catch (error) {
+      console.error('Erro ao gerar receitas dos contratos:', error)
     }
   }
 
@@ -362,7 +546,7 @@ export default function ReceitasPage() {
     }
   }
 
-  const calcularResumo = (
+  const calcularResumo = async (
     contas: ContaReceber[], 
     parcelas: ContaReceber[], 
     hoje: string,
@@ -387,11 +571,38 @@ export default function ReceitasPage() {
       .filter((c) => !c.recebida && c.data_vencimento >= hoje)
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
+    // Calcular saldo atual (receitas recebidas - despesas pagas)
+    let saldoAtual = 0
+    try {
+      const userId = session?.user?.id
+      if (userId) {
+        const { data: fluxoData } = await supabase
+          .from('fluxo_caixa')
+          .select('tipo, valor')
+          .eq('user_id', userId)
+
+        if (fluxoData) {
+          const entradas = fluxoData
+            .filter((mov) => mov.tipo === 'entrada')
+            .reduce((sum, mov) => sum + Number(mov.valor || 0), 0)
+          
+          const saidas = fluxoData
+            .filter((mov) => mov.tipo === 'saida')
+            .reduce((sum, mov) => sum + Number(mov.valor || 0), 0)
+          
+          saldoAtual = entradas - saidas // Pode ser negativo
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao calcular saldo atual:', error)
+    }
+
     setResumo({
       totalAReceber,
       totalVencidas,
       totalRecebidas,
       totalPendentes,
+      saldoAtual,
     })
   }
 
@@ -542,7 +753,35 @@ export default function ReceitasPage() {
     if (!confirm('Tem certeza que deseja excluir esta conta?')) return
 
     try {
-      // Deletar parcelas primeiro
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Deletar movimentações do fluxo de caixa relacionadas
+      await supabase
+        .from('fluxo_caixa')
+        .delete()
+        .eq('user_id', userId)
+        .eq('origem', 'conta_receber')
+        .eq('origem_id', id)
+
+      // Deletar parcelas primeiro (e suas movimentações)
+      const { data: parcelas } = await supabase
+        .from('parcelas_contas_receber')
+        .select('id')
+        .eq('conta_receber_id', id)
+
+      if (parcelas && parcelas.length > 0) {
+        const parcelasIds = parcelas.map(p => p.id)
+        // Deletar movimentações das parcelas
+        await supabase
+          .from('fluxo_caixa')
+          .delete()
+          .eq('user_id', userId)
+          .eq('origem', 'conta_receber')
+          .in('origem_id', parcelasIds)
+      }
+
+      // Deletar parcelas
       await supabase.from('parcelas_contas_receber').delete().eq('conta_receber_id', id)
       
       // Deletar conta
@@ -558,10 +797,23 @@ export default function ReceitasPage() {
 
   const handleMarcarComoRecebida = async (id: string, isParcela: boolean = false) => {
     try {
+      const userId = session?.user?.id
+      if (!userId) return
+
       const hoje = new Date().toISOString().split('T')[0]
       const table = isParcela ? 'parcelas_contas_receber' : 'contas_a_receber'
 
-      const { error } = await supabase
+      // Buscar a conta para obter os dados
+      const { data: conta, error: contaError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (contaError) throw contaError
+
+      // Atualizar a conta como recebida
+      const { error: updateError } = await supabase
         .from(table)
         .update({
           recebida: true,
@@ -569,7 +821,27 @@ export default function ReceitasPage() {
         })
         .eq('id', id)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Criar movimentação no fluxo de caixa (entrada)
+      const { error: fluxoError } = await supabase
+        .from('fluxo_caixa')
+        .insert({
+          user_id: userId,
+          tipo: 'entrada',
+          origem: 'conta_receber',
+          origem_id: id,
+          descricao: conta.descricao || 'Recebimento de receita',
+          valor: Number(conta.valor),
+          data_movimentacao: hoje,
+          forma_pagamento: conta.forma_recebimento || null,
+          observacoes: conta.observacoes || null,
+        })
+
+      if (fluxoError) {
+        console.error('Erro ao criar movimentação no fluxo de caixa:', fluxoError)
+        // Não bloqueia a operação se falhar ao criar no fluxo de caixa
+      }
 
       loadContas()
     } catch (error) {
@@ -593,11 +865,354 @@ export default function ReceitasPage() {
     setEditingConta(null)
   }
 
+  const handleCriarCliente = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Validação: deve ter CNPJ ou CPF, mas não ambos
+      if (formDataCliente.cnpj && formDataCliente.cpf) {
+        alert('Informe apenas CNPJ ou CPF, não ambos.')
+        return
+      }
+
+      const { data: novoCliente, error } = await supabase
+        .from('clientes')
+        .insert({
+          user_id: userId,
+          nome: formDataCliente.nome,
+          razao_social: formDataCliente.razao_social || null,
+          cnpj: formDataCliente.cnpj || null,
+          cpf: formDataCliente.cpf || null,
+          email: formDataCliente.email || null,
+          telefone: formDataCliente.telefone || null,
+          endereco: formDataCliente.endereco || null,
+          observacoes: formDataCliente.observacoes || null,
+          ativo: true,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualizar lista de clientes
+      await loadData()
+
+      // Selecionar o cliente recém-criado no formulário de receita
+      setFormData({ ...formData, cliente_id: novoCliente.id })
+
+      // Fechar modal e resetar form
+      setShowModalCliente(false)
+      setFormDataCliente({
+        nome: '',
+        razao_social: '',
+        cnpj: '',
+        cpf: '',
+        email: '',
+        telefone: '',
+        endereco: '',
+        observacoes: '',
+      })
+
+      alert('Cliente criado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao criar cliente:', error)
+      alert('Erro ao criar cliente')
+    }
+  }
+
+  const handleCriarContrato = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const { data: novoContrato, error } = await supabase
+        .from('contratos')
+        .insert({
+          user_id: userId,
+          cliente_id: formDataContrato.cliente_id || null,
+          categoria_id: formDataContrato.categoria_id || null,
+          nome_contrato: formDataContrato.nome_contrato,
+          descricao: formDataContrato.descricao || null,
+          valor_mensal: parseFloat(formDataContrato.valor_mensal),
+          data_inicio: formDataContrato.data_inicio,
+          data_fim: formDataContrato.data_fim || null,
+          dia_vencimento: parseInt(formDataContrato.dia_vencimento),
+          forma_recebimento: formDataContrato.forma_recebimento,
+          observacoes: formDataContrato.observacoes || null,
+          detalhes_contrato: formDataContrato.detalhes_contrato || null,
+          ativo: formDataContrato.ativo,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualizar lista de contratos primeiro
+      await loadContratos()
+
+      // Gerar receitas para o mês atual se o contrato estiver ativo
+      if (formDataContrato.ativo) {
+        const contratoProcessado: Contrato = {
+          ...novoContrato,
+          cliente_nome: clientes.find(c => c.id === novoContrato.cliente_id)?.nome || null,
+          categoria_nome: categorias.find(c => c.id === novoContrato.categoria_id)?.nome || null,
+        }
+        await gerarReceitasContratos([contratoProcessado])
+      }
+
+      // Fechar modal e resetar form
+      setShowModalContrato(false)
+      setFormDataContrato({
+        cliente_id: '',
+        categoria_id: '',
+        nome_contrato: '',
+        descricao: '',
+        valor_mensal: '',
+        data_inicio: new Date().toISOString().split('T')[0],
+        data_fim: '',
+        dia_vencimento: new Date().getDate().toString(),
+        forma_recebimento: 'pix',
+        observacoes: '',
+        detalhes_contrato: '',
+        ativo: true,
+      })
+      setEditingContrato(null)
+
+      alert('Contrato criado com sucesso! Receitas serão geradas automaticamente todo mês.')
+    } catch (error: any) {
+      console.error('Erro ao criar contrato:', error)
+      alert('Erro ao criar contrato')
+    }
+  }
+
+  const handleEditarContrato = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId || !editingContrato) return
+
+      const { error } = await supabase
+        .from('contratos')
+        .update({
+          cliente_id: formDataContrato.cliente_id || null,
+          categoria_id: formDataContrato.categoria_id || null,
+          nome_contrato: formDataContrato.nome_contrato,
+          descricao: formDataContrato.descricao || null,
+          valor_mensal: parseFloat(formDataContrato.valor_mensal),
+          data_inicio: formDataContrato.data_inicio,
+          data_fim: formDataContrato.data_fim || null,
+          dia_vencimento: parseInt(formDataContrato.dia_vencimento),
+          forma_recebimento: formDataContrato.forma_recebimento,
+          observacoes: formDataContrato.observacoes || null,
+          detalhes_contrato: formDataContrato.detalhes_contrato || null,
+          ativo: formDataContrato.ativo,
+        })
+        .eq('id', editingContrato.id)
+
+      if (error) throw error
+
+      // Atualizar lista de contratos
+      await loadContratos()
+
+      // Fechar modal e resetar form
+      setShowModalContrato(false)
+      setFormDataContrato({
+        cliente_id: '',
+        categoria_id: '',
+        nome_contrato: '',
+        descricao: '',
+        valor_mensal: '',
+        data_inicio: new Date().toISOString().split('T')[0],
+        data_fim: '',
+        dia_vencimento: new Date().getDate().toString(),
+        forma_recebimento: 'pix',
+        observacoes: '',
+        detalhes_contrato: '',
+        ativo: true,
+      })
+      setEditingContrato(null)
+
+      alert('Contrato atualizado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao atualizar contrato:', error)
+      alert('Erro ao atualizar contrato')
+    }
+  }
+
+  const handleDeleteContrato = async (id: string) => {
+    const contrato = contratos.find(c => c.id === id)
+    const mensagem = `⚠️ ATENÇÃO: Você está prestes a excluir permanentemente o contrato "${contrato?.nome_contrato || 'este contrato'}".\n\n` +
+      `Esta ação irá:\n` +
+      `• Remover todos os dados do contrato\n` +
+      `• NÃO removerá as receitas já geradas\n` +
+      `• Impedirá a geração de novas receitas\n\n` +
+      `Esta ação NÃO pode ser desfeita!\n\n` +
+      `Deseja realmente continuar?`
+
+    if (!confirm(mensagem)) return
+
+    try {
+      // Deletar registros de receitas geradas
+      await supabase
+        .from('contratos_receitas_geradas')
+        .delete()
+        .eq('contrato_id', id)
+
+      // Deletar contrato
+      const { error } = await supabase
+        .from('contratos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      await loadContratos()
+      alert('Contrato excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir contrato:', error)
+      alert('Erro ao excluir contrato')
+    }
+  }
+
+  const handleEditContrato = (contrato: Contrato) => {
+    setEditingContrato(contrato)
+    setFormDataContrato({
+      cliente_id: contrato.cliente_id || '',
+      categoria_id: contrato.categoria_id || '',
+      nome_contrato: contrato.nome_contrato,
+      descricao: contrato.descricao || '',
+      valor_mensal: contrato.valor_mensal.toString(),
+      data_inicio: contrato.data_inicio,
+      data_fim: contrato.data_fim || '',
+      dia_vencimento: contrato.dia_vencimento.toString(),
+      forma_recebimento: contrato.forma_recebimento || 'pix',
+      observacoes: contrato.observacoes || '',
+      detalhes_contrato: contrato.detalhes_contrato || '',
+      ativo: contrato.ativo,
+    })
+    setShowModalContrato(true)
+  }
+
+  const handleCriarCategoria = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const { data: novaCategoria, error } = await supabase
+        .from('categorias')
+        .insert({
+          user_id: userId,
+          nome: formDataCategoria.nome,
+          descricao: formDataCategoria.descricao || null,
+          cor: formDataCategoria.cor,
+          tipo: 'receita',
+          ativo: true,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualizar lista de categorias
+      await loadData()
+
+      // Selecionar a categoria recém-criada no formulário de receita
+      setFormData({ ...formData, categoria_id: novaCategoria.id })
+
+      // Fechar modal e resetar form
+      setShowModalCategoria(false)
+      setFormDataCategoria({
+        nome: '',
+        descricao: '',
+        cor: '#6366f1',
+      })
+
+      alert('Categoria criada com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao criar categoria:', error)
+      if (error.code === '23505') {
+        alert('Já existe uma categoria com este nome para receitas.')
+      } else {
+        alert('Erro ao criar categoria')
+      }
+    }
+  }
+
+  const handleAlterarStatus = async (id: string, novoStatus: 'pendente' | 'aprovado' | 'cancelado', isParcela: boolean = false) => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const table = isParcela ? 'parcelas_contas_receber' : 'contas_a_receber'
+
+      const updateData: any = {
+        status: novoStatus,
+      }
+
+      // Buscar a conta atual para verificar status anterior
+      const { data: contaAtual, error: contaAtualError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (contaAtualError) throw contaAtualError
+
+      if (novoStatus === 'aprovado') {
+        // Ao aprovar, marcar como recebida
+        const hoje = new Date().toISOString().split('T')[0]
+        updateData.recebida = true
+        updateData.data_recebimento = hoje
+      } else if (novoStatus === 'cancelado' || novoStatus === 'pendente') {
+        // Ao cancelar ou voltar para pendente, desmarcar como recebida se estiver recebida
+        updateData.recebida = false
+        updateData.data_recebimento = null
+      }
+
+      const { error } = await supabase
+        .from(table)
+        .update(updateData)
+        .eq('id', id)
+
+      if (error) throw error
+
+      loadContas()
+    } catch (error) {
+      console.error('Erro ao alterar status:', error)
+      alert('Erro ao alterar status')
+    }
+  }
+
+  const isVencida = (conta: ContaReceber, hoje: string): boolean => {
+    return conta.data_vencimento < hoje
+  }
+
+  const getStatusEfetivo = (conta: ContaReceber): 'pendente' | 'aprovado' | 'cancelado' | 'vencida' => {
+    const hoje = new Date().toISOString().split('T')[0]
+    const status = conta.status || 'pendente'
+    
+    if (status === 'cancelado') {
+      return 'cancelado'
+    } else if (status === 'aprovado' || conta.recebida) {
+      return 'aprovado'
+    } else if (isVencida(conta, hoje)) {
+      return 'vencida'
+    } else {
+      return 'pendente'
+    }
+  }
+
   const getStatusBadge = (conta: ContaReceber) => {
     const hoje = new Date().toISOString().split('T')[0]
     
-    if (conta.recebida) {
+    if (conta.status === 'aprovado' || conta.recebida) {
       return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Recebida</span>
+    } else if (conta.status === 'cancelado') {
+      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">Cancelado</span>
     }
     
     // Para orçamentos em processo, sempre mostrar como pendente, não como vencido
@@ -625,6 +1240,60 @@ export default function ReceitasPage() {
     }).format(valor)
   }
 
+  const limparMovimentacoesOrfas = async () => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Buscar todas as receitas e parcelas existentes
+      const { data: contasData } = await supabase
+        .from('contas_a_receber')
+        .select('id')
+        .eq('user_id', userId)
+
+      const { data: parcelasData } = await supabase
+        .from('parcelas_contas_receber')
+        .select('id')
+        .eq('user_id', userId)
+
+      const idsValidos = new Set([
+        ...(contasData || []).map(c => c.id),
+        ...(parcelasData || []).map(p => p.id)
+      ])
+
+      // Buscar todas as movimentações de receitas
+      const { data: movimentacoes } = await supabase
+        .from('fluxo_caixa')
+        .select('id, origem, origem_id')
+        .eq('user_id', userId)
+        .eq('origem', 'conta_receber')
+
+      if (movimentacoes) {
+        const movimentacoesOrfas = movimentacoes.filter(
+          mov => !idsValidos.has(mov.origem_id || '')
+        )
+
+        if (movimentacoesOrfas.length > 0) {
+          const idsOrfas = movimentacoesOrfas.map(m => m.id)
+          const { error } = await supabase
+            .from('fluxo_caixa')
+            .delete()
+            .in('id', idsOrfas)
+
+          if (error) throw error
+
+          alert(`${movimentacoesOrfas.length} movimentação(ões) órfã(s) foram removida(s). O saldo será recalculado.`)
+          await loadContas()
+        } else {
+          alert('Nenhuma movimentação órfã encontrada. Tudo está sincronizado!')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao limpar movimentações órfãs:', error)
+      alert('Erro ao limpar movimentações órfãs')
+    }
+  }
+
 
   if (loading) {
     return (
@@ -645,16 +1314,60 @@ export default function ReceitasPage() {
             <h1 className="text-3xl font-bold text-white mb-2">Receitas</h1>
             <p className="text-gray-400">Gerencie todas as receitas da sua empresa</p>
           </div>
-          <button
-            onClick={() => {
-              resetForm()
-              setShowModal(true)
-            }}
-            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <FiPlus className="w-5 h-5" />
-            <span>Nova Receita</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => {
+                setEditingContrato(null)
+                setFormDataContrato({
+                  cliente_id: '',
+                  categoria_id: '',
+                  nome_contrato: '',
+                  descricao: '',
+                  valor_mensal: '',
+                  data_inicio: new Date().toISOString().split('T')[0],
+                  data_fim: '',
+                  dia_vencimento: new Date().getDate().toString(),
+                  forma_recebimento: 'pix',
+                  observacoes: '',
+                  detalhes_contrato: '',
+                  ativo: true,
+                })
+                setShowModalContrato(true)
+              }}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <FiPlus className="w-5 h-5" />
+              <span>Novo Contrato</span>
+            </button>
+            <button
+              onClick={() => {
+                resetForm()
+                setShowModal(true)
+              }}
+              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+            >
+              <FiPlus className="w-5 h-5" />
+              <span>Nova Receita</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Card de Saldo Atual */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Saldo Atual</p>
+              <p className={`text-3xl font-bold mt-1 ${resumo.saldoAtual >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatarMoeda(resumo.saldoAtual)}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                {resumo.saldoAtual < 0 ? 'Saldo negativo - Receitas insuficientes' : 'Receitas - Despesas pagas'}
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <FiDollarSign className="w-8 h-8 text-purple-400" />
+            </div>
+          </div>
         </div>
 
         {/* Cards de Resumo */}
@@ -699,6 +1412,58 @@ export default function ReceitasPage() {
             </div>
           </div>
         </div>
+
+        {/* Seção de Contratos */}
+        {contratos.length > 0 && (
+          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Contratos Ativos</h2>
+              <span className="text-sm text-gray-400">{contratos.filter(c => c.ativo).length} ativo(s)</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {contratos.map((contrato) => (
+                <div key={contrato.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <h3 className="text-white font-semibold">{contrato.nome_contrato}</h3>
+                      <p className="text-sm text-gray-400 mt-1">{contrato.cliente_nome || 'Sem cliente'}</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${contrato.ativo ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                      {contrato.ativo ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Valor Mensal:</span>
+                      <span className="text-white font-semibold">{formatarMoeda(contrato.valor_mensal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Vencimento:</span>
+                      <span className="text-white">Dia {contrato.dia_vencimento}</span>
+                    </div>
+                    {contrato.data_fim && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Término:</span>
+                        <span className="text-white">{formatarData(contrato.data_fim)}</span>
+                      </div>
+                    )}
+                  </div>
+                  {contrato.detalhes_contrato && (
+                    <div className="mt-3 pt-3 border-t border-gray-600">
+                      <p className="text-xs text-gray-400 line-clamp-2">{contrato.detalhes_contrato}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-end mt-4">
+                    <ActionButtons
+                      onEdit={() => handleEditContrato(contrato)}
+                      onDelete={() => handleDeleteContrato(contrato.id)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
@@ -862,44 +1627,84 @@ export default function ReceitasPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {formatarData(conta.data_vencimento)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(conta)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {!('conta_receber_id' in conta) && conta.origem === 'conta' ? (
+                          (() => {
+                            const hoje = new Date().toISOString().split('T')[0]
+                            const statusEfetivo = getStatusEfetivo(conta)
+                            const estaVencida = isVencida(conta, hoje)
+                            
+                            // Se está vencida mas o status no banco é pendente, mostrar badge de vencida + select
+                            if (estaVencida && (conta.status || 'pendente') === 'pendente') {
+                              return (
+                                <div className="flex items-center space-x-2">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                                    Vencida
+                                  </span>
+                                  <select
+                                    value={conta.status || 'pendente'}
+                                    onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
+                                    className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    title="Status no banco: Pendente (mas está vencida)"
+                                  >
+                                    <option value="pendente">Pendente</option>
+                                    <option value="aprovado">Aprovado</option>
+                                    <option value="cancelado">Cancelado</option>
+                                  </select>
+                                </div>
+                              )
+                            }
+                            
+                            // Caso normal: mostrar apenas o select com estilo baseado no status
+                            return (
+                              <select
+                                value={conta.status || 'pendente'}
+                                onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                  conta.status === 'cancelado'
+                                    ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                                    : conta.status === 'aprovado' || conta.recebida
+                                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                    : estaVencida
+                                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                    : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                }`}
+                              >
+                                <option value="pendente">Pendente</option>
+                                <option value="aprovado">Aprovado</option>
+                                <option value="cancelado">Cancelado</option>
+                              </select>
+                            )
+                          })()
+                        ) : (
+                          getStatusBadge(conta)
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center space-x-2">
-                          {!conta.recebida && conta.origem === 'conta' && (
-                            <button
-                              onClick={() => handleMarcarComoRecebida(conta.id, 'conta_receber_id' in conta)}
-                              className="text-green-400 hover:text-green-300 transition-colors"
-                              title="Marcar como recebida"
-                            >
-                              <FiCheck className="w-5 h-5" />
-                            </button>
+                          {!conta.recebida && conta.origem === 'conta' && conta.status !== 'cancelado' && (
+                            (!('conta_receber_id' in conta) && conta.status !== 'aprovado') || ('conta_receber_id' in conta) ? (
+                              <button
+                                onClick={() => handleMarcarComoRecebida(conta.id, 'conta_receber_id' in conta)}
+                                className="text-green-400 hover:text-green-300 transition-colors"
+                                title="Marcar como recebida"
+                              >
+                                <FiCheck className="w-5 h-5" />
+                              </button>
+                            ) : null
                           )}
                           {!('conta_receber_id' in conta) && conta.origem === 'conta' && (
-                            <>
-                              <button
-                                onClick={() => handleEdit(conta)}
-                                className="text-blue-400 hover:text-blue-300 transition-colors"
-                                title="Editar"
-                              >
-                                <FiEdit className="w-5 h-5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(conta.id)}
-                                className="text-red-400 hover:text-red-300 transition-colors"
-                                title="Excluir"
-                              >
-                                <FiTrash2 className="w-5 h-5" />
-                              </button>
-                            </>
+                            <ActionButtons
+                              onEdit={() => handleEdit(conta)}
+                              onDelete={() => handleDelete(conta.id)}
+                            />
                           )}
                           {conta.origem === 'orcamento' && (
-                            <button
-                              onClick={() => router.push(`/empresarial/orcamentos/${conta.id.replace('orcamento_', '')}`)}
-                              className="text-purple-400 hover:text-purple-300 transition-colors"
-                              title="Ver orçamento"
-                            >
-                              <FiEye className="w-5 h-5" />
-                            </button>
+                            <ActionButtons
+                              onView={() => router.push(`/empresarial/orcamentos/${conta.id.replace('orcamento_', '')}`)}
+                              showEdit={false}
+                              showDelete={false}
+                            />
                           )}
                         </div>
                       </td>
@@ -935,34 +1740,54 @@ export default function ReceitasPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Cliente</label>
-                      <select
-                        value={formData.cliente_id}
-                        onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      >
-                        <option value="">Selecione um cliente</option>
-                        {clientes.map((cliente) => (
-                          <option key={cliente.id} value={cliente.id}>
-                            {cliente.nome}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formData.cliente_id}
+                          onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione um cliente</option>
+                          {clientes.map((cliente) => (
+                            <option key={cliente.id} value={cliente.id}>
+                              {cliente.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalCliente(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar novo cliente"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Categoria</label>
-                      <select
-                        value={formData.categoria_id}
-                        onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      >
-                        <option value="">Selecione uma categoria</option>
-                        {categorias.map((categoria) => (
-                          <option key={categoria.id} value={categoria.id}>
-                            {categoria.nome}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formData.categoria_id}
+                          onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione uma categoria</option>
+                          {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.id}>
+                              {categoria.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalCategoria(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar nova categoria"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -1075,6 +1900,508 @@ export default function ReceitasPage() {
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
                       {editingConta ? 'Salvar Alterações' : 'Criar Receita'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Criar Cliente */}
+        {showModalCliente && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Novo Cliente</h2>
+                  <button
+                    onClick={() => {
+                      setShowModalCliente(false)
+                      setFormDataCliente({
+                        nome: '',
+                        razao_social: '',
+                        cnpj: '',
+                        cpf: '',
+                        email: '',
+                        telefone: '',
+                        endereco: '',
+                        observacoes: '',
+                      })
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCriarCliente} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formDataCliente.nome}
+                      onChange={(e) => setFormDataCliente({ ...formDataCliente, nome: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Nome do cliente"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Razão Social</label>
+                    <input
+                      type="text"
+                      value={formDataCliente.razao_social}
+                      onChange={(e) => setFormDataCliente({ ...formDataCliente, razao_social: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Razão social (opcional)"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">CNPJ</label>
+                      <input
+                        type="text"
+                        value={formDataCliente.cnpj}
+                        onChange={(e) => setFormDataCliente({ ...formDataCliente, cnpj: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="00.000.000/0000-00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">CPF</label>
+                      <input
+                        type="text"
+                        value={formDataCliente.cpf}
+                        onChange={(e) => setFormDataCliente({ ...formDataCliente, cpf: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={formDataCliente.email}
+                        onChange={(e) => setFormDataCliente({ ...formDataCliente, email: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Telefone</label>
+                      <input
+                        type="text"
+                        value={formDataCliente.telefone}
+                        onChange={(e) => setFormDataCliente({ ...formDataCliente, telefone: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Endereço</label>
+                    <input
+                      type="text"
+                      value={formDataCliente.endereco}
+                      onChange={(e) => setFormDataCliente({ ...formDataCliente, endereco: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Endereço completo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
+                    <textarea
+                      value={formDataCliente.observacoes}
+                      onChange={(e) => setFormDataCliente({ ...formDataCliente, observacoes: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Observações adicionais..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModalCliente(false)
+                        setFormDataCliente({
+                          nome: '',
+                          razao_social: '',
+                          cnpj: '',
+                          cpf: '',
+                          email: '',
+                          telefone: '',
+                          endereco: '',
+                          observacoes: '',
+                        })
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      Criar Cliente
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Criar Categoria */}
+        {showModalCategoria && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Nova Categoria de Receita</h2>
+                  <button
+                    onClick={() => {
+                      setShowModalCategoria(false)
+                      setFormDataCategoria({
+                        nome: '',
+                        descricao: '',
+                        cor: '#6366f1',
+                      })
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCriarCategoria} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Nome da Categoria *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formDataCategoria.nome}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Ex: Vendas, Serviços, Produtos"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+                    <textarea
+                      value={formDataCategoria.descricao}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Descrição da categoria (opcional)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={formDataCategoria.cor}
+                        onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                        className="w-16 h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={formDataCategoria.cor}
+                        onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="#6366f1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModalCategoria(false)
+                        setFormDataCategoria({
+                          nome: '',
+                          descricao: '',
+                          cor: '#6366f1',
+                        })
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      Criar Categoria
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Criar/Editar Contrato */}
+        {showModalContrato && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">
+                    {editingContrato ? 'Editar Contrato' : 'Novo Contrato'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setShowModalContrato(false)
+                      setEditingContrato(null)
+                      setFormDataContrato({
+                        cliente_id: '',
+                        categoria_id: '',
+                        nome_contrato: '',
+                        descricao: '',
+                        valor_mensal: '',
+                        data_inicio: new Date().toISOString().split('T')[0],
+                        data_fim: '',
+                        dia_vencimento: new Date().getDate().toString(),
+                        forma_recebimento: 'pix',
+                        observacoes: '',
+                        detalhes_contrato: '',
+                        ativo: true,
+                      })
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={editingContrato ? handleEditarContrato : handleCriarContrato} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Nome do Contrato *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formDataContrato.nome_contrato}
+                      onChange={(e) => setFormDataContrato({ ...formDataContrato, nome_contrato: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Ex: Contrato de Manutenção Mensal"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Cliente</label>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formDataContrato.cliente_id}
+                          onChange={(e) => setFormDataContrato({ ...formDataContrato, cliente_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione um cliente</option>
+                          {clientes.map((cliente) => (
+                            <option key={cliente.id} value={cliente.id}>
+                              {cliente.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalCliente(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar novo cliente"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Categoria</label>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formDataContrato.categoria_id}
+                          onChange={(e) => setFormDataContrato({ ...formDataContrato, categoria_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione uma categoria</option>
+                          {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.id}>
+                              {categoria.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalCategoria(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar nova categoria"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+                    <input
+                      type="text"
+                      value={formDataContrato.descricao}
+                      onChange={(e) => setFormDataContrato({ ...formDataContrato, descricao: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Breve descrição do contrato"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Valor Mensal *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={formDataContrato.valor_mensal}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, valor_mensal: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="0.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Dia de Vencimento *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        required
+                        value={formDataContrato.dia_vencimento}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, dia_vencimento: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="1-31"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Dia do mês em que a receita vence</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Forma de Recebimento</label>
+                      <select
+                        value={formDataContrato.forma_recebimento}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, forma_recebimento: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      >
+                        <option value="dinheiro">Dinheiro</option>
+                        <option value="pix">PIX</option>
+                        <option value="transferencia">Transferência</option>
+                        <option value="boleto">Boleto</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="cartao_debito">Cartão de Débito</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Data de Início *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formDataContrato.data_inicio}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, data_inicio: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Data de Término</label>
+                      <input
+                        type="date"
+                        value={formDataContrato.data_fim}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, data_fim: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Deixe em branco para contrato sem término</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Detalhes do Contrato</label>
+                    <textarea
+                      value={formDataContrato.detalhes_contrato}
+                      onChange={(e) => setFormDataContrato({ ...formDataContrato, detalhes_contrato: e.target.value })}
+                      rows={4}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Detalhes adicionais do contrato, termos, condições, etc..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
+                    <textarea
+                      value={formDataContrato.observacoes}
+                      onChange={(e) => setFormDataContrato({ ...formDataContrato, observacoes: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Observações adicionais..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formDataContrato.ativo}
+                        onChange={(e) => setFormDataContrato({ ...formDataContrato, ativo: e.target.checked })}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                      />
+                      <span className="text-white">Contrato Ativo (gerará receitas automaticamente)</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModalContrato(false)
+                        setEditingContrato(null)
+                        setFormDataContrato({
+                          cliente_id: '',
+                          categoria_id: '',
+                          nome_contrato: '',
+                          descricao: '',
+                          valor_mensal: '',
+                          data_inicio: new Date().toISOString().split('T')[0],
+                          data_fim: '',
+                          dia_vencimento: new Date().getDate().toString(),
+                          forma_recebimento: 'pix',
+                          observacoes: '',
+                          detalhes_contrato: '',
+                          ativo: true,
+                        })
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      {editingContrato ? 'Salvar Alterações' : 'Criar Contrato'}
                     </button>
                   </div>
                 </form>

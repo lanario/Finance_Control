@@ -9,19 +9,20 @@ import {
   FiX,
   FiSearch,
   FiFilter,
-  FiBriefcase,
+  FiUsers,
   FiMail,
-  FiCheck,
-  FiXCircle,
   FiPhone,
   FiMapPin,
   FiUser,
+  FiCheck,
+  FiXCircle,
 } from 'react-icons/fi'
 import ActionButtons from '@/components/Empresarial/ActionButtons'
 
-interface Fornecedor {
+interface Cliente {
   id: string
   nome: string
+  razao_social: string | null
   cnpj: string | null
   cpf: string | null
   email: string | null
@@ -33,18 +34,19 @@ interface Fornecedor {
   updated_at: string
 }
 
-export default function FornecedoresPage() {
+export default function ClientesPage() {
   const { session } = useAuth()
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [editingFornecedor, setEditingFornecedor] = useState<Fornecedor | null>(null)
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
   const [buscaTexto, setBuscaTexto] = useState<string>('')
   const [filtroAtivo, setFiltroAtivo] = useState<'todos' | 'ativos' | 'inativos'>('todos')
 
   // Formulário
   const [formData, setFormData] = useState({
     nome: '',
+    razao_social: '',
     cnpj: '',
     cpf: '',
     email: '',
@@ -56,158 +58,174 @@ export default function FornecedoresPage() {
 
   useEffect(() => {
     if (session) {
-      loadFornecedores()
+      loadClientes()
     }
   }, [session])
 
   useEffect(() => {
     if (session) {
-      loadFornecedores()
+      loadClientes()
     }
   }, [buscaTexto, filtroAtivo, session])
 
-  const loadFornecedores = async () => {
-    try {
-      const userId = session?.user?.id
-      if (!userId) return
+  function loadClientes() {
+    async function load() {
+      try {
+        const userId = session?.user?.id
+        if (!userId) return
 
-      let query = supabase
-        .from('fornecedores')
-        .select('*')
-        .eq('user_id', userId)
-        .order('nome', { ascending: true })
+        let query = supabase
+          .from('clientes')
+          .select('*')
+          .eq('user_id', userId)
+          .order('nome', { ascending: true })
 
-      // Aplicar filtro de ativo
-      if (filtroAtivo === 'ativos') {
-        query = query.eq('ativo', true)
-      } else if (filtroAtivo === 'inativos') {
-        query = query.eq('ativo', false)
-      }
+        // Aplicar filtro de ativo
+        if (filtroAtivo === 'ativos') {
+          query = query.eq('ativo', true)
+        } else if (filtroAtivo === 'inativos') {
+          query = query.eq('ativo', false)
+        }
 
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let fornecedoresFiltrados = data || []
-
-      // Aplicar busca por texto
-      if (buscaTexto) {
-        const buscaLower = buscaTexto.toLowerCase()
-        fornecedoresFiltrados = fornecedoresFiltrados.filter(
-          (fornecedor) =>
-            fornecedor.nome.toLowerCase().includes(buscaLower) ||
-            fornecedor.cnpj?.toLowerCase().includes(buscaLower) ||
-            fornecedor.cpf?.toLowerCase().includes(buscaLower) ||
-            fornecedor.email?.toLowerCase().includes(buscaLower) ||
-            fornecedor.telefone?.toLowerCase().includes(buscaLower)
-        )
-      }
-
-      setFornecedores(fornecedoresFiltrados)
-    } catch (error) {
-      console.error('Erro ao carregar fornecedores:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      const userId = session?.user?.id
-      if (!userId) return
-
-      // Validação: deve ter CNPJ ou CPF, mas não ambos
-      if (formData.cnpj && formData.cpf) {
-        alert('Informe apenas CNPJ ou CPF, não ambos.')
-        return
-      }
-
-      const fornecedorData = {
-        user_id: userId,
-        nome: formData.nome,
-        cnpj: formData.cnpj || null,
-        cpf: formData.cpf || null,
-        email: formData.email || null,
-        telefone: formData.telefone || null,
-        endereco: formData.endereco || null,
-        observacoes: formData.observacoes || null,
-        ativo: formData.ativo,
-      }
-
-      if (editingFornecedor) {
-        // Editar fornecedor existente
-        const { error } = await supabase
-          .from('fornecedores')
-          .update(fornecedorData)
-          .eq('id', editingFornecedor.id)
+        const { data, error } = await query
 
         if (error) throw error
-      } else {
-        // Criar novo fornecedor
-        const { error } = await supabase.from('fornecedores').insert(fornecedorData)
 
-        if (error) throw error
+        let clientesFiltrados = data || []
+
+        // Aplicar busca por texto
+        if (buscaTexto) {
+          const buscaLower = buscaTexto.toLowerCase()
+          clientesFiltrados = clientesFiltrados.filter(
+            (cliente) =>
+              cliente.nome.toLowerCase().includes(buscaLower) ||
+              cliente.razao_social?.toLowerCase().includes(buscaLower) ||
+              cliente.cnpj?.toLowerCase().includes(buscaLower) ||
+              cliente.cpf?.toLowerCase().includes(buscaLower) ||
+              cliente.email?.toLowerCase().includes(buscaLower) ||
+              cliente.telefone?.toLowerCase().includes(buscaLower)
+          )
+        }
+
+        setClientes(clientesFiltrados)
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error)
+      } finally {
+        setLoading(false)
       }
-
-      setShowModal(false)
-      setEditingFornecedor(null)
-      resetForm()
-      loadFornecedores()
-    } catch (error) {
-      console.error('Erro ao salvar fornecedor:', error)
-      alert('Erro ao salvar fornecedor')
     }
+    load()
   }
 
-  const handleEdit = (fornecedor: Fornecedor) => {
-    setEditingFornecedor(fornecedor)
+  function handleSubmit(e: React.FormEvent) {
+    async function submit() {
+      e.preventDefault()
+      try {
+        const userId = session?.user?.id
+        if (!userId) return
+
+        // Validação: deve ter CNPJ ou CPF, mas não ambos
+        if (formData.cnpj && formData.cpf) {
+          alert('Informe apenas CNPJ ou CPF, não ambos.')
+          return
+        }
+
+        const clienteData = {
+          user_id: userId,
+          nome: formData.nome,
+          razao_social: formData.razao_social || null,
+          cnpj: formData.cnpj || null,
+          cpf: formData.cpf || null,
+          email: formData.email || null,
+          telefone: formData.telefone || null,
+          endereco: formData.endereco || null,
+          observacoes: formData.observacoes || null,
+          ativo: formData.ativo,
+        }
+
+        if (editingCliente) {
+          // Editar cliente existente
+          const { error } = await supabase
+            .from('clientes')
+            .update(clienteData)
+            .eq('id', editingCliente.id)
+
+          if (error) throw error
+        } else {
+          // Criar novo cliente
+          const { error } = await supabase.from('clientes').insert(clienteData)
+
+          if (error) throw error
+        }
+
+        setShowModal(false)
+        setEditingCliente(null)
+        resetForm()
+        loadClientes()
+      } catch (error) {
+        console.error('Erro ao salvar cliente:', error)
+        alert('Erro ao salvar cliente')
+      }
+    }
+    submit()
+  }
+
+  function handleEdit(cliente: Cliente) {
+    setEditingCliente(cliente)
     setFormData({
-      nome: fornecedor.nome,
-      cnpj: fornecedor.cnpj || '',
-      cpf: fornecedor.cpf || '',
-      email: fornecedor.email || '',
-      telefone: fornecedor.telefone || '',
-      endereco: fornecedor.endereco || '',
-      observacoes: fornecedor.observacoes || '',
-      ativo: fornecedor.ativo,
+      nome: cliente.nome,
+      razao_social: cliente.razao_social || '',
+      cnpj: cliente.cnpj || '',
+      cpf: cliente.cpf || '',
+      email: cliente.email || '',
+      telefone: cliente.telefone || '',
+      endereco: cliente.endereco || '',
+      observacoes: cliente.observacoes || '',
+      ativo: cliente.ativo,
     })
     setShowModal(true)
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este fornecedor?')) return
+  function handleDelete(id: string) {
+    async function deleteCliente() {
+      if (!confirm('Tem certeza que deseja excluir este cliente?')) return
 
-    try {
-      const { error } = await supabase.from('fornecedores').delete().eq('id', id)
-      if (error) throw error
+      try {
+        const { error } = await supabase.from('clientes').delete().eq('id', id)
+        if (error) throw error
 
-      loadFornecedores()
-    } catch (error) {
-      console.error('Erro ao excluir fornecedor:', error)
-      alert('Erro ao excluir fornecedor')
+        loadClientes()
+      } catch (error) {
+        console.error('Erro ao excluir cliente:', error)
+        alert('Erro ao excluir cliente')
+      }
     }
+    deleteCliente()
   }
 
-  const handleToggleAtivo = async (fornecedor: Fornecedor) => {
-    try {
-      const { error } = await supabase
-        .from('fornecedores')
-        .update({ ativo: !fornecedor.ativo })
-        .eq('id', fornecedor.id)
+  function handleToggleAtivo(cliente: Cliente) {
+    async function toggle() {
+      try {
+        const { error } = await supabase
+          .from('clientes')
+          .update({ ativo: !cliente.ativo })
+          .eq('id', cliente.id)
 
-      if (error) throw error
+        if (error) throw error
 
-      loadFornecedores()
-    } catch (error) {
-      console.error('Erro ao alterar status do fornecedor:', error)
-      alert('Erro ao alterar status do fornecedor')
+        loadClientes()
+      } catch (error) {
+        console.error('Erro ao alterar status do cliente:', error)
+        alert('Erro ao alterar status do cliente')
+      }
     }
+    toggle()
   }
 
-  const resetForm = () => {
+  function resetForm() {
     setFormData({
       nome: '',
+      razao_social: '',
       cnpj: '',
       cpf: '',
       email: '',
@@ -216,22 +234,22 @@ export default function FornecedoresPage() {
       observacoes: '',
       ativo: true,
     })
-    setEditingFornecedor(null)
+    setEditingCliente(null)
   }
 
-  const formatarCNPJ = (cnpj: string) => {
+  function formatarCNPJ(cnpj: string) {
     if (!cnpj) return ''
     const cnpjLimpo = cnpj.replace(/\D/g, '')
     return cnpjLimpo.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
   }
 
-  const formatarCPF = (cpf: string) => {
+  function formatarCPF(cpf: string) {
     if (!cpf) return ''
     const cpfLimpo = cpf.replace(/\D/g, '')
     return cpfLimpo.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4')
   }
 
-  const formatarTelefone = (telefone: string) => {
+  function formatarTelefone(telefone: string) {
     if (!telefone) return ''
     const telefoneLimpo = telefone.replace(/\D/g, '')
     if (telefoneLimpo.length === 11) {
@@ -242,8 +260,8 @@ export default function FornecedoresPage() {
     return telefone
   }
 
-  const fornecedoresAtivos = fornecedores.filter((f) => f.ativo).length
-  const fornecedoresInativos = fornecedores.filter((f) => !f.ativo).length
+  const clientesAtivos = clientes.filter((c) => c.ativo).length
+  const clientesInativos = clientes.filter((c) => !c.ativo).length
 
   if (loading) {
     return (
@@ -261,8 +279,8 @@ export default function FornecedoresPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Fornecedores</h1>
-            <p className="text-gray-400">Gerencie todos os fornecedores da sua empresa</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Clientes</h1>
+            <p className="text-gray-400">Gerencie todos os clientes da sua empresa</p>
           </div>
           <button
             onClick={() => {
@@ -272,7 +290,7 @@ export default function FornecedoresPage() {
             className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
           >
             <FiPlus className="w-5 h-5" />
-            <span>Novo Fornecedor</span>
+            <span>Novo Cliente</span>
           </button>
         </div>
 
@@ -281,10 +299,10 @@ export default function FornecedoresPage() {
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total de Fornecedores</p>
-                <p className="text-2xl font-bold text-white mt-1">{fornecedores.length}</p>
+                <p className="text-gray-400 text-sm">Total de Clientes</p>
+                <p className="text-2xl font-bold text-white mt-1">{clientes.length}</p>
               </div>
-              <FiBriefcase className="w-8 h-8 text-purple-400" />
+              <FiUsers className="w-8 h-8 text-purple-400" />
             </div>
           </div>
 
@@ -292,7 +310,7 @@ export default function FornecedoresPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Ativos</p>
-                <p className="text-2xl font-bold text-green-400 mt-1">{fornecedoresAtivos}</p>
+                <p className="text-2xl font-bold text-green-400 mt-1">{clientesAtivos}</p>
               </div>
               <FiCheck className="w-8 h-8 text-green-400" />
             </div>
@@ -302,7 +320,7 @@ export default function FornecedoresPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Inativos</p>
-                <p className="text-2xl font-bold text-red-400 mt-1">{fornecedoresInativos}</p>
+                <p className="text-2xl font-bold text-red-400 mt-1">{clientesInativos}</p>
               </div>
               <FiXCircle className="w-8 h-8 text-red-400" />
             </div>
@@ -324,7 +342,7 @@ export default function FornecedoresPage() {
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Nome, CNPJ, CPF, email..."
+                  placeholder="Nome, Razão Social, CNPJ, CPF, email..."
                   value={buscaTexto}
                   onChange={(e) => setBuscaTexto(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
@@ -348,7 +366,7 @@ export default function FornecedoresPage() {
           </div>
         </div>
 
-        {/* Tabela de Fornecedores */}
+        {/* Tabela de Clientes */}
         <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -356,6 +374,9 @@ export default function FornecedoresPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Nome
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Razão Social
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     CNPJ/CPF
@@ -375,49 +396,52 @@ export default function FornecedoresPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
-                {fornecedores.length === 0 ? (
+                {clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-400">
-                      Nenhum fornecedor encontrado
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
+                      Nenhum cliente encontrado
                     </td>
                   </tr>
                 ) : (
-                  fornecedores.map((fornecedor) => (
-                    <tr key={fornecedor.id} className="hover:bg-gray-700/30 transition-colors">
+                  clientes.map((cliente) => (
+                    <tr key={cliente.id} className="hover:bg-gray-700/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{fornecedor.nome}</div>
-                        {fornecedor.endereco && (
+                        <div className="text-sm font-medium text-white">{cliente.nome}</div>
+                        {cliente.endereco && (
                           <div className="text-xs text-gray-400 mt-1 flex items-center">
                             <FiMapPin className="w-3 h-3 mr-1" />
-                            {fornecedor.endereco}
+                            {cliente.endereco}
                           </div>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {fornecedor.cnpj ? formatarCNPJ(fornecedor.cnpj) : fornecedor.cpf ? formatarCPF(fornecedor.cpf) : '-'}
+                        {cliente.razao_social || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {fornecedor.email ? (
+                        {cliente.cnpj ? formatarCNPJ(cliente.cnpj) : cliente.cpf ? formatarCPF(cliente.cpf) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {cliente.email ? (
                           <div className="flex items-center">
                             <FiMail className="w-4 h-4 mr-2" />
-                            {fornecedor.email}
+                            {cliente.email}
                           </div>
                         ) : (
                           '-'
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {fornecedor.telefone ? (
+                        {cliente.telefone ? (
                           <div className="flex items-center">
                             <FiPhone className="w-4 h-4 mr-2" />
-                            {formatarTelefone(fornecedor.telefone)}
+                            {formatarTelefone(cliente.telefone)}
                           </div>
                         ) : (
                           '-'
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {fornecedor.ativo ? (
+                        {cliente.ativo ? (
                           <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
                             Ativo
                           </span>
@@ -429,10 +453,10 @@ export default function FornecedoresPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <ActionButtons
-                          onEdit={() => handleEdit(fornecedor)}
-                          onDelete={() => handleDelete(fornecedor.id)}
-                          onToggleActive={() => handleToggleAtivo(fornecedor)}
-                          isActive={fornecedor.ativo}
+                          onEdit={() => handleEdit(cliente)}
+                          onDelete={() => handleDelete(cliente.id)}
+                          onToggleActive={() => handleToggleAtivo(cliente)}
+                          isActive={cliente.ativo}
                           showToggle={true}
                         />
                       </td>
@@ -451,7 +475,7 @@ export default function FornecedoresPage() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-white">
-                    {editingFornecedor ? 'Editar Fornecedor' : 'Novo Fornecedor'}
+                    {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
                   </h2>
                   <button
                     onClick={() => {
@@ -467,7 +491,7 @@ export default function FornecedoresPage() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">
-                      Nome / Razão Social *
+                      Nome / Nome Fantasia *
                     </label>
                     <input
                       type="text"
@@ -475,7 +499,18 @@ export default function FornecedoresPage() {
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Nome do fornecedor"
+                      placeholder="Nome do cliente"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Razão Social</label>
+                    <input
+                      type="text"
+                      value={formData.razao_social}
+                      onChange={(e) => setFormData({ ...formData, razao_social: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Razão social (para empresas)"
                     />
                   </div>
 
@@ -572,7 +607,7 @@ export default function FornecedoresPage() {
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Observações adicionais sobre o fornecedor..."
+                      placeholder="Observações adicionais sobre o cliente..."
                     />
                   </div>
 
@@ -584,7 +619,7 @@ export default function FornecedoresPage() {
                         onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
                         className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
                       />
-                      <span className="text-white">Fornecedor ativo</span>
+                      <span className="text-white">Cliente ativo</span>
                     </label>
                   </div>
 
@@ -603,7 +638,7 @@ export default function FornecedoresPage() {
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingFornecedor ? 'Salvar Alterações' : 'Criar Fornecedor'}
+                      {editingCliente ? 'Salvar Alterações' : 'Criar Cliente'}
                     </button>
                   </div>
                 </form>

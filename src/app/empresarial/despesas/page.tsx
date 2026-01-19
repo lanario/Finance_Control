@@ -7,8 +7,6 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import {
   FiPlus,
-  FiEdit,
-  FiTrash2,
   FiCheck,
   FiX,
   FiFilter,
@@ -18,6 +16,7 @@ import {
   FiTrendingDown,
   FiSearch,
 } from 'react-icons/fi'
+import ActionButtons from '@/components/Empresarial/ActionButtons'
 
 interface ContaPagar {
   id: string
@@ -28,6 +27,7 @@ interface ContaPagar {
   data_vencimento: string
   data_pagamento: string | null
   paga: boolean
+  status: 'pendente' | 'aprovado' | 'cancelado'
   forma_pagamento: string | null
   observacoes: string | null
   parcelada: boolean
@@ -52,6 +52,7 @@ interface ResumoContas {
   totalVencidas: number
   totalPagas: number
   totalPendentes: number
+  saldoAtual: number
 }
 
 export default function DespesasPage() {
@@ -63,12 +64,15 @@ export default function DespesasPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showModalFornecedor, setShowModalFornecedor] = useState(false)
+  const [showModalCategoria, setShowModalCategoria] = useState(false)
   const [editingConta, setEditingConta] = useState<ContaPagar | null>(null)
   const [resumo, setResumo] = useState<ResumoContas>({
     totalAPagar: 0,
     totalVencidas: 0,
     totalPagas: 0,
     totalPendentes: 0,
+    saldoAtual: 0,
   })
 
   // Filtros
@@ -90,6 +94,25 @@ export default function DespesasPage() {
     observacoes: '',
     parcelada: false,
     total_parcelas: '1',
+    status: 'pendente' as 'pendente' | 'aprovado' | 'cancelado',
+  })
+
+  // Formulário de fornecedor
+  const [formDataFornecedor, setFormDataFornecedor] = useState({
+    nome: '',
+    cnpj: '',
+    cpf: '',
+    email: '',
+    telefone: '',
+    endereco: '',
+    observacoes: '',
+  })
+
+  // Formulário de categoria
+  const [formDataCategoria, setFormDataCategoria] = useState({
+    nome: '',
+    descricao: '',
+    cor: '#6366f1',
   })
 
   useEffect(() => {
@@ -147,10 +170,12 @@ export default function DespesasPage() {
 
       // Aplicar filtros
       if (filtroStatus === 'pendentes') {
-        query = query.eq('paga', false)
+        // Pendentes: não pagas e não vencidas (data >= hoje)
+        query = query.eq('paga', false).gte('data_vencimento', hoje)
       } else if (filtroStatus === 'pagas') {
         query = query.eq('paga', true)
       } else if (filtroStatus === 'vencidas') {
+        // Vencidas: não pagas e vencidas (data < hoje) - inclui pendentes vencidas
         query = query.eq('paga', false).lt('data_vencimento', hoje)
       }
 
@@ -183,10 +208,12 @@ export default function DespesasPage() {
 
       // Aplicar mesmos filtros nas parcelas
       if (filtroStatus === 'pendentes') {
-        parcelasQuery = parcelasQuery.eq('paga', false)
+        // Pendentes: não pagas e não vencidas (data >= hoje)
+        parcelasQuery = parcelasQuery.eq('paga', false).gte('data_vencimento', hoje)
       } else if (filtroStatus === 'pagas') {
         parcelasQuery = parcelasQuery.eq('paga', true)
       } else if (filtroStatus === 'vencidas') {
+        // Vencidas: não pagas e vencidas (data < hoje) - inclui pendentes vencidas
         parcelasQuery = parcelasQuery.eq('paga', false).lt('data_vencimento', hoje)
       }
 
@@ -216,12 +243,14 @@ export default function DespesasPage() {
 
       const contasProcessadas = (contasData || []).map((conta: any) => ({
         ...conta,
+        status: conta.status || 'pendente',
         fornecedor_nome: conta.fornecedor_id ? fornecedoresMap.get(conta.fornecedor_id) || null : null,
         categoria_nome: conta.categoria_id ? categoriasMap.get(conta.categoria_id) || null : null,
       }))
 
       const parcelasProcessadas = (parcelasData || []).map((parcela: any) => ({
         ...parcela,
+        status: parcela.status || 'pendente',
         fornecedor_nome: parcela.fornecedor_id ? fornecedoresMap.get(parcela.fornecedor_id) || null : null,
         categoria_nome: parcela.categoria_id ? categoriasMap.get(parcela.categoria_id) || null : null,
       }))
@@ -249,30 +278,112 @@ export default function DespesasPage() {
     }
   }
 
-  const calcularResumo = (contas: ContaPagar[], parcelas: ContaPagar[], hoje: string) => {
-    const todas = [...contas, ...parcelas]
+  // Função auxiliar para verificar se uma conta está vencida (independente do status)
+  const isVencida = (conta: ContaPagar, hoje: string): boolean => {
+    if (conta.paga || conta.status === 'cancelado') {
+      return false
+    }
     
+    // Garantir que as datas estão no formato YYYY-MM-DD para comparação
+    const dataVencimento = conta.data_vencimento.split('T')[0] // Remove hora se houver
+    const hojeFormatado = hoje.split('T')[0] // Remove hora se houver
+    
+    // Comparar datas no formato ISO (YYYY-MM-DD)
+    return dataVencimento < hojeFormatado
+  }
+
+  const calcularResumo = async (contas: ContaPagar[], parcelas: ContaPagar[], hoje: string) => {
+    // Filtrar contas canceladas - não entram em nenhuma soma
+    const todas = [...contas, ...parcelas].filter((c) => c.status !== 'cancelado')
+    
+    // Total a pagar: não pagas e não canceladas
     const totalAPagar = todas
-      .filter((c) => !c.paga)
+      .filter((c) => !c.paga && c.status !== 'cancelado')
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
+    // Total vencidas: não pagas, vencidas e não canceladas (inclui pendentes vencidas)
     const totalVencidas = todas
-      .filter((c) => !c.paga && c.data_vencimento < hoje)
+      .filter((c) => isVencida(c, hoje))
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
+    // Total pagas: aprovadas ou marcadas como pagas (status aprovado = automaticamente paga)
     const totalPagas = todas
-      .filter((c) => c.paga)
+      .filter((c) => c.paga || c.status === 'aprovado')
       .reduce((sum, c) => sum + Number(c.valor), 0)
 
+    // Total pendentes: status pendente e NÃO vencidas (se vencida, não entra aqui)
     const totalPendentes = todas
-      .filter((c) => !c.paga && c.data_vencimento >= hoje)
+      .filter((c) => c.status === 'pendente' && !isVencida(c, hoje))
       .reduce((sum, c) => sum + Number(c.valor), 0)
+
+    // Calcular saldo atual (receitas recebidas - despesas pagas)
+    // IMPORTANTE: Validar movimentações para evitar movimentações órfãs
+    let saldoAtual = 0
+    try {
+      const userId = session?.user?.id
+      if (userId) {
+        // Buscar todas as movimentações do fluxo de caixa
+        const { data: fluxoData } = await supabase
+          .from('fluxo_caixa')
+          .select('id, tipo, valor, origem, origem_id')
+          .eq('user_id', userId)
+
+        if (fluxoData) {
+          // Buscar IDs de todas as despesas e parcelas existentes
+          const idsContas = contas.map(c => c.id)
+          const idsParcelas = parcelas.map(p => p.id)
+          const idsValidos = new Set([...idsContas, ...idsParcelas])
+
+          // Filtrar apenas movimentações válidas (que têm despesas correspondentes)
+          // Para movimentações de 'conta_pagar', verificar se a despesa ainda existe
+          const movimentacoesValidas = fluxoData.filter((mov) => {
+            if (mov.origem === 'conta_pagar') {
+              // Se é uma movimentação de despesa, verificar se a despesa ainda existe
+              return idsValidos.has(mov.origem_id || '')
+            }
+            // Para outras origens (receitas, vendas, etc), considerar válidas
+            return true
+          })
+
+          // Remover movimentações órfãs automaticamente
+          const movimentacoesOrfas = fluxoData.filter((mov) => {
+            if (mov.origem === 'conta_pagar') {
+              return !idsValidos.has(mov.origem_id || '')
+            }
+            return false
+          })
+
+          if (movimentacoesOrfas.length > 0) {
+            console.log(`Removendo ${movimentacoesOrfas.length} movimentações órfãs do fluxo de caixa`)
+            const idsOrfas = movimentacoesOrfas.map(m => m.id)
+            await supabase
+              .from('fluxo_caixa')
+              .delete()
+              .in('id', idsOrfas)
+          }
+
+          // Calcular saldo apenas com movimentações válidas
+          const entradas = movimentacoesValidas
+            .filter((mov) => mov.tipo === 'entrada')
+            .reduce((sum, mov) => sum + Number(mov.valor || 0), 0)
+          
+          const saidas = movimentacoesValidas
+            .filter((mov) => mov.tipo === 'saida')
+            .reduce((sum, mov) => sum + Number(mov.valor || 0), 0)
+          
+          saldoAtual = entradas - saidas // Pode ser negativo
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao calcular saldo atual:', error)
+    }
 
     setResumo({
       totalAPagar,
       totalVencidas,
       totalPagas,
       totalPendentes,
+      saldoAtual,
     })
   }
 
@@ -302,6 +413,7 @@ export default function DespesasPage() {
             observacoes: formData.observacoes || null,
             parcelada: formData.parcelada,
             total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
+            status: formData.status,
           })
           .eq('id', editingConta.id)
 
@@ -335,6 +447,7 @@ export default function DespesasPage() {
               forma_pagamento: formData.forma_pagamento,
               parcela_numero: i + 1,
               total_parcelas: totalParcelas,
+              status: formData.status,
             })
           }
         }
@@ -353,6 +466,7 @@ export default function DespesasPage() {
             observacoes: formData.observacoes || null,
             parcelada: formData.parcelada,
             total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
+            status: formData.status,
           })
           .select()
           .single()
@@ -415,14 +529,59 @@ export default function DespesasPage() {
       observacoes: conta.observacoes || '',
       parcelada: conta.parcelada,
       total_parcelas: conta.total_parcelas.toString(),
+      status: conta.status || 'pendente',
     })
     setShowModal(true)
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta conta?')) return
+    // Buscar a despesa para mostrar informações na confirmação
+    const { data: conta } = await supabase
+      .from('contas_a_pagar')
+      .select('descricao, valor')
+      .eq('id', id)
+      .single()
+
+    const descricao = conta?.descricao || 'esta despesa'
+    const valor = conta?.valor ? formatarMoeda(Number(conta.valor)) : ''
+
+    // Mensagem de confirmação mais detalhada
+    const mensagem = `⚠️ ATENÇÃO: Você está prestes a excluir permanentemente "${descricao}"${valor ? ` (${valor})` : ''}.\n\n` +
+      `Esta ação irá:\n` +
+      `• Remover todos os dados desta despesa\n` +
+      `• Remover todas as parcelas relacionadas\n` +
+      `• Remover movimentações do fluxo de caixa\n` +
+      `• Ajustar o saldo atual\n\n` +
+      `Esta ação NÃO pode ser desfeita!\n\n` +
+      `Deseja realmente continuar?`
+
+    if (!confirm(mensagem)) return
 
     try {
+      // Buscar IDs das parcelas antes de deletar
+      const { data: parcelas } = await supabase
+        .from('parcelas_contas_pagar')
+        .select('id')
+        .eq('conta_pagar_id', id)
+
+      const parcelasIds = parcelas?.map(p => p.id) || []
+
+      // Deletar movimentações do fluxo de caixa da conta principal
+      await supabase
+        .from('fluxo_caixa')
+        .delete()
+        .eq('origem', 'conta_pagar')
+        .eq('origem_id', id)
+
+      // Deletar movimentações do fluxo de caixa das parcelas
+      if (parcelasIds.length > 0) {
+        await supabase
+          .from('fluxo_caixa')
+          .delete()
+          .eq('origem', 'conta_pagar')
+          .in('origem_id', parcelasIds)
+      }
+
       // Deletar parcelas primeiro
       await supabase.from('parcelas_contas_pagar').delete().eq('conta_pagar_id', id)
       
@@ -430,19 +589,114 @@ export default function DespesasPage() {
       const { error } = await supabase.from('contas_a_pagar').delete().eq('id', id)
       if (error) throw error
 
-      loadContas()
+      // Recarregar dados para atualizar saldo
+      await loadContas()
+      
+      alert('Despesa excluída com sucesso! Todas as movimentações relacionadas foram removidas.')
     } catch (error) {
       console.error('Erro ao excluir conta:', error)
-      alert('Erro ao excluir conta')
+      alert('Erro ao excluir conta. Por favor, tente novamente.')
+    }
+  }
+
+  const handleAlterarStatus = async (id: string, novoStatus: 'pendente' | 'aprovado' | 'cancelado', isParcela: boolean = false) => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const table = isParcela ? 'parcelas_contas_pagar' : 'contas_a_pagar'
+
+      // Se mudar para cancelado, garantir que não está marcada como paga
+      // Se mudar para aprovado, pode marcar como paga automaticamente
+      const updateData: any = {
+        status: novoStatus,
+      }
+
+      // Buscar a conta atual para verificar status anterior
+      const { data: contaAtual, error: contaAtualError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (contaAtualError) throw contaAtualError
+
+      if (novoStatus === 'aprovado') {
+        // Ao aprovar, marcar como paga e criar movimentação no fluxo de caixa
+        const hoje = new Date().toISOString().split('T')[0]
+        updateData.paga = true
+        updateData.data_pagamento = hoje
+
+        // Verificar se já existe movimentação no fluxo de caixa
+        const { data: movimentacaoExistente } = await supabase
+          .from('fluxo_caixa')
+          .select('id')
+          .eq('origem', 'conta_pagar')
+          .eq('origem_id', id)
+          .single()
+
+        // Só criar movimentação se não existir
+        if (!movimentacaoExistente && contaAtual) {
+          await supabase
+            .from('fluxo_caixa')
+            .insert({
+              user_id: userId,
+              tipo: 'saida',
+              origem: 'conta_pagar',
+              origem_id: id,
+              descricao: contaAtual.descricao || 'Pagamento de despesa',
+              valor: Number(contaAtual.valor),
+              data_movimentacao: hoje,
+              forma_pagamento: contaAtual.forma_pagamento || null,
+              observacoes: contaAtual.observacoes || null,
+            })
+        }
+      } else if (novoStatus === 'cancelado' || novoStatus === 'pendente') {
+        // Ao cancelar ou voltar para pendente, desmarcar como paga se estiver paga
+        updateData.paga = false
+        updateData.data_pagamento = null
+
+        // Remover movimentação do fluxo de caixa se existir
+        await supabase
+          .from('fluxo_caixa')
+          .delete()
+          .eq('origem', 'conta_pagar')
+          .eq('origem_id', id)
+      }
+
+      const { error } = await supabase
+        .from(table)
+        .update(updateData)
+        .eq('id', id)
+
+      if (error) throw error
+
+      loadContas()
+    } catch (error) {
+      console.error('Erro ao alterar status:', error)
+      alert('Erro ao alterar status')
     }
   }
 
   const handleMarcarComoPaga = async (id: string, isParcela: boolean = false) => {
     try {
+      const userId = session?.user?.id
+      if (!userId) return
+
       const hoje = new Date().toISOString().split('T')[0]
       const table = isParcela ? 'parcelas_contas_pagar' : 'contas_a_pagar'
 
-      const { error } = await supabase
+      // Buscar a conta para obter os dados
+      const { data: conta, error: contaError } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (contaError) throw contaError
+
+      // Atualizar a conta como paga
+      const { error: updateError } = await supabase
         .from(table)
         .update({
           paga: true,
@@ -450,12 +704,86 @@ export default function DespesasPage() {
         })
         .eq('id', id)
 
-      if (error) throw error
+      if (updateError) throw updateError
+
+      // Criar movimentação no fluxo de caixa (saída)
+      const { error: fluxoError } = await supabase
+        .from('fluxo_caixa')
+        .insert({
+          user_id: userId,
+          tipo: 'saida',
+          origem: 'conta_pagar',
+          origem_id: id,
+          descricao: conta.descricao || 'Pagamento de despesa',
+          valor: Number(conta.valor),
+          data_movimentacao: hoje,
+          forma_pagamento: conta.forma_pagamento || null,
+          observacoes: conta.observacoes || null,
+        })
+
+      if (fluxoError) {
+        console.error('Erro ao criar movimentação no fluxo de caixa:', fluxoError)
+        // Não bloqueia a operação se falhar ao criar no fluxo de caixa
+      }
 
       loadContas()
     } catch (error) {
       console.error('Erro ao marcar como paga:', error)
       alert('Erro ao marcar como paga')
+    }
+  }
+
+  const limparMovimentacoesOrfas = async () => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Buscar todas as despesas e parcelas existentes
+      const { data: contasData } = await supabase
+        .from('contas_a_pagar')
+        .select('id')
+        .eq('user_id', userId)
+
+      const { data: parcelasData } = await supabase
+        .from('parcelas_contas_pagar')
+        .select('id')
+        .eq('user_id', userId)
+
+      const idsValidos = new Set([
+        ...(contasData || []).map(c => c.id),
+        ...(parcelasData || []).map(p => p.id)
+      ])
+
+      // Buscar todas as movimentações de despesas
+      const { data: movimentacoes } = await supabase
+        .from('fluxo_caixa')
+        .select('id, origem, origem_id')
+        .eq('user_id', userId)
+        .eq('origem', 'conta_pagar')
+
+      if (movimentacoes) {
+        const movimentacoesOrfas = movimentacoes.filter(
+          mov => !idsValidos.has(mov.origem_id || '')
+        )
+
+        if (movimentacoesOrfas.length > 0) {
+          const idsOrfas = movimentacoesOrfas.map(m => m.id)
+          const { error } = await supabase
+            .from('fluxo_caixa')
+            .delete()
+            .in('id', idsOrfas)
+
+          if (error) throw error
+
+          alert(`${movimentacoesOrfas.length} movimentação(ões) órfã(s) foram removida(s). O saldo será recalculado.`)
+          await loadContas()
+        } else {
+          alert('Nenhuma movimentação órfã encontrada. Tudo está sincronizado!')
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao limpar movimentações órfãs:', error)
+      alert('Erro ao limpar movimentações órfãs')
     }
   }
 
@@ -470,19 +798,142 @@ export default function DespesasPage() {
       observacoes: '',
       parcelada: false,
       total_parcelas: '1',
+      status: 'pendente',
     })
     setEditingConta(null)
+  }
+
+  const handleCriarFornecedor = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Validação: deve ter CNPJ ou CPF, mas não ambos
+      if (formDataFornecedor.cnpj && formDataFornecedor.cpf) {
+        alert('Informe apenas CNPJ ou CPF, não ambos.')
+        return
+      }
+
+      const { data: novoFornecedor, error } = await supabase
+        .from('fornecedores')
+        .insert({
+          user_id: userId,
+          nome: formDataFornecedor.nome,
+          cnpj: formDataFornecedor.cnpj || null,
+          cpf: formDataFornecedor.cpf || null,
+          email: formDataFornecedor.email || null,
+          telefone: formDataFornecedor.telefone || null,
+          endereco: formDataFornecedor.endereco || null,
+          observacoes: formDataFornecedor.observacoes || null,
+          ativo: true,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualizar lista de fornecedores
+      await loadData()
+
+      // Selecionar o fornecedor recém-criado no formulário de despesa
+      setFormData({ ...formData, fornecedor_id: novoFornecedor.id })
+
+      // Fechar modal e resetar form
+      setShowModalFornecedor(false)
+      setFormDataFornecedor({
+        nome: '',
+        cnpj: '',
+        cpf: '',
+        email: '',
+        telefone: '',
+        endereco: '',
+        observacoes: '',
+      })
+
+      alert('Fornecedor criado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao criar fornecedor:', error)
+      alert('Erro ao criar fornecedor')
+    }
+  }
+
+  const handleCriarCategoria = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const { data: novaCategoria, error } = await supabase
+        .from('categorias')
+        .insert({
+          user_id: userId,
+          nome: formDataCategoria.nome,
+          descricao: formDataCategoria.descricao || null,
+          cor: formDataCategoria.cor,
+          tipo: 'despesa',
+          ativo: true,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualizar lista de categorias
+      await loadData()
+
+      // Selecionar a categoria recém-criada no formulário de despesa
+      setFormData({ ...formData, categoria_id: novaCategoria.id })
+
+      // Fechar modal e resetar form
+      setShowModalCategoria(false)
+      setFormDataCategoria({
+        nome: '',
+        descricao: '',
+        cor: '#6366f1',
+      })
+
+      alert('Categoria criada com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao criar categoria:', error)
+      if (error.code === '23505') {
+        alert('Já existe uma categoria com este nome para despesas.')
+      } else {
+        alert('Erro ao criar categoria')
+      }
+    }
   }
 
   const getStatusBadge = (conta: ContaPagar) => {
     const hoje = new Date().toISOString().split('T')[0]
     
-    if (conta.paga) {
-      return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Paga</span>
-    } else if (conta.data_vencimento < hoje) {
-      return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencida</span>
+    // Priorizar status do banco
+    if (conta.status === 'cancelado') {
+      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">Cancelado</span>
+    } else if (conta.status === 'aprovado' || conta.paga) {
+      return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Aprovado</span>
     } else {
-      return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
+      // Verificar se está vencida (mesmo que status seja pendente)
+      if (isVencida(conta, hoje)) {
+        return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencida</span>
+      } else {
+        return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
+      }
+    }
+  }
+
+  // Função para obter o status efetivo (considera vencimento)
+  const getStatusEfetivo = (conta: ContaPagar): 'pendente' | 'aprovado' | 'cancelado' | 'vencida' => {
+    const hoje = new Date().toISOString().split('T')[0]
+    
+    if (conta.status === 'cancelado') {
+      return 'cancelado'
+    } else if (conta.status === 'aprovado' || conta.paga) {
+      return 'aprovado'
+    } else if (isVencida(conta, hoje)) {
+      return 'vencida' // Status efetivo é vencida, mesmo que no banco seja pendente
+    } else {
+      return 'pendente'
     }
   }
 
@@ -530,6 +981,33 @@ export default function DespesasPage() {
             <FiPlus className="w-5 h-5" />
             <span>Nova Despesa</span>
           </button>
+        </div>
+
+        {/* Card de Saldo Atual */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg p-6 border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-gray-400 text-sm">Saldo Atual</p>
+                <button
+                  onClick={limparMovimentacoesOrfas}
+                  className="text-xs text-purple-400 hover:text-purple-300 underline"
+                  title="Limpar movimentações órfãs (de despesas excluídas)"
+                >
+                  Limpar órfãs
+                </button>
+              </div>
+              <p className={`text-3xl font-bold mt-1 ${resumo.saldoAtual >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatarMoeda(resumo.saldoAtual)}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                {resumo.saldoAtual < 0 ? 'Saldo negativo - Receitas insuficientes' : 'Receitas - Despesas pagas'}
+              </p>
+            </div>
+            <div className="w-16 h-16 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <FiDollarSign className="w-8 h-8 text-purple-400" />
+            </div>
+          </div>
         </div>
 
         {/* Cards de Resumo */}
@@ -730,10 +1208,62 @@ export default function DespesasPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                         {formatarData(conta.data_vencimento)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(conta)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {!('conta_pagar_id' in conta) ? (
+                          (() => {
+                            const hoje = new Date().toISOString().split('T')[0]
+                            const statusEfetivo = getStatusEfetivo(conta)
+                            const estaVencida = isVencida(conta, hoje)
+                            
+                            // Se está vencida mas o status no banco é pendente, mostrar badge de vencida + select
+                            if (estaVencida && conta.status === 'pendente') {
+                              return (
+                                <div className="flex items-center space-x-2">
+                                  <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                                    Vencida
+                                  </span>
+                                  <select
+                                    value={conta.status || 'pendente'}
+                                    onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
+                                    className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    title="Status no banco: Pendente (mas está vencida)"
+                                  >
+                                    <option value="pendente">Pendente</option>
+                                    <option value="aprovado">Aprovado</option>
+                                    <option value="cancelado">Cancelado</option>
+                                  </select>
+                                </div>
+                              )
+                            }
+                            
+                            // Caso normal: mostrar apenas o select com estilo baseado no status
+                            return (
+                              <select
+                                value={conta.status || 'pendente'}
+                                onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                  conta.status === 'cancelado'
+                                    ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                                    : conta.status === 'aprovado' || conta.paga
+                                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                    : estaVencida
+                                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                    : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                }`}
+                              >
+                                <option value="pendente">Pendente</option>
+                                <option value="aprovado">Aprovado</option>
+                                <option value="cancelado">Cancelado</option>
+                              </select>
+                            )
+                          })()
+                        ) : (
+                          getStatusBadge(conta)
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex items-center space-x-2">
-                          {!conta.paga && (
+                          {!conta.paga && conta.status !== 'cancelado' && (
                             <button
                               onClick={() => handleMarcarComoPaga(conta.id, 'conta_pagar_id' in conta)}
                               className="text-green-400 hover:text-green-300 transition-colors"
@@ -743,22 +1273,10 @@ export default function DespesasPage() {
                             </button>
                           )}
                           {!('conta_pagar_id' in conta) && (
-                            <button
-                              onClick={() => handleEdit(conta)}
-                              className="text-blue-400 hover:text-blue-300 transition-colors"
-                              title="Editar"
-                            >
-                              <FiEdit className="w-5 h-5" />
-                            </button>
-                          )}
-                          {!('conta_pagar_id' in conta) && (
-                            <button
-                              onClick={() => handleDelete(conta.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                              title="Excluir"
-                            >
-                              <FiTrash2 className="w-5 h-5" />
-                            </button>
+                            <ActionButtons
+                              onEdit={() => handleEdit(conta)}
+                              onDelete={() => handleDelete(conta.id)}
+                            />
                           )}
                         </div>
                       </td>
@@ -794,34 +1312,54 @@ export default function DespesasPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Fornecedor</label>
-                      <select
-                        value={formData.fornecedor_id}
-                        onChange={(e) => setFormData({ ...formData, fornecedor_id: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      >
-                        <option value="">Selecione um fornecedor</option>
-                        {fornecedores.map((fornecedor) => (
-                          <option key={fornecedor.id} value={fornecedor.id}>
-                            {fornecedor.nome}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formData.fornecedor_id}
+                          onChange={(e) => setFormData({ ...formData, fornecedor_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione um fornecedor</option>
+                          {fornecedores.map((fornecedor) => (
+                            <option key={fornecedor.id} value={fornecedor.id}>
+                              {fornecedor.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalFornecedor(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar novo fornecedor"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Categoria</label>
-                      <select
-                        value={formData.categoria_id}
-                        onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      >
-                        <option value="">Selecione uma categoria</option>
-                        {categorias.map((categoria) => (
-                          <option key={categoria.id} value={categoria.id}>
-                            {categoria.nome}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={formData.categoria_id}
+                          onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
+                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        >
+                          <option value="">Selecione uma categoria</option>
+                          {categorias.map((categoria) => (
+                            <option key={categoria.id} value={categoria.id}>
+                              {categoria.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setShowModalCategoria(true)}
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          title="Adicionar nova categoria"
+                        >
+                          <FiPlus className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -865,6 +1403,25 @@ export default function DespesasPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-sm text-gray-400 mb-1">Status *</label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pendente' | 'aprovado' | 'cancelado' })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        required
+                      >
+                        <option value="pendente">Pendente</option>
+                        <option value="aprovado">Aprovado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.status === 'aprovado' && 'Será marcado como paga automaticamente'}
+                        {formData.status === 'cancelado' && 'Não entrará em nenhuma soma, apenas registro'}
+                        {formData.status === 'pendente' && 'Entrará na soma de contas pendentes'}
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="block text-sm text-gray-400 mb-1">Forma de Pagamento</label>
                       <select
                         value={formData.forma_pagamento}
@@ -880,9 +1437,10 @@ export default function DespesasPage() {
                         <option value="cartao_credito">Cartão de Crédito</option>
                       </select>
                     </div>
+                  </div>
 
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Parcelada</label>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Parcelada</label>
                       <div className="flex items-center space-x-4 mt-2">
                         <label className="flex items-center space-x-2 cursor-pointer">
                           <input
@@ -905,7 +1463,6 @@ export default function DespesasPage() {
                         )}
                       </div>
                     </div>
-                  </div>
 
                   <div>
                     <label className="block text-sm text-gray-400 mb-1">Observações</label>
@@ -934,6 +1491,240 @@ export default function DespesasPage() {
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
                       {editingConta ? 'Salvar Alterações' : 'Criar Despesa'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Criar Fornecedor */}
+        {showModalFornecedor && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Novo Fornecedor</h2>
+                  <button
+                    onClick={() => {
+                      setShowModalFornecedor(false)
+                      setFormDataFornecedor({
+                        nome: '',
+                        cnpj: '',
+                        cpf: '',
+                        email: '',
+                        telefone: '',
+                        endereco: '',
+                        observacoes: '',
+                      })
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCriarFornecedor} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formDataFornecedor.nome}
+                      onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, nome: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Nome do fornecedor"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">CNPJ</label>
+                      <input
+                        type="text"
+                        value={formDataFornecedor.cnpj}
+                        onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, cnpj: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="00.000.000/0000-00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">CPF</label>
+                      <input
+                        type="text"
+                        value={formDataFornecedor.cpf}
+                        onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, cpf: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={formDataFornecedor.email}
+                        onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, email: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-1">Telefone</label>
+                      <input
+                        type="text"
+                        value={formDataFornecedor.telefone}
+                        onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, telefone: e.target.value })}
+                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="(00) 00000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Endereço</label>
+                    <input
+                      type="text"
+                      value={formDataFornecedor.endereco}
+                      onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, endereco: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Endereço completo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
+                    <textarea
+                      value={formDataFornecedor.observacoes}
+                      onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, observacoes: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Observações adicionais..."
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModalFornecedor(false)
+                        setFormDataFornecedor({
+                          nome: '',
+                          cnpj: '',
+                          cpf: '',
+                          email: '',
+                          telefone: '',
+                          endereco: '',
+                          observacoes: '',
+                        })
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      Criar Fornecedor
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Criar Categoria */}
+        {showModalCategoria && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-white">Nova Categoria de Despesa</h2>
+                  <button
+                    onClick={() => {
+                      setShowModalCategoria(false)
+                      setFormDataCategoria({
+                        nome: '',
+                        descricao: '',
+                        cor: '#6366f1',
+                      })
+                    }}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <FiX className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCriarCategoria} className="space-y-4">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Nome da Categoria *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formDataCategoria.nome}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Ex: Materiais, Serviços, Equipamentos"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+                    <textarea
+                      value={formDataCategoria.descricao}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      placeholder="Descrição da categoria (opcional)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="color"
+                        value={formDataCategoria.cor}
+                        onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                        className="w-16 h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={formDataCategoria.cor}
+                        onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        placeholder="#6366f1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModalCategoria(false)
+                        setFormDataCategoria({
+                          nome: '',
+                          descricao: '',
+                          cor: '#6366f1',
+                        })
+                      }}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    >
+                      Criar Categoria
                     </button>
                   </div>
                 </form>

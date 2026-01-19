@@ -7,8 +7,6 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import {
   FiPlus,
-  FiEdit,
-  FiTrash2,
   FiCheck,
   FiX,
   FiFilter,
@@ -18,6 +16,7 @@ import {
   FiTrendingDown,
   FiSearch,
 } from 'react-icons/fi'
+import ActionButtons from '@/components/Empresarial/ActionButtons'
 
 interface ContaPagar {
   id: string
@@ -423,6 +422,34 @@ export default function DespesasPage() {
     if (!confirm('Tem certeza que deseja excluir esta conta?')) return
 
     try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      // Deletar movimentações do fluxo de caixa relacionadas à conta principal
+      await supabase
+        .from('fluxo_caixa')
+        .delete()
+        .eq('user_id', userId)
+        .eq('origem', 'conta_pagar')
+        .eq('origem_id', id)
+
+      // Buscar parcelas antes de deletar
+      const { data: parcelas } = await supabase
+        .from('parcelas_contas_pagar')
+        .select('id')
+        .eq('conta_pagar_id', id)
+
+      if (parcelas && parcelas.length > 0) {
+        const parcelasIds = parcelas.map(p => p.id)
+        // Deletar movimentações das parcelas
+        await supabase
+          .from('fluxo_caixa')
+          .delete()
+          .eq('user_id', userId)
+          .eq('origem', 'conta_pagar')
+          .in('origem_id', parcelasIds)
+      }
+
       // Deletar parcelas primeiro
       await supabase.from('parcelas_contas_pagar').delete().eq('conta_pagar_id', id)
       
@@ -743,22 +770,10 @@ export default function DespesasPage() {
                             </button>
                           )}
                           {!('conta_pagar_id' in conta) && (
-                            <button
-                              onClick={() => handleEdit(conta)}
-                              className="text-blue-400 hover:text-blue-300 transition-colors"
-                              title="Editar"
-                            >
-                              <FiEdit className="w-5 h-5" />
-                            </button>
-                          )}
-                          {!('conta_pagar_id' in conta) && (
-                            <button
-                              onClick={() => handleDelete(conta.id)}
-                              className="text-red-400 hover:text-red-300 transition-colors"
-                              title="Excluir"
-                            >
-                              <FiTrash2 className="w-5 h-5" />
-                            </button>
+                            <ActionButtons
+                              onEdit={() => handleEdit(conta)}
+                              onDelete={() => handleDelete(conta.id)}
+                            />
                           )}
                         </div>
                       </td>

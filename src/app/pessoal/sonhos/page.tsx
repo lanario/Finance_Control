@@ -216,10 +216,41 @@ export default function SonhosPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este sonho?')) return
+    if (!confirm('Tem certeza que deseja excluir este sonho? Todos os depósitos realizados serão removidos e o valor retornará ao saldo disponível.')) return
 
     try {
-      // Primeiro, excluir os depósitos relacionados ao sonho
+      if (!session?.user?.id) {
+        alert('Sessão não encontrada')
+        return
+      }
+
+      // Buscar informações do sonho antes de excluir
+      const { data: sonho } = await supabase
+        .from('sonhos')
+        .select('nome')
+        .eq('id', id)
+        .single()
+
+      if (!sonho) {
+        alert('Sonho não encontrado')
+        return
+      }
+
+      // Excluir todas as despesas relacionadas a este sonho na tabela compras
+      // As despesas são identificadas pela descrição "Transferência interna - {nome do sonho}"
+      const { error: despesasError } = await supabase
+        .from('compras')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('categoria', 'Transferência Interna')
+        .like('descricao', `Transferência interna - ${sonho.nome}%`)
+
+      if (despesasError) {
+        console.error('Erro ao excluir despesas relacionadas:', despesasError)
+        // Não impedir a exclusão se falhar, mas logar o erro
+      }
+
+      // Excluir os depósitos relacionados ao sonho
       const { error: depositosError } = await supabase
         .from('sonhos_depositos')
         .delete()
@@ -238,6 +269,8 @@ export default function SonhosPage() {
       // Recarregar dados e recalcular saldo
       loadSonhos()
       calcularSaldoDisponivel()
+      
+      alert('Sonho excluído com sucesso! As despesas relacionadas foram removidas e o valor retornou ao saldo disponível.')
     } catch (error) {
       console.error('Erro ao excluir sonho:', error)
       alert('Erro ao excluir sonho')

@@ -25,8 +25,8 @@ export default function OrcamentoEstiloPage() {
   const [fonteFamilia, setFonteFamilia] = useState('Arial')
 
   // Estilo - Marca d'água (valores fixos, sempre usa logo do perfil)
-  const marcaDaguaOpacidade = 30 // 30% de opacidade fixa
-  const marcaDaguaRotacao = -45 // -45 graus fixo (diagonal)
+  const marcaDaguaOpacidade = 25 // 25% de opacidade fixa
+  const marcaDaguaRotacao = 0 // 0 graus (reta e alinhada)
   const marcaDaguaPosicaoPersonalizada = false // Sempre centralizada
   const marcaDaguaTamanho = 200 // 200px fixo
   const marcaDaguaFormato = 'quadrado' // Formato fixo
@@ -227,8 +227,8 @@ export default function OrcamentoEstiloPage() {
         fonteTituloHeader,
         fonteTituloSecao,
         fonteFamilia,
-        marcaDaguaOpacidade: 30,
-        marcaDaguaRotacao: -45,
+        marcaDaguaOpacidade: 25,
+        marcaDaguaRotacao: 0,
         marcaDaguaPosicaoPersonalizada: false,
         marcaDaguaTamanho: 200,
         marcaDaguaFormato: 'quadrado',
