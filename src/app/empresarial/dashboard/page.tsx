@@ -279,11 +279,11 @@ export default function DashboardEmpresarialPage() {
 
       monthsRange.forEach((month, index) => {
         const baseIndex = index * 5
-        const receitas = historicalResults[baseIndex]?.data || []
-        const vendas = historicalResults[baseIndex + 1]?.data || []
-        const parcelasVendas = historicalResults[baseIndex + 2]?.data || []
-        const pagas = historicalResults[baseIndex + 3]?.data || []
-        const parcelasPagas = historicalResults[baseIndex + 4]?.data || []
+        const receitas = (historicalResults[baseIndex]?.data || []) as Array<{ valor: number }>
+        const vendas = (historicalResults[baseIndex + 1]?.data || []) as Array<{ valor_final: number }>
+        const parcelasVendas = (historicalResults[baseIndex + 2]?.data || []) as Array<{ valor: number }>
+        const pagas = (historicalResults[baseIndex + 3]?.data || []) as Array<{ valor: number }>
+        const parcelasPagas = (historicalResults[baseIndex + 4]?.data || []) as Array<{ valor: number }>
 
         const entradas = 
           (receitas.reduce((sum, r) => sum + Number(r.valor || 0), 0)) +
