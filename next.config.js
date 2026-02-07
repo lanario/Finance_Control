@@ -34,6 +34,23 @@ const nextConfig = {
       canvas: false,
     }
     
+    // No servidor, substituir pdf-extractor por um stub
+    if (isServer) {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@/lib/pdf-extractor': '@/lib/pdf-extractor-stub',
+        'pdfjs-dist': false,
+      }
+      
+      // Marcar como externo no servidor para evitar tentativa de bundling
+      config.externals = config.externals || []
+      if (Array.isArray(config.externals)) {
+        config.externals.push('pdfjs-dist')
+      } else {
+        config.externals = [config.externals, 'pdfjs-dist']
+      }
+    }
+    
     // Ignorar warnings sobre módulos opcionais do pdfjs-dist
     config.ignoreWarnings = [
       { module: /node_modules\/pdfjs-dist/ },

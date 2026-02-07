@@ -37,7 +37,9 @@ async function getPdfjsLib() {
       console.log('Tentando importar pdfjs-dist...')
       
       // Importar o módulo padrão - versão 3.x é mais estável
-      const pdfjsModule = await import('pdfjs-dist')
+      // Usar import dinâmico com string para evitar análise estática do webpack
+      const pdfjsModuleName = 'pdfjs-dist'
+      const pdfjsModule = await import(pdfjsModuleName)
       console.log('pdfjs-dist importado com sucesso')
       console.log('Chaves do módulo:', Object.keys(pdfjsModule))
       
