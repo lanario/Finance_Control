@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
+import { formatarMoeda } from '@/lib/utils'
 import {
   FiDollarSign,
   FiCreditCard,
@@ -78,12 +79,15 @@ export default function DashboardPage() {
   const [investimentosPorTipo, setInvestimentosPorTipo] = useState<InvestimentosPorTipo[]>([])
   const [despesasPorCategoria, setDespesasPorCategoria] = useState<DespesasPorCategoria[]>([])
   const [loading, setLoading] = useState(true)
+  const now = new Date()
+  const [mesSelecionado, setMesSelecionado] = useState<number>(now.getMonth() + 1)
+  const [anoSelecionado, setAnoSelecionado] = useState<number>(now.getFullYear())
 
   useEffect(() => {
     if (session) {
       loadDashboardData()
     }
-  }, [session])
+  }, [session, mesSelecionado, anoSelecionado])
 
   const loadDashboardData = async () => {
     try {
@@ -95,10 +99,9 @@ export default function DashboardPage() {
         .select('*')
         .eq('user_id', userId)
 
-      // Buscar compras do mês atual
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      // Usar mês e ano selecionados
+      const startOfMonth = new Date(anoSelecionado, mesSelecionado - 1, 1)
+      const endOfMonth = new Date(anoSelecionado, mesSelecionado, 0)
 
       // Buscar compras do mês atual
       const { data: todasComprasMes } = await supabase
@@ -124,16 +127,16 @@ export default function DashboardPage() {
         .gte('data_vencimento', startOfMonth.toISOString().split('T')[0])
         .lte('data_vencimento', endOfMonth.toISOString().split('T')[0])
 
-      // Buscar receitas do mês atual (baseado no mês de referência)
+      // Buscar receitas do mês selecionado (baseado no mês de referência)
       const { data: receitasMes } = await supabase
         .from('receitas')
         .select('*')
         .eq('user_id', userId)
-        .eq('mes_referencia', now.getMonth() + 1)
-        .eq('ano_referencia', now.getFullYear())
+        .eq('mes_referencia', mesSelecionado)
+        .eq('ano_referencia', anoSelecionado)
 
-      // Buscar todas as compras dos últimos 6 meses
-      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      // Buscar todas as compras dos últimos 6 meses (relativo ao mês selecionado)
+      const sixMonthsAgo = new Date(anoSelecionado, mesSelecionado - 6, 1)
       const { data: todasCompras6Meses } = await supabase
         .from('compras')
         .select('*')
@@ -170,9 +173,9 @@ export default function DashboardPage() {
         'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
       ]
 
-      // Inicializar últimos 6 meses com zero
+      // Inicializar últimos 6 meses com zero (relativo ao mês selecionado)
       for (let i = 5; i >= 0; i--) {
-        const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const date = new Date(anoSelecionado, mesSelecionado - 1 - i, 1)
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         gastosPorMes[key] = 0
       }
@@ -298,21 +301,18 @@ export default function DashboardPage() {
   const statCards = [
     {
       title: 'Despesas do Mês',
-      value: `R$ ${stats.gastosMes.toFixed(2)}`,
+      value: `R$ ${formatarMoeda(stats.gastosMes)}`,
       icon: FiTrendingDown,
       color: 'text-red-400',
       bgColor: 'bg-red-500/20',
       clickable: true,
-      href: () => {
-        const now = new Date()
-        const ano = now.getFullYear()
-        const mes = now.getMonth() + 1
+      href: (mes: number, ano: number) => {
         return `/pessoal/gastos-mensais/${ano}/${mes}`
       },
     },
     {
       title: 'Receitas do Mês',
-      value: `R$ ${stats.receitasMes.toFixed(2)}`,
+      value: `R$ ${formatarMoeda(stats.receitasMes)}`,
       icon: FiTrendingUp,
       color: 'text-green-400',
       bgColor: 'bg-green-500/20',
@@ -329,7 +329,7 @@ export default function DashboardPage() {
     },
     {
       title: 'Saldo Total',
-      value: `R$ ${(stats.receitasMes - stats.gastosMes).toFixed(2)}`,
+      value: `R$ ${formatarMoeda(stats.receitasMes - stats.gastosMes)}`,
       icon: FiDollarSign,
       color: 'text-white',
       bgColor: 'bg-primary/20',
@@ -347,14 +347,60 @@ export default function DashboardPage() {
     )
   }
 
+  const mesesNomes = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ]
+
+  const mesNome = mesesNomes[mesSelecionado - 1]
+
+  // Gerar lista de anos (últimos 5 anos até o próximo ano)
+  const anosDisponiveis = []
+  const anoAtual = new Date().getFullYear()
+  for (let i = anoAtual - 2; i <= anoAtual + 1; i++) {
+    anosDisponiveis.push(i)
+  }
+
   return (
     <MainLayout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-gray-400">
-            Visão geral das suas finanças pessoais
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+            <p className="text-gray-400">
+              Visão geral das suas finanças pessoais
+            </p>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-gray-400 text-sm">Mês:</label>
+              <select
+                value={mesSelecionado}
+                onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
+                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+              >
+                {mesesNomes.map((mes, index) => (
+                  <option key={index} value={index + 1}>
+                    {mes}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="text-gray-400 text-sm">Ano:</label>
+              <select
+                value={anoSelecionado}
+                onChange={(e) => setAnoSelecionado(parseInt(e.target.value))}
+                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+              >
+                {anosDisponiveis.map((ano) => (
+                  <option key={ano} value={ano}>
+                    {ano}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -378,13 +424,13 @@ export default function DashboardPage() {
             
             if (isClickable) {
               const href = typeof (card as any).href === 'function' 
-                ? (card as any).href() 
-                : (card as any).href
+                ? (card as any).href(mesSelecionado, anoSelecionado) 
+                : (card as any).href || ''
               
               return (
                 <button
                   key={index}
-                  onClick={() => router.push(href)}
+                  onClick={() => href && router.push(href)}
                   className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 cursor-pointer w-full text-left"
                 >
                   {cardContent}
@@ -445,7 +491,7 @@ export default function DashboardPage() {
                     color: '#fff',
                     padding: '12px'
                   }}
-                  formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Despesas']}
+                  formatter={(value: number) => [`R$ ${formatarMoeda(value)}`, 'Despesas']}
                   labelStyle={{ color: '#9ca3af', marginBottom: '8px' }}
                 />
                 <Line
@@ -519,9 +565,9 @@ export default function DashboardPage() {
                       : 0
                     const rentabilidade = rentabilidadeNum.toFixed(2)
                     if (name === 'valor_investido') {
-                      return [`R$ ${value.toFixed(2)} (${porcentagem}%)`, 'Investido']
+                      return [`R$ ${formatarMoeda(value)} (${porcentagem}%)`, 'Investido']
                     }
-                    return [`R$ ${value.toFixed(2)} (${rentabilidadeNum >= 0 ? '+' : ''}${rentabilidade}%)`, 'Valor Atual']
+                    return [`R$ ${formatarMoeda(value)} (${rentabilidadeNum >= 0 ? '+' : ''}${rentabilidade}%)`, 'Valor Atual']
                   }}
                   labelStyle={{ color: '#9ca3af', marginBottom: '8px', fontWeight: 'bold' }}
                 />
@@ -575,14 +621,11 @@ export default function DashboardPage() {
           <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white">
-                Despesas do Mês por Categoria
+                Despesas de {mesNome} {anoSelecionado} por Categoria
               </h2>
               <button
                 onClick={() => {
-                  const now = new Date()
-                  const ano = now.getFullYear()
-                  const mes = now.getMonth() + 1
-                  router.push(`/pessoal/gastos-mensais/${ano}/${mes}`)
+                  router.push(`/pessoal/gastos-mensais/${anoSelecionado}/${mesSelecionado}`)
                 }}
                 className="text-xs text-primary hover:text-primary-dark transition-colors"
               >
@@ -590,57 +633,85 @@ export default function DashboardPage() {
               </button>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={despesasPorCategoria}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ categoria, porcentagem }) => 
-                      porcentagem > 5 ? `${categoria}: ${porcentagem}%` : ''
-                    }
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="valor"
-                    animationDuration={800}
-                    onClick={(data: any) => {
-                      if (data && data.categoria) {
-                        router.push(`/pessoal/gastos/categoria/${encodeURIComponent(data.categoria)}`)
+              {/* Gráfico de Pizza */}
+              <div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={despesasPorCategoria}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ categoria, porcentagem }) => 
+                        porcentagem > 5 ? `${categoria}: ${porcentagem}%` : ''
                       }
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    {despesasPorCategoria.map((entry, index) => {
-                      const colors = [
-                        '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899',
-                        '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-                        '#3b82f6', '#10b981'
-                      ]
-                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                    })}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1f2937', 
-                      border: '1px solid #374151',
-                      borderRadius: '8px',
-                      color: '#fff',
-                      padding: '12px'
-                    }}
-                    formatter={(value: number, payload: any) => {
-                      return [
-                        `R$ ${value.toFixed(2)} (${payload.porcentagem}%)`,
-                        payload.categoria
-                      ]
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ color: '#9ca3af', fontSize: '12px' }}
-                    formatter={(value) => value}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="valor"
+                      animationDuration={800}
+                      onClick={(data: any) => {
+                        if (data && data.categoria) {
+                          router.push(`/pessoal/gastos/categoria/${encodeURIComponent(data.categoria)}`)
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {despesasPorCategoria.map((entry, index) => {
+                        const colors = [
+                          '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899',
+                          '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+                          '#3b82f6', '#10b981'
+                        ]
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#1f2937', 
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        padding: '12px'
+                      }}
+                      formatter={(value: number, payload: any) => {
+                        return [
+                          `R$ ${formatarMoeda(value)} (${payload.porcentagem}%)`,
+                          payload.categoria
+                        ]
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                
+                {/* Legenda customizada clicável */}
+                <div className="flex flex-wrap gap-3 justify-center mt-4">
+                  {despesasPorCategoria.map((item, index) => {
+                    const colors = [
+                      '#ef4444', '#f59e0b', '#8b5cf6', '#ec4899',
+                      '#06b6d4', '#84cc16', '#f97316', '#6366f1',
+                      '#3b82f6', '#10b981'
+                    ]
+                    return (
+                      <button
+                        key={item.categoria}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          router.push(`/pessoal/gastos/categoria/${encodeURIComponent(item.categoria)}`)
+                        }}
+                        className="flex items-center space-x-2 px-3 py-1.5 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                      >
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: colors[index % colors.length] }}
+                        />
+                        <span className="text-gray-300 text-xs font-medium">{item.categoria}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               
               {/* Lista de categorias de despesas */}
               <div className="flex flex-col justify-center">
@@ -654,20 +725,23 @@ export default function DashboardPage() {
                     return (
                       <button
                         key={item.categoria}
-                        onClick={() => {
-                          router.push(`/gastos/categoria/${encodeURIComponent(item.categoria)}`)
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          router.push(`/pessoal/gastos/categoria/${encodeURIComponent(item.categoria)}`)
                         }}
-                        className="w-full flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors text-left"
+                        className="w-full flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors text-left cursor-pointer active:bg-gray-600 select-none"
                       >
                         <div className="flex items-center space-x-3">
                           <div 
-                            className="w-4 h-4 rounded-full"
+                            className="w-4 h-4 rounded-full flex-shrink-0"
                             style={{ backgroundColor: colors[index % colors.length] }}
                           />
                           <span className="text-white text-sm font-medium">{item.categoria}</span>
                         </div>
-                        <div className="text-right">
-                          <p className="text-white font-semibold">R$ {item.valor.toFixed(2)}</p>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-white font-semibold">R$ {formatarMoeda(item.valor)}</p>
                           <p className="text-xs text-gray-400 font-medium">
                             {item.porcentagem.toFixed(1)}%
                           </p>
@@ -683,7 +757,7 @@ export default function DashboardPage() {
         {despesasPorCategoria.length === 0 && stats.gastosMes === 0 && (
           <div className="bg-gray-800 rounded-lg shadow-lg p-12 border border-gray-700 text-center">
             <p className="text-gray-400 text-lg mb-2">
-              Nenhuma despesa registrada no mês atual
+              Nenhuma despesa registrada em {mesNome} {anoSelecionado}
             </p>
             <p className="text-gray-500 text-sm">
               As despesas do mês aparecerão aqui quando registradas

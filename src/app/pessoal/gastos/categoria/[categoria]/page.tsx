@@ -6,7 +6,7 @@ import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
 import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2, FiArrowUp, FiArrowDown } from 'react-icons/fi'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatarMoeda } from '@/lib/utils'
 
 interface Compra {
   id: string
@@ -181,7 +181,7 @@ export default function GastosPorCategoriaPage() {
                 Despesas: {categoriaNome}
               </h1>
               <p className="text-gray-400">
-                Total: <span className="text-red-400 font-semibold">R$ {totalCategoria.toFixed(2)}</span>
+                Total: <span className="text-red-400 font-semibold">R$ {formatarMoeda(totalCategoria)}</span>
               </p>
             </div>
           </div>
@@ -280,7 +280,7 @@ export default function GastosPorCategoriaPage() {
                               {compra.descricao}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-white font-semibold">
-                              R$ {compra.valor.toFixed(2)}
+                              R$ {formatarMoeda(compra.valor)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                               {formatDate(compra.data)}
@@ -368,7 +368,7 @@ export default function GastosPorCategoriaPage() {
                               {parcela.descricao}
                             </td>
                             <td className={`px-6 py-4 whitespace-nowrap font-semibold ${parcela.paga ? 'text-green-400' : 'text-white'}`}>
-                              R$ {parcela.valor.toFixed(2)}
+                              R$ {formatarMoeda(parcela.valor)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                               {formatDate(parcela.data_vencimento)}

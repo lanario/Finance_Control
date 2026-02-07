@@ -32,3 +32,17 @@ export function formatDate(date: string | Date): string {
   
   return dateStr
 }
+
+/**
+ * Formata um valor numérico no padrão de moeda brasileiro
+ * Ex: 100.50 -> "100,50" | 150000.50 -> "150.000,50"
+ */
+export function formatarMoeda(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined || isNaN(valor)) {
+    return '0,00'
+  }
+  return valor.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+}

@@ -1,15 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/pessoal/providers'
 import { loadNotifications, Notification } from './NotificationsSystem'
-import Cropper from 'react-easy-crop'
 import type { Area, Point } from 'react-easy-crop'
+
+// Lazy load do Cropper para melhorar performance inicial
+const Cropper = lazy(() => import('react-easy-crop'))
 import {
   FiHome,
   FiCreditCard,
@@ -26,17 +27,18 @@ import {
   FiCheck,
   FiTrash2,
   FiTarget,
+  FiTag,
 } from 'react-icons/fi'
 
 const menuItems = [
   { href: '/pessoal/dashboard', label: 'Dashboard', icon: FiHome },
   { href: '/pessoal/cartoes', label: 'Cartões', icon: FiCreditCard },
-  { href: '/pessoal/compras', label: 'Compras', icon: FiShoppingCart },
+  { href: '/pessoal/categorias', label: 'Categorias', icon: FiTag },
   { href: '/pessoal/receitas', label: 'Receitas', icon: FiDollarSign },
   { href: '/pessoal/gastos', label: 'Despesas', icon: FiTrendingUp },
   { href: '/pessoal/investimentos', label: 'Investimentos', icon: FiPieChart },
   { href: '/pessoal/sonhos', label: 'Sonhos Infinity', icon: FiTarget },
-]
+] as const
 
 export default function Sidebar() {
   const pathname = usePathname()
@@ -331,7 +333,7 @@ export default function Sidebar() {
     }
   }
 
-  const loadNotificationsData = async () => {
+  const loadNotificationsData = useCallback(async () => {
     if (!session?.user?.id) return
 
     try {
@@ -358,9 +360,9 @@ export default function Sidebar() {
     } catch (error) {
       console.error('Erro ao carregar notificações:', error)
     }
-  }
+  }, [session?.user?.id, dismissedNotifications])
 
-  const handleDismissNotification = (notificationId: string) => {
+  const handleDismissNotification = useCallback((notificationId: string) => {
     if (!session?.user?.id) return
     
     setDismissedNotifications(prev => {
@@ -373,15 +375,14 @@ export default function Sidebar() {
       return newSet
     })
     setNotificationsCount(prev => Math.max(0, prev - 1))
-  }
+  }, [session?.user?.id])
 
-  const handleClearAllNotifications = () => {
+  const handleClearAllNotifications = useCallback(() => {
     if (!session?.user?.id) return
     
-    const allIds = notifications.map(n => n.id)
     setDismissedNotifications(prev => {
       const newSet = new Set(prev)
-      allIds.forEach(id => newSet.add(id))
+      notifications.forEach(n => newSet.add(n.id))
       // Salvar no localStorage
       if (typeof window !== 'undefined') {
         localStorage.setItem(`dismissedNotifications_${session.user.id}`, JSON.stringify(Array.from(newSet)))
@@ -389,22 +390,51 @@ export default function Sidebar() {
       return newSet
     })
     setNotificationsCount(0)
-  }
+  }, [session?.user?.id, notifications])
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await supabase.auth.signOut()
     router.push('/pessoal/auth/login')
-  }
+  }, [router])
+
+  // Prefetch de rotas no hover para navegação mais rápida
+  const handleMenuItemHover = useCallback((href: string) => {
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(() => {
+        router.prefetch(href)
+      })
+    } else {
+      router.prefetch(href)
+    }
+  }, [router])
+
+  // Memoizar menu items para evitar re-renders
+  const memoizedMenuItems = useMemo(() => menuItems, [])
+
+  // Handler para toggle de notificações
+  const handleToggleNotifications = useCallback(() => {
+    setShowNotifications(prev => {
+      if (!prev) {
+        setNotificationsCount(0)
+      }
+      return !prev
+    })
+  }, [])
+
+  // Handler para abrir modal de perfil
+  const handleOpenProfileModal = useCallback(() => {
+    setShowProfileModal(true)
+  }, [])
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-300 ease-in-out z-50 flex flex-col ${
+      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-200 ease-out z-50 flex flex-col will-change-width ${
         isHovered ? 'w-64' : 'w-20'
       }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`py-6 transition-all duration-300 ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
+      <div className={`py-6 transition-all duration-200 ease-out ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
         <div className={`flex items-center ${isHovered ? 'space-x-3' : 'justify-center'}`}>
           <div className="flex-shrink-0">
             <Image
@@ -429,14 +459,16 @@ export default function Sidebar() {
       </div>
 
       <nav className={`flex-1 space-y-2 ${isHovered ? 'px-3' : 'px-0'}`}>
-        {menuItems.map((item) => {
+        {memoizedMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-200 relative ${
+              prefetch={true}
+              onMouseEnter={() => handleMenuItemHover(item.href)}
+              className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-150 ease-out relative will-change-transform ${
                 isActive
                   ? 'bg-primary-light text-white shadow-lg'
                   : 'text-white hover:bg-primary-light/50 hover:text-white hover:shadow-md'
@@ -445,7 +477,7 @@ export default function Sidebar() {
               {isActive && (
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
               )}
-              <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+              <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
               {isHovered && (
                 <span className={`whitespace-nowrap animate-slide-in ${isActive ? 'font-semibold' : ''}`}>
                   {item.label}
@@ -460,14 +492,8 @@ export default function Sidebar() {
         {/* Notificações */}
         <div className="relative">
           <button
-            onClick={() => {
-              setShowNotifications(!showNotifications)
-              if (!showNotifications) {
-                // Quando abrir o modal, zerar o contador (notificações visualizadas)
-                setNotificationsCount(0)
-              }
-            }}
-            className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-200 relative`}
+            onClick={handleToggleNotifications}
+            className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-150 ease-out relative`}
           >
             <div className="relative flex-shrink-0">
               <FiBell className="w-5 h-5" />
@@ -627,8 +653,8 @@ export default function Sidebar() {
 
         {/* Perfil do Usuário */}
         <button
-          onClick={() => setShowProfileModal(true)}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-200`}
+          onClick={handleOpenProfileModal}
+          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-150 ease-out`}
         >
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
             {profilePhoto ? (
@@ -683,17 +709,23 @@ export default function Sidebar() {
             </div>
             
             <div className="relative w-full" style={{ height: '400px', background: '#1f2937' }}>
-              <Cropper
-                image={imageToCrop}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                cropShape="round"
-                showGrid={false}
-              />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                </div>
+              }>
+                <Cropper
+                  image={imageToCrop}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                  cropShape="round"
+                  showGrid={false}
+                />
+              </Suspense>
             </div>
 
             <div className="mt-4 space-y-3">

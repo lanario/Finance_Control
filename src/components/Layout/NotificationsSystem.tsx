@@ -192,16 +192,52 @@ export async function loadNotifications(userId: string): Promise<Notification[]>
           .single()
 
         if (cartaoCompleto && cartaoCompleto.limite) {
+          const hoje = new Date()
+          const mesAtual = hoje.getMonth() + 1 // 1-12
+          const anoAtual = hoje.getFullYear()
+
           // Buscar apenas compras não parceladas (compras parceladas são contabilizadas nas parcelas)
           const { data: comprasCartao } = await supabase
             .from('compras')
-            .select('valor, parcelada')
+            .select('id, valor, parcelada')
             .eq('cartao_id', cartao.id)
             .eq('user_id', userId)
             .eq('metodo_pagamento', 'cartao')
 
+          // Buscar compras recorrentes mensais para identificar quais compras são recorrentes
+          const { data: comprasRecorrentesMensais } = await supabase
+            .from('compras_recorrentes_mensais')
+            .select('compra_id, mes, ano')
+            .eq('user_id', userId)
+
+          // Criar mapeamento de compras recorrentes
+          const comprasRecorrentesMap: { [key: string]: { mes: number; ano: number } } = {}
+          comprasRecorrentesMensais?.forEach((item) => {
+            comprasRecorrentesMap[item.compra_id] = { mes: item.mes, ano: item.ano }
+          })
+
           const comprasNaoParceladas = comprasCartao?.filter(c => !c.parcelada) || []
-          const totalCompras = comprasNaoParceladas.reduce((sum, c) => sum + Number(c.valor), 0)
+          
+          // Calcular total de compras que consomem limite
+          let totalCompras = 0
+          comprasNaoParceladas.forEach((compra) => {
+            const compraRecorrente = comprasRecorrentesMap[compra.id]
+            
+            if (compraRecorrente) {
+              // É uma compra recorrente: só consome limite se for do mês atual ou meses passados
+              const mesRecorrente = compraRecorrente.mes
+              const anoRecorrente = compraRecorrente.ano
+              
+              if (anoRecorrente < anoAtual || (anoRecorrente === anoAtual && mesRecorrente <= mesAtual)) {
+                // Mês atual ou passado: consome limite
+                totalCompras += Number(compra.valor)
+              }
+              // Mês futuro: não consome limite
+            } else {
+              // Não é compra recorrente: sempre consome limite
+              totalCompras += Number(compra.valor)
+            }
+          })
 
           // Buscar parcelas não pagas
           const { data: parcelasCartao } = await supabase

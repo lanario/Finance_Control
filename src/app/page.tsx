@@ -3,11 +3,12 @@
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { FiTrendingUp, FiBriefcase } from 'react-icons/fi'
+import { useMemo, useCallback } from 'react'
 
 export default function HomePage() {
   const router = useRouter()
 
-  const aplicacoes = [
+  const aplicacoes = useMemo(() => [
     {
       id: 'pessoal',
       nome: 'Financeiro Pessoal',
@@ -26,7 +27,16 @@ export default function HomePage() {
       hoverCor: 'hover:from-purple-700 hover:to-purple-900',
       rota: '/empresarial/auth/login',
     },
-  ]
+  ], [])
+
+  // Prefetch de rotas no hover
+  const handleAppHover = useCallback((rota: string) => {
+    router.prefetch(rota)
+  }, [router])
+
+  const handleAppClick = useCallback((rota: string) => {
+    router.push(rota)
+  }, [router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 flex items-center justify-center px-4 py-12">
@@ -55,15 +65,17 @@ export default function HomePage() {
             return (
               <button
                 key={app.id}
-                onClick={() => router.push(app.rota)}
+                onClick={() => handleAppClick(app.rota)}
+                onMouseEnter={() => handleAppHover(app.rota)}
                 className={`
                   bg-white rounded-2xl shadow-2xl p-8 md:p-10
                   border border-gray-200
                   text-left
-                  transform transition-all duration-300
+                  transform transition-all duration-200 ease-out
                   hover:scale-105 hover:shadow-3xl
                   group
                   relative overflow-hidden
+                  will-change-transform
                 `}
               >
                 {/* Gradiente de fundo sutil */}
@@ -83,8 +95,9 @@ export default function HomePage() {
                       bg-gradient-to-br ${app.cor}
                       flex items-center justify-center
                       mb-6
-                      transition-transform duration-300
+                      transition-transform duration-200 ease-out
                       group-hover:scale-110
+                      will-change-transform
                     `}
                   >
                     <IconComponent className="w-8 h-8 text-white" />
@@ -104,7 +117,7 @@ export default function HomePage() {
                   <div className="flex items-center text-blue-600 font-semibold group-hover:text-blue-700 transition-colors">
                     <span>Acessar aplicação</span>
                     <svg
-                      className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform"
+                      className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform duration-200 ease-out will-change-transform"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

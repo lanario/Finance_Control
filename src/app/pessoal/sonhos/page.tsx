@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatarMoeda } from '@/lib/utils'
 import { FiPlus, FiEdit, FiTrash2, FiTarget, FiX, FiDollarSign } from 'react-icons/fi'
 
 interface Sonho {
@@ -282,7 +282,7 @@ export default function SonhosPage() {
 
     // Validar saldo disponível
     if (valor > saldoDisponivel) {
-      alert(`Saldo insuficiente! Você tem apenas R$ ${saldoDisponivel.toFixed(2)} disponível este mês.`)
+      alert(`Saldo insuficiente! Você tem apenas R$ ${formatarMoeda(saldoDisponivel)} disponível este mês.`)
       return
     }
 
@@ -317,7 +317,7 @@ export default function SonhosPage() {
 
       // Validar novamente considerando depósitos existentes
       if (valorDeposito > saldoDisponivel + (depositoExistente?.valor || 0)) {
-        alert(`Saldo insuficiente! Você tem apenas R$ ${saldoDisponivel.toFixed(2)} disponível este mês.`)
+        alert(`Saldo insuficiente! Você tem apenas R$ ${formatarMoeda(saldoDisponivel)} disponível este mês.`)
         return
       }
 
@@ -416,7 +416,7 @@ export default function SonhosPage() {
             <div>
               <p className="text-gray-400 text-sm mb-1">Saldo Disponível Este Mês</p>
               <p className={`text-3xl font-bold ${saldoDisponivel >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                R$ {saldoDisponivel.toFixed(2)}
+                R$ {formatarMoeda(saldoDisponivel)}
               </p>
             </div>
           </div>
@@ -485,26 +485,26 @@ export default function SonhosPage() {
                     <div className="flex justify-between">
                       <span className="text-gray-400">Valor Atual</span>
                       <span className="text-green-400 font-semibold">
-                        R$ {sonho.valor_atual.toFixed(2)}
+                        R$ {formatarMoeda(sonho.valor_atual)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Valor Objetivo</span>
                       <span className="text-white font-semibold">
-                        R$ {sonho.valor_objetivo.toFixed(2)}
+                        R$ {formatarMoeda(sonho.valor_objetivo)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Restante</span>
                       <span className="text-yellow-400 font-semibold">
-                        R$ {valorRestante.toFixed(2)}
+                        R$ {formatarMoeda(valorRestante)}
                       </span>
                     </div>
                     {sonho.valor_mensal && (
                       <div className="flex justify-between">
                         <span className="text-gray-400">Valor Mensal (estimado)</span>
                         <span className="text-blue-400 font-semibold">
-                          R$ {sonho.valor_mensal.toFixed(2)}
+                          R$ {formatarMoeda(sonho.valor_mensal || 0)}
                         </span>
                       </div>
                     )}
@@ -528,7 +528,7 @@ export default function SonhosPage() {
 
                   <button
                     onClick={() => {
-                      const valor = prompt(`Quanto deseja depositar em "${sonho.nome}"?\n\nSaldo disponível: R$ ${saldoDisponivel.toFixed(2)}`)
+                      const valor = prompt(`Quanto deseja depositar em "${sonho.nome}"?\n\nSaldo disponível: R$ ${formatarMoeda(saldoDisponivel)}`)
                       if (valor) {
                         const valorNum = parseFloat(valor.replace(',', '.'))
                         if (!isNaN(valorNum) && valorNum > 0) {

@@ -209,10 +209,37 @@ body {
 }
 
 .animate-slide-in {
-  animation: slide-in 0.3s ease-out forwards;
+  animation: slide-in 0.2s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 .animate-slide-in-delay {
-  animation: slide-in 0.3s ease-out 0.1s forwards;
+  animation: slide-in 0.2s ease-out 0.05s forwards;
   opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Otimizações de performance para transições */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* GPU acceleration para elementos animados */
+.will-change-transform {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Transições mais rápidas e suaves */
+.transition-fast {
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-smooth {
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }

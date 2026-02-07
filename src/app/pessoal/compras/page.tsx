@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
-import { formatDate } from '@/lib/utils'
-import { FiPlus, FiEdit, FiTrash2, FiShoppingCart, FiTag, FiX, FiArrowUp, FiArrowDown, FiChevronUp, FiChevronDown } from 'react-icons/fi'
+import { formatDate, formatarMoeda } from '@/lib/utils'
+import { FiPlus, FiEdit, FiTrash2, FiShoppingCart, FiX, FiArrowUp, FiArrowDown } from 'react-icons/fi'
 
 interface Compra {
   id: string
@@ -87,14 +87,11 @@ export default function ComprasPage() {
   const [cartoes, setCartoes] = useState<Cartao[]>([])
   const [tiposGastos, setTiposGastos] = useState<TipoGasto[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'compras' | 'tipos'>('compras')
   const [filtroMes, setFiltroMes] = useState<string>('')
   const [filtroAno, setFiltroAno] = useState<string>('')
   const [ordenacao, setOrdenacao] = useState<{ campo: string; direcao: 'asc' | 'desc' }>({ campo: 'data', direcao: 'desc' })
   const [showModal, setShowModal] = useState(false)
-  const [showTipoModal, setShowTipoModal] = useState(false)
   const [editingCompra, setEditingCompra] = useState<Compra | null>(null)
-  const [editingTipo, setEditingTipo] = useState<TipoGasto | null>(null)
   const [showNotificacaoCompraRecorrente, setShowNotificacaoCompraRecorrente] = useState(false)
   const [compraRecorrenteParaCriar, setCompraRecorrenteParaCriar] = useState<CompraRecorrente | null>(null)
   const [valorCompraRecorrente, setValorCompraRecorrente] = useState('')
@@ -136,34 +133,6 @@ export default function ComprasPage() {
     'Educação',
     'PERSONALIZADO'
   ]
-  const [tipoFormData, setTipoFormData] = useState({
-    nome: '',
-    nomeSelecionado: '',
-    descricao: '',
-    cor: '#6b7280',
-  })
-
-  // Sugestões de nomes para tipos de gastos
-  const sugestoesTiposGastos = [
-    'Alimentação',
-    'Transporte',
-    'Moradia',
-    'Saúde',
-    'Educação',
-    'Lazer',
-    'Vestuário',
-    'Tecnologia',
-    'Contas',
-    'Seguros',
-    'Investimentos',
-    'Doações',
-    'Viagens',
-    'Pet',
-    'Casa',
-    'Trabalho',
-    'Outros',
-    'PERSONALIZADO'
-  ]
 
   useEffect(() => {
     if (session) {
@@ -200,7 +169,7 @@ export default function ComprasPage() {
       if (error) throw error
       setTiposGastos(data || [])
     } catch (error) {
-      console.error('Erro ao carregar tipos de gastos:', error)
+      console.error('Erro ao carregar categorias:', error)
     }
   }
 
@@ -633,47 +602,6 @@ export default function ComprasPage() {
     }
   }
 
-  const handleTipoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      // Determinar o nome final (da seleção ou personalizado)
-      const nomeFinal = tipoFormData.nomeSelecionado === 'PERSONALIZADO' || !tipoFormData.nomeSelecionado
-        ? tipoFormData.nome
-        : tipoFormData.nomeSelecionado
-
-      const tipoData = {
-        nome: nomeFinal,
-        descricao: tipoFormData.descricao || null,
-        cor: tipoFormData.cor,
-        user_id: session?.user?.id,
-      }
-
-      if (editingTipo) {
-        const { error } = await supabase
-          .from('tipos_gastos')
-          .update(tipoData)
-          .eq('id', editingTipo.id)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('tipos_gastos').insert([tipoData])
-        if (error) throw error
-      }
-
-      setShowTipoModal(false)
-      setEditingTipo(null)
-      setTipoFormData({
-        nome: '',
-        nomeSelecionado: '',
-        descricao: '',
-        cor: '#6b7280',
-      })
-      loadTiposGastos()
-    } catch (error) {
-      console.error('Erro ao salvar tipo de gasto:', error)
-      alert('Erro ao salvar tipo de gasto')
-    }
-  }
 
   const handleEdit = (compra: Compra) => {
     setEditingCompra(compra)
@@ -694,17 +622,6 @@ export default function ComprasPage() {
     setShowModal(true)
   }
 
-  const handleEditTipo = (tipo: TipoGasto) => {
-    setEditingTipo(tipo)
-    const nomeNaLista = sugestoesTiposGastos.find(s => s === tipo.nome)
-    setTipoFormData({
-      nome: tipo.nome,
-      nomeSelecionado: nomeNaLista ? tipo.nome : (tipo.nome ? 'PERSONALIZADO' : ''),
-      descricao: tipo.descricao || '',
-      cor: tipo.cor,
-    })
-    setShowTipoModal(true)
-  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este item?')) return
@@ -730,18 +647,6 @@ export default function ComprasPage() {
     }
   }
 
-  const handleDeleteTipo = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este tipo de gasto? As compras associadas não serão excluídas.')) return
-
-    try {
-      const { error } = await supabase.from('tipos_gastos').delete().eq('id', id)
-      if (error) throw error
-      loadTiposGastos()
-    } catch (error) {
-      console.error('Erro ao excluir tipo de gasto:', error)
-      alert('Erro ao excluir tipo de gasto')
-    }
-  }
 
   const getCartaoNome = (cartaoId: string | null) => {
     if (!cartaoId) return 'N/A'
@@ -769,38 +674,12 @@ export default function ComprasPage() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Compras</h1>
             <p className="text-gray-400">
-              Gerencie suas compras e tipos de gastos
+              Gerencie suas compras
             </p>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-gray-800 rounded-lg p-1 border border-gray-700 inline-flex">
-          <button
-            onClick={() => setActiveTab('compras')}
-            className={`px-6 py-2 rounded-md font-semibold transition-all ${
-              activeTab === 'compras'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Compras
-          </button>
-          <button
-            onClick={() => setActiveTab('tipos')}
-            className={`px-6 py-2 rounded-md font-semibold transition-all ${
-              activeTab === 'tipos'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            Tipos de Gastos
-          </button>
-        </div>
-
-        {/* Tab Content - Compras */}
-        {activeTab === 'compras' && (
-          <div className="space-y-6">
+        <div className="space-y-6">
             <div className="flex justify-between items-center">
               {/* Filtro de mês/ano */}
               <div className="flex items-center space-x-4">
@@ -1022,7 +901,7 @@ export default function ComprasPage() {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <div className="text-white font-semibold">
-                                  R$ {item.valor.toFixed(2)}
+                                  R$ {formatarMoeda(item.valor)}
                                 </div>
                                 {!isParcela && item.parcelada && item.total_parcelas && (
                                   <div className="text-xs text-gray-400 mt-1">
@@ -1111,93 +990,6 @@ export default function ComprasPage() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Tab Content - Tipos de Gastos */}
-        {activeTab === 'tipos' && (
-          <div className="space-y-6">
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setEditingTipo(null)
-                  setTipoFormData({
-                    nome: '',
-                    nomeSelecionado: '',
-                    descricao: '',
-                    cor: '#6b7280',
-                  })
-                  setShowTipoModal(true)
-                }}
-                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
-              >
-                <FiPlus className="w-5 h-5" />
-                <span>Adicionar Tipo de Gasto</span>
-              </button>
-            </div>
-
-            {tiposGastos.length === 0 ? (
-              <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
-                <FiTag className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 text-lg mb-2">
-                  Nenhum tipo de gasto cadastrado
-                </p>
-                <p className="text-gray-500 text-sm">
-                  Crie tipos de gastos para organizar suas compras
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tiposGastos.map((tipo) => (
-                  <div
-                    key={tipo.id}
-                    className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-gray-600 transition-all hover:shadow-lg"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center"
-                          style={{
-                            backgroundColor: `${tipo.cor}20`,
-                            border: `2px solid ${tipo.cor}40`,
-                          }}
-                        >
-                          <FiTag
-                            className="w-5 h-5"
-                            style={{ color: tipo.cor }}
-                          />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">
-                            {tipo.nome}
-                          </h3>
-                          {tipo.descricao && (
-                            <p className="text-sm text-gray-400">
-                              {tipo.descricao}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEditTipo(tipo)}
-                          className="text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                          <FiEdit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTipo(tipo.id)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Modal de Compra */}
         {showModal && (
@@ -1374,7 +1166,7 @@ export default function ComprasPage() {
                               />
                               {formData.valor && formData.total_parcelas && parseInt(formData.total_parcelas) > 0 && (
                                 <p className="text-xs text-gray-400 mt-2">
-                                  Valor por parcela: R$ {(parseFloat(formData.valor) / parseInt(formData.total_parcelas)).toFixed(2)}
+                                  Valor por parcela: R$ {formatarMoeda(parseFloat(formData.valor) / parseInt(formData.total_parcelas))}
                                 </p>
                               )}
                             </div>
@@ -1421,7 +1213,7 @@ export default function ComprasPage() {
                   </select>
                   {tiposGastos.length === 0 && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Nenhum tipo de gasto cadastrado. Crie um na aba "Tipos de Gastos"
+                      Nenhuma categoria cadastrada. Crie uma na página de Categorias
                     </p>
                   )}
                 </div>
@@ -1512,7 +1304,7 @@ export default function ComprasPage() {
                     {compraRecorrenteParaCriar.descricao}
                   </p>
                   <p className="text-gray-400 text-sm mt-1">
-                    Valor padrão: R$ {compraRecorrenteParaCriar.valor.toFixed(2)}
+                    Valor padrão: R$ {formatarMoeda(compraRecorrenteParaCriar.valor)}
                   </p>
                 </div>
 
@@ -1529,7 +1321,7 @@ export default function ComprasPage() {
                     placeholder={compraRecorrenteParaCriar.valor.toString()}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Deixe em branco para usar o valor padrão (R$ {compraRecorrenteParaCriar.valor.toFixed(2)})
+                    Deixe em branco para usar o valor padrão (R$ {formatarMoeda(compraRecorrenteParaCriar.valor)})
                   </p>
                 </div>
 
@@ -1566,122 +1358,6 @@ export default function ComprasPage() {
           </div>
         )}
 
-        {/* Modal de Tipo de Gasto */}
-        {showTipoModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
-                  {editingTipo ? 'Editar Tipo de Gasto' : 'Novo Tipo de Gasto'}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowTipoModal(false)
-                    setEditingTipo(null)
-                  }}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-              <form onSubmit={handleTipoSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nome do Tipo de Gasto
-                  </label>
-                  <select
-                    value={tipoFormData.nomeSelecionado}
-                    onChange={(e) => {
-                      const valor = e.target.value
-                      setTipoFormData({ 
-                        ...tipoFormData, 
-                        nomeSelecionado: valor,
-                        nome: valor === 'PERSONALIZADO' ? tipoFormData.nome : (valor || '')
-                      })
-                    }}
-                    required={!tipoFormData.nome}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-2"
-                  >
-                    <option value="">Selecione uma opção...</option>
-                    {sugestoesTiposGastos.map((sugestao) => (
-                      <option key={sugestao} value={sugestao}>
-                        {sugestao === 'PERSONALIZADO' ? '✏️ Personalizado' : sugestao}
-                      </option>
-                    ))}
-                  </select>
-                  {(tipoFormData.nomeSelecionado === 'PERSONALIZADO' || (!tipoFormData.nomeSelecionado && tipoFormData.nome)) && (
-                    <input
-                      type="text"
-                      value={tipoFormData.nome}
-                      onChange={(e) =>
-                        setTipoFormData({ ...tipoFormData, nome: e.target.value })
-                      }
-                      required={tipoFormData.nomeSelecionado === 'PERSONALIZADO'}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="Digite o nome personalizado..."
-                    />
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Descrição (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={tipoFormData.descricao}
-                    onChange={(e) =>
-                      setTipoFormData({ ...tipoFormData, descricao: e.target.value })
-                    }
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Descrição do tipo de gasto..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Cor
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="color"
-                      value={tipoFormData.cor}
-                      onChange={(e) =>
-                        setTipoFormData({ ...tipoFormData, cor: e.target.value })
-                      }
-                      className="w-16 h-10 rounded cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={tipoFormData.cor}
-                      onChange={(e) =>
-                        setTipoFormData({ ...tipoFormData, cor: e.target.value })
-                      }
-                      className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                      placeholder="#6b7280"
-                    />
-                  </div>
-                </div>
-                <div className="flex space-x-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowTipoModal(false)
-                      setEditingTipo(null)
-                    }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
-                  >
-                    Salvar
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
     </MainLayout>
   )

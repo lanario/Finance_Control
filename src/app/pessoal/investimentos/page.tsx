@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatarMoeda } from '@/lib/utils'
 import { FiPlus, FiEdit, FiTrash2, FiTrendingUp, FiX } from 'react-icons/fi'
 
 interface Investimento {
@@ -526,13 +526,58 @@ export default function InvestimentosPage() {
         const dataAquisicao = new Date(investimento.data_aquisicao)
         const hoje = new Date()
         const diasDecorridos = (hoje.getTime() - dataAquisicao.getTime()) / (1000 * 60 * 60 * 24)
-        const anosDecorridos = diasDecorridos / 365
+        const anosDecorridos = diasDecorridos / 365.25 // Usar 365.25 para considerar anos bissextos
         
-        if (anosDecorridos > 0) {
+        // Validar anos decorridos para evitar divisão por zero ou valores extremos
+        if (anosDecorridos > 0.01) { // Mínimo de ~3.65 dias para calcular anualização
           // Rentabilidade anual equivalente usando juros compostos
-          rentabilidadeValorizacao = (Math.pow(1 + rentabilidadeTotal / 100, 1 / anosDecorridos) - 1) * 100
-        } else {
+          // Validar se o resultado não é infinito ou NaN
+          const base = 1 + rentabilidadeTotal / 100
+          if (base > 0 && isFinite(base) && isFinite(anosDecorridos)) {
+            const rentabilidadeAnual = (Math.pow(base, 1 / anosDecorridos) - 1) * 100
+            if (isFinite(rentabilidadeAnual) && !isNaN(rentabilidadeAnual)) {
+              rentabilidadeValorizacao = rentabilidadeAnual
+            } else {
+              // Se der erro no cálculo, usar rentabilidade total como fallback
+              rentabilidadeValorizacao = rentabilidadeTotal
+            }
+          } else {
+            rentabilidadeValorizacao = rentabilidadeTotal
+          }
+        } else if (anosDecorridos > 0) {
+          // Para períodos muito curtos, usar rentabilidade total sem anualizar
           rentabilidadeValorizacao = rentabilidadeTotal
+        } else {
+          // Se a data de aquisição for no futuro ou hoje, retornar 0
+          rentabilidadeValorizacao = 0
+        }
+      } else {
+        // Se não houver cotação, calcular baseado em valor investido vs valor atual
+        if (investimento.valor_investido > 0) {
+          const rentabilidadeTotal = calcularRentabilidade(investimento.valor_investido, investimento.valor_atual)
+          
+          const dataAquisicao = new Date(investimento.data_aquisicao)
+          const hoje = new Date()
+          const diasDecorridos = (hoje.getTime() - dataAquisicao.getTime()) / (1000 * 60 * 60 * 24)
+          const anosDecorridos = diasDecorridos / 365.25
+          
+          if (anosDecorridos > 0.01) {
+            const base = 1 + rentabilidadeTotal / 100
+            if (base > 0 && isFinite(base) && isFinite(anosDecorridos)) {
+              const rentabilidadeAnual = (Math.pow(base, 1 / anosDecorridos) - 1) * 100
+              if (isFinite(rentabilidadeAnual) && !isNaN(rentabilidadeAnual)) {
+                rentabilidadeValorizacao = rentabilidadeAnual
+              } else {
+                rentabilidadeValorizacao = rentabilidadeTotal
+              }
+            } else {
+              rentabilidadeValorizacao = rentabilidadeTotal
+            }
+          } else if (anosDecorridos > 0) {
+            rentabilidadeValorizacao = rentabilidadeTotal
+          } else {
+            rentabilidadeValorizacao = 0
+          }
         }
       }
       
@@ -541,11 +586,20 @@ export default function InvestimentosPage() {
       if (investimento.dividend_yield && investimento.dividend_yield > 0) {
         // Combinar rentabilidade de valorização com dividend yield
         // Assumindo que ambos são anuais
-        return rentabilidadeValorizacao + investimento.dividend_yield
+        const rentabilidadeCombinada = rentabilidadeValorizacao + investimento.dividend_yield
+        // Validar resultado final
+        if (isFinite(rentabilidadeCombinada) && !isNaN(rentabilidadeCombinada)) {
+          return rentabilidadeCombinada
+        }
+        // Se der erro, retornar apenas dividend yield
+        return investimento.dividend_yield
       }
       
-      // Caso contrário, retornar apenas a valorização
-      return rentabilidadeValorizacao
+      // Caso contrário, retornar apenas a valorização (validada)
+      if (isFinite(rentabilidadeValorizacao) && !isNaN(rentabilidadeValorizacao)) {
+        return rentabilidadeValorizacao
+      }
+      return 0
     }
     
     // Para outros investimentos, calcular rentabilidade baseada em valor investido vs valor atual
@@ -556,15 +610,24 @@ export default function InvestimentosPage() {
       const dataAquisicao = new Date(investimento.data_aquisicao)
       const hoje = new Date()
       const diasDecorridos = (hoje.getTime() - dataAquisicao.getTime()) / (1000 * 60 * 60 * 24)
-      const anosDecorridos = diasDecorridos / 365
+      const anosDecorridos = diasDecorridos / 365.25
       
-      if (anosDecorridos > 0) {
+      if (anosDecorridos > 0.01) {
         // Rentabilidade anual equivalente usando juros compostos
-        const rentabilidadeAnual = (Math.pow(1 + rentabilidadeTotal / 100, 1 / anosDecorridos) - 1) * 100
-        return rentabilidadeAnual
+        const base = 1 + rentabilidadeTotal / 100
+        if (base > 0 && isFinite(base) && isFinite(anosDecorridos)) {
+          const rentabilidadeAnual = (Math.pow(base, 1 / anosDecorridos) - 1) * 100
+          if (isFinite(rentabilidadeAnual) && !isNaN(rentabilidadeAnual)) {
+            return rentabilidadeAnual
+          }
+        }
+        // Se der erro, retornar rentabilidade total
+        return rentabilidadeTotal
+      } else if (anosDecorridos > 0) {
+        return rentabilidadeTotal
       }
       
-      return rentabilidadeTotal
+      return 0
     }
     
     return 0
@@ -578,15 +641,29 @@ export default function InvestimentosPage() {
     
     investimentos.forEach((inv) => {
       const rentabilidadeAnual = calcularRentabilidadeAnualEquivalente(inv)
-      const peso = inv.valor_investido
       
-      somaPonderada += rentabilidadeAnual * peso
-      totalPeso += peso
+      // Validar se a rentabilidade é um número finito válido
+      if (isFinite(rentabilidadeAnual) && !isNaN(rentabilidadeAnual)) {
+        const peso = inv.valor_investido
+        
+        // Validar se o peso é válido
+        if (isFinite(peso) && !isNaN(peso) && peso > 0) {
+          somaPonderada += rentabilidadeAnual * peso
+          totalPeso += peso
+        }
+      }
     })
     
     if (totalPeso === 0) return 0
     
-    return somaPonderada / totalPeso
+    const resultado = somaPonderada / totalPeso
+    
+    // Validar resultado final
+    if (isFinite(resultado) && !isNaN(resultado)) {
+      return resultado
+    }
+    
+    return 0
   }
 
   const totalInvestido = investimentos.reduce((sum, inv) => sum + inv.valor_investido, 0)
@@ -645,21 +722,27 @@ export default function InvestimentosPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-2">Total Investido</p>
-            <p className="text-2xl font-bold text-white">R$ {totalInvestido.toFixed(2)}</p>
+            <p className="text-2xl font-bold text-white">R$ {formatarMoeda(totalInvestido)}</p>
           </div>
           <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-2">Valor Atual</p>
             <p className={`text-2xl font-bold ${totalAtual >= totalInvestido ? 'text-green-400' : 'text-red-400'}`}>
-              R$ {totalAtual.toFixed(2)}
+              R$ {formatarMoeda(totalAtual)}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-2">Rentabilidade Média Anual</p>
             <p className={`text-2xl font-bold ${rentabilidadeTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {rentabilidadeTotal >= 0 ? '+' : ''}{rentabilidadeTotal.toFixed(2)}% a.a.
+              {rentabilidadeTotal >= 0 ? '+' : ''}
+              {isFinite(rentabilidadeTotal) && !isNaN(rentabilidadeTotal) 
+                ? (Math.abs(rentabilidadeTotal) < 1000000 
+                    ? rentabilidadeTotal.toFixed(2) 
+                    : rentabilidadeTotal.toExponential(2))
+                : '0.00'
+              }% a.a.
             </p>
             <p className={`text-sm mt-1 ${totalAtual >= totalInvestido ? 'text-green-400' : 'text-red-400'}`}>
-              {totalAtual >= totalInvestido ? '+' : ''}R$ {(totalAtual - totalInvestido).toFixed(2)}
+              {totalAtual >= totalInvestido ? '+' : ''}R$ {formatarMoeda(totalAtual - totalInvestido)}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               Média ponderada por valor investido
@@ -739,12 +822,12 @@ export default function InvestimentosPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-white">
-                          R$ {investimento.valor_investido.toFixed(2)}
+                          R$ {formatarMoeda(investimento.valor_investido)}
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap font-semibold ${
                           investimento.valor_atual >= investimento.valor_investido ? 'text-green-400' : 'text-red-400'
                         }`}>
-                          R$ {investimento.valor_atual.toFixed(2)}
+                          R$ {formatarMoeda(investimento.valor_atual)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col">
@@ -1175,11 +1258,11 @@ export default function InvestimentosPage() {
                       <div className="p-3 bg-gray-700/50 rounded-lg">
                         <p className="text-sm text-gray-300 mb-1">
                           <span className="font-medium">Rendimento por período:</span>{' '}
-                          R$ {calcularRendimentoPeriodico(
+                          R$ {formatarMoeda(calcularRendimentoPeriodico(
                             parseFloat(formData.valor_investido),
                             parseFloat(formData.taxa_juros),
                             formData.periodicidade
-                          ).toFixed(2)}
+                          ))}
                         </p>
                         {formData.data_proxima_liquidacao && (
                           <p className="text-sm text-gray-300">

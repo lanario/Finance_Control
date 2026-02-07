@@ -16,6 +16,31 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Configurar pdfjs-dist para funcionar corretamente no Next.js
+    // Ignorar módulos do Node.js que não são necessários no browser
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      canvas: false,
+      fs: false,
+      path: false,
+      stream: false,
+      crypto: false,
+    }
+    
+    // Configurar alias para ignorar canvas
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    }
+    
+    // Ignorar warnings sobre módulos opcionais do pdfjs-dist
+    config.ignoreWarnings = [
+      { module: /node_modules\/pdfjs-dist/ },
+    ]
+    
+    return config
+  },
 }
 
 module.exports = nextConfig

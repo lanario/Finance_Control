@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatarMoeda } from '@/lib/utils'
 import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2, FiArrowUp, FiArrowDown } from 'react-icons/fi'
 
 interface Compra {
@@ -307,7 +307,7 @@ export default function GastosMensaisPage() {
                               {compra.descricao}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-white font-semibold">
-                              R$ {compra.valor.toFixed(2)}
+                              R$ {formatarMoeda(compra.valor)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                               {formatDate(compra.data)}

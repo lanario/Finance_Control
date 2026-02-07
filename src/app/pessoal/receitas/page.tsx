@@ -6,7 +6,7 @@ import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
 import { FiPlus, FiEdit, FiTrash2, FiDollarSign, FiX } from 'react-icons/fi'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatarMoeda } from '@/lib/utils'
 
 interface Receita {
   id: string
@@ -206,19 +206,19 @@ export default function ReceitasPage() {
           <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-1">Total Geral</p>
             <p className="text-3xl font-bold text-green-400">
-              R$ {totalGeral.toFixed(2)}
+              R$ {formatarMoeda(totalGeral)}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-1">Receitas Fixas</p>
             <p className="text-3xl font-bold text-blue-400">
-              R$ {totalFixa.toFixed(2)}
+              R$ {formatarMoeda(totalFixa)}
             </p>
           </div>
           <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
             <p className="text-gray-400 text-sm mb-1">Receitas Extras</p>
             <p className="text-3xl font-bold text-yellow-400">
-              R$ {totalExtra.toFixed(2)}
+              R$ {formatarMoeda(totalExtra)}
             </p>
           </div>
         </div>
@@ -292,7 +292,7 @@ export default function ReceitasPage() {
                             {receita.descricao}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-green-400 font-semibold">
-                            R$ {receita.valor.toFixed(2)}
+                            R$ {formatarMoeda(receita.valor)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-gray-400">
                             {formatDate(receita.data)}
