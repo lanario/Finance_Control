@@ -3,17 +3,31 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseEmpresarial } from '@/lib/supabase/empresarial'
+import { useAuth } from '@/app/empresarial/providers'
 import { FiMail, FiLock, FiTrendingUp, FiBriefcase, FiUsers, FiArrowLeft } from 'react-icons/fi'
+import { FcGoogle } from 'react-icons/fc'
 import Image from 'next/image'
+
+type OAuthProvider = 'google'
 
 export default function LoginEmpresarialPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingOAuth, setLoadingOAuth] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const router = useRouter()
+  const { session, loading: authLoading } = useAuth()
+
+  // Redirecionar se já estiver autenticado (ex.: retorno do OAuth)
+  useEffect(() => {
+    if (authLoading) return
+    if (session) {
+      router.replace('/empresarial/dashboard')
+    }
+  }, [session, authLoading, router])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -148,6 +162,34 @@ export default function LoginEmpresarialPage() {
     }
   }
 
+  /**
+   * Inicia login/cadastro via provedor OAuth (Google, etc.)
+   * O redirect após sucesso deve estar configurado no Supabase (Authentication > URL Configuration).
+   */
+  async function handleOAuthSignIn(provider: OAuthProvider) {
+    setLoadingOAuth(true)
+    setError('')
+    setSuccess('')
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/empresarial/auth/login`
+          : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/empresarial/auth/login`
+      const { error: oauthError } = await supabaseEmpresarial.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo },
+      })
+      if (oauthError) {
+        setError(oauthError.message || 'Erro ao conectar com o provedor. Tente novamente.')
+        setLoadingOAuth(false)
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao conectar com o provedor.'
+      setError(message)
+      setLoadingOAuth(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-700 to-purple-900 px-4 py-12">
       <div className="w-full max-w-6xl grid md:grid-cols-2 gap-8 items-center">
@@ -254,6 +296,27 @@ export default function LoginEmpresarialPage() {
                 }`}
               >
                 Cadastrar
+              </button>
+            </div>
+
+            {/* OAuth - Login com Google */}
+            <div className="space-y-4 mb-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-secondary-light/40" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-3 bg-white text-secondary">Ou continue com</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOAuthSignIn('google')}
+                disabled={loadingOAuth || loading}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg font-semibold border-2 border-secondary-light text-primary hover:bg-secondary-light/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <FcGoogle className="w-5 h-5" aria-hidden />
+                <span>{loadingOAuth ? 'Redirecionando...' : 'Continuar com Google'}</span>
               </button>
             </div>
 

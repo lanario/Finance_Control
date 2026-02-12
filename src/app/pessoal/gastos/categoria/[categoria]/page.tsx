@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
-import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2, FiArrowUp, FiArrowDown } from 'react-icons/fi'
+import { FiArrowLeft, FiShoppingCart, FiEdit, FiTrash2, FiArrowUp, FiArrowDown, FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { formatDate, formatarMoeda } from '@/lib/utils'
 
 interface Compra {
@@ -46,11 +46,21 @@ interface TipoGasto {
   user_id: string
 }
 
+const mesesNomes = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+]
+
 export default function GastosPorCategoriaPage() {
   const { session } = useAuth()
   const router = useRouter()
   const params = useParams()
   const categoriaNome = decodeURIComponent(params.categoria as string)
+
+  // Estados para mês e ano (inicializados com o mês/ano atual)
+  const agora = new Date()
+  const [mesSelecionado, setMesSelecionado] = useState(agora.getMonth() + 1)
+  const [anoSelecionado, setAnoSelecionado] = useState(agora.getFullYear())
 
   const [compras, setCompras] = useState<Compra[]>([])
   const [parcelas, setParcelas] = useState<Parcela[]>([])
@@ -65,7 +75,7 @@ export default function GastosPorCategoriaPage() {
     if (session && categoriaNome) {
       loadDados()
     }
-  }, [session, categoriaNome])
+  }, [session, categoriaNome, mesSelecionado, anoSelecionado])
 
   const loadDados = async () => {
     try {
@@ -88,12 +98,20 @@ export default function GastosPorCategoriaPage() {
 
       setTiposGastos(tiposData || [])
 
-      // Buscar compras da categoria específica
+      // Calcular início e fim do mês selecionado
+      const startDate = new Date(anoSelecionado, mesSelecionado - 1, 1)
+      const endDate = new Date(anoSelecionado, mesSelecionado, 0, 23, 59, 59)
+      const startDateStr = startDate.toISOString().split('T')[0]
+      const endDateStr = endDate.toISOString().split('T')[0]
+
+      // Buscar compras da categoria específica do mês selecionado
       const { data: todasComprasData, error: comprasError } = await supabase
         .from('compras')
         .select('*')
         .eq('user_id', userId)
         .eq('categoria', categoriaNome)
+        .gte('data', startDateStr)
+        .lte('data', endDateStr)
         .order('data', { ascending: false })
 
       if (comprasError) throw comprasError
@@ -105,12 +123,14 @@ export default function GastosPorCategoriaPage() {
         return !isParcelada
       }) || []
 
-      // Buscar parcelas da categoria específica
+      // Buscar parcelas da categoria específica do mês selecionado (baseado na data de vencimento)
       const { data: parcelasData, error: parcelasError } = await supabase
         .from('parcelas')
         .select('*')
         .eq('user_id', userId)
         .eq('categoria', categoriaNome)
+        .gte('data_vencimento', startDateStr)
+        .lte('data_vencimento', endDateStr)
         .order('data_vencimento', { ascending: false })
 
       if (parcelasError) throw parcelasError
@@ -128,6 +148,30 @@ export default function GastosPorCategoriaPage() {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  /**
+   * Navega para o mês anterior
+   */
+  function irParaMesAnterior() {
+    if (mesSelecionado === 1) {
+      setMesSelecionado(12)
+      setAnoSelecionado(anoSelecionado - 1)
+    } else {
+      setMesSelecionado(mesSelecionado - 1)
+    }
+  }
+
+  /**
+   * Navega para o mês seguinte
+   */
+  function irParaProximoMes() {
+    if (mesSelecionado === 12) {
+      setMesSelecionado(1)
+      setAnoSelecionado(anoSelecionado + 1)
+    } else {
+      setMesSelecionado(mesSelecionado + 1)
     }
   }
 
@@ -164,6 +208,7 @@ export default function GastosPorCategoriaPage() {
   }
 
   const tipo = getTipoGasto(categoriaNome)
+  const nomeMes = mesesNomes[mesSelecionado - 1] || 'Mês'
 
   return (
     <MainLayout>
@@ -180,9 +225,30 @@ export default function GastosPorCategoriaPage() {
               <h1 className="text-3xl font-bold text-white mb-2">
                 Despesas: {categoriaNome}
               </h1>
-              <p className="text-gray-400">
-                Total: <span className="text-red-400 font-semibold">R$ {formatarMoeda(totalCategoria)}</span>
-              </p>
+              <div className="flex items-center space-x-4">
+                <p className="text-gray-400">
+                  Total: <span className="text-red-400 font-semibold">R$ {formatarMoeda(totalCategoria)}</span>
+                </p>
+                <div className="flex items-center space-x-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1">
+                  <button
+                    onClick={irParaMesAnterior}
+                    className="p-1 rounded hover:bg-gray-700 transition-colors text-white"
+                    title="Mês anterior"
+                  >
+                    <FiChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-white font-medium min-w-[140px] text-center">
+                    {nomeMes} {anoSelecionado}
+                  </span>
+                  <button
+                    onClick={irParaProximoMes}
+                    className="p-1 rounded hover:bg-gray-700 transition-colors text-white"
+                    title="Próximo mês"
+                  >
+                    <FiChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
