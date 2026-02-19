@@ -996,15 +996,15 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
           if (error) throw error
 
-          alert(`${movimentacoesOrfas.length} movimentaÃ§Ã£o(Ãµes) Ã³rfÃ£(s) foram removida(s). O saldo serÃ¡ recalculado.`)
+          alert(`${movimentacoesOrfas.length} movimentação(ões) órfã(s) foram removida(s). O saldo será recalculado.`)
           await loadVendas()
         } else {
-          alert('Nenhuma movimentaÃ§Ã£o Ã³rfÃ£ encontrada. Tudo estÃ¡ sincronizado!')
+          alert('Nenhuma movimentação órfã encontrada. Tudo está sincronizado!')
         }
       }
     } catch (error) {
-      console.error('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s:', error)
-      alert('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s')
+      console.error('Erro ao limpar movimentações órfãs:', error)
+      alert('Erro ao limpar movimentações órfãs')
     }
   }
 
@@ -1217,7 +1217,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               ))}
             </select>
             <div className="flex items-center gap-1.5">
-              <label className="text-sm text-gray-400 whitespace-nowrap">MÃªs:</label>
+              <label className="text-sm text-gray-400 whitespace-nowrap">Mês:</label>
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
@@ -1410,13 +1410,22 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                               />
                             ) : (
                               <ActionButtons
-                                onEdit={() => {
+                                onEdit={async () => {
                                   const vendaId = (venda as any).venda_id
-                                  const parentVenda = vendas.find((v) => v.id === vendaId)
-                                  if (parentVenda) handleEdit(parentVenda)
+                                  if (!vendaId) return
+                                  const { data: parent, error } = await supabase
+                                    .from('vendas')
+                                    .select('*')
+                                    .eq('id', vendaId)
+                                    .single()
+                                  if (error || !parent) {
+                                    alert('Não foi possível carregar a venda principal. Tente novamente.')
+                                    return
+                                  }
+                                  handleEdit(parent as Venda)
                                 }}
                                 onDelete={() => handleDelete((venda as any).venda_id)}
-                                editTitle="Editar venda (parcelada)"
+                                editTitle="Editar venda parcelada (altera todas as parcelas)"
                                 deleteTitle="Excluir venda e todas as parcelas"
                               />
                             )}
@@ -1683,7 +1692,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                     >
                       <option value="dinheiro">Dinheiro</option>
                       <option value="pix">PIX</option>
-                      <option value="transferencia">TransferÃªncia</option>
+                      <option value="transferencia">Transferência</option>
                       <option value="boleto">Boleto</option>
                       <option value="cheque">Cheque</option>
                       <option value="cartao_debito">Cartão Débito</option>
@@ -1744,7 +1753,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                   />
                 </div>
 
-                {/* BotÃµes */}
+                {/* Botões */}
                 <div className="flex justify-end space-x-4 pt-4">
                   <button
                     type="button"
@@ -1797,13 +1806,13 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">CÃ³digo (SKU)</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Código (SKU)</label>
                     <input
                       type="text"
                       value={formDataProduto.codigo}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, codigo: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="CÃ³digo do produto"
+                      placeholder="Código do produto"
                     />
                   </div>
                 </div>
@@ -1887,7 +1896,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Estoque MÃ­nimo</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Estoque Mínimo</label>
                     <input
                       type="number"
                       step="0.001"

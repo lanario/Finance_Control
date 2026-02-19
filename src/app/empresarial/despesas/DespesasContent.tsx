@@ -529,12 +529,37 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
     }
   }
 
-  const handleEdit = (conta: ContaPagar) => {
-    // Verificar se Ã© uma parcela (tem conta_pagar_id)
+  const handleEdit = async (conta: ContaPagar) => {
     const isParcela = 'conta_pagar_id' in conta
-    
+
     if (isParcela) {
-      alert('Para editar uma parcela, edite a conta principal que gerou as parcelas.')
+      // Parcela: carregar a conta principal para editar em conjunto (todas as parcelas serão atualizadas ao salvar)
+      const parentId = (conta as ContaPagar & { conta_pagar_id?: string }).conta_pagar_id
+      if (!parentId) return
+      const { data: parent, error } = await supabase
+        .from('contas_a_pagar')
+        .select('*')
+        .eq('id', parentId)
+        .single()
+      if (error || !parent) {
+        alert('Não foi possível carregar a conta principal. Tente novamente.')
+        return
+      }
+      const parentConta = parent as ContaPagar
+      setEditingConta(parentConta)
+      setFormData({
+        fornecedor_id: parentConta.fornecedor_id || '',
+        categoria_id: parentConta.categoria_id || '',
+        descricao: parentConta.descricao,
+        valor: parentConta.valor.toString(),
+        data_vencimento: parentConta.data_vencimento,
+        forma_pagamento: parentConta.forma_pagamento || 'pix',
+        observacoes: parentConta.observacoes || '',
+        parcelada: true,
+        total_parcelas: (parentConta.total_parcelas || 1).toString(),
+        status: parentConta.status || 'pendente',
+      })
+      setShowModal(true)
       return
     }
 
@@ -565,14 +590,14 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
     const descricao = conta?.descricao || 'esta despesa'
     const valor = conta?.valor ? formatarMoeda(Number(conta.valor)) : ''
 
-    // Mensagem de confirmaÃ§Ã£o mais detalhada
-    const mensagem = `âš ï¸ ATENÃ‡ÃƒO: VocÃª estÃ¡ prestes a excluir permanentemente "${descricao}"${valor ? ` (${valor})` : ''}.\n\n` +
-      `Esta aÃ§Ã£o irÃ¡:\n` +
-      `â€¢ Remover todos os dados desta despesa\n` +
-      `â€¢ Remover todas as parcelas relacionadas\n` +
-      `â€¢ Remover movimentaÃ§Ãµes do fluxo de caixa\n` +
-      `â€¢ Ajustar o saldo atual\n\n` +
-      `Esta aÃ§Ã£o NÃƒO pode ser desfeita!\n\n` +
+    // Mensagem de confirmação mais detalhada
+    const mensagem = `âš ï¸ ATENÇÃO: Você está prestes a excluir permanentemente "${descricao}"${valor ? ` (${valor})` : ''}.\n\n` +
+      `Esta ação irá:\n` +
+      `• Remover todos os dados desta despesa\n` +
+      `• Remover todas as parcelas relacionadas\n` +
+      `• Remover movimentações do fluxo de caixa\n` +
+      `• Ajustar o saldo atual\n\n` +
+      `Esta ação NÃO pode ser desfeita!\n\n` +
       `Deseja realmente continuar?`
 
     if (!confirm(mensagem)) return
@@ -612,7 +637,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
       // Recarregar dados para atualizar saldo
       await loadContas()
       
-      alert('Despesa excluÃ­da com sucesso! Todas as movimentaÃ§Ãµes relacionadas foram removidas.')
+      alert('Despesa excluída com sucesso! Todas as movimentações relacionadas foram removidas.')
     } catch (error) {
       console.error('Erro ao excluir conta:', error)
       alert('Erro ao excluir conta. Por favor, tente novamente.')
@@ -795,15 +820,15 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
 
           if (error) throw error
 
-          alert(`${movimentacoesOrfas.length} movimentaÃ§Ã£o(Ãµes) Ã³rfÃ£(s) foram removida(s). O saldo serÃ¡ recalculado.`)
+          alert(`${movimentacoesOrfas.length} movimentação(ões) órfã(s) foram removida(s). O saldo será recalculado.`)
           await loadContas()
         } else {
-          alert('Nenhuma movimentaÃ§Ã£o Ã³rfÃ£ encontrada. Tudo estÃ¡ sincronizado!')
+          alert('Nenhuma movimentação órfã encontrada. Tudo está sincronizado!')
         }
       }
     } catch (error) {
       console.error('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s:', error)
-      alert('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s')
+      alert('Erro ao limpar movimentações órfãs')
     }
   }
 
@@ -831,7 +856,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
 
       // ValidaÃ§Ã£o: deve ter CNPJ ou CPF, mas nÃ£o ambos
       if (formDataFornecedor.cnpj && formDataFornecedor.cpf) {
-        alert('Informe apenas CNPJ ou CPF, nÃ£o ambos.')
+        alert('Informe apenas CNPJ ou CPF, não ambos.')
         return
       }
 
@@ -917,7 +942,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
     } catch (error: any) {
       console.error('Erro ao criar categoria:', error)
       if (error.code === '23505') {
-        alert('JÃ¡ existe uma categoria com este nome para despesas.')
+        alert('Já existe uma categoria com este nome para despesas.')
       } else {
         alert('Erro ao criar categoria')
       }
@@ -1015,9 +1040,9 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                 <button
                   onClick={limparMovimentacoesOrfas}
                   className="text-xs text-purple-400 hover:text-purple-300 underline"
-                  title="Limpar movimentaÃ§Ãµes Ã³rfÃ£s (de despesas excluÃ­das)"
+                  title="Limpar movimentações órfãs (de despesas excluídas)"
                 >
-                  Limpar Ã³rfÃ£s
+                  Limpar órfãs
                 </button>
               </div>
               <p className={`text-3xl font-bold mt-1 ${resumo.saldoAtual >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -1120,7 +1145,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
               ))}
             </select>
             <div className="flex items-center gap-1.5">
-              <label className="text-sm text-gray-400 whitespace-nowrap">MÃªs:</label>
+              <label className="text-sm text-gray-400 whitespace-nowrap">Mês:</label>
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
@@ -1141,7 +1166,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
               <thead className="bg-gray-700/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    DescriÃ§Ã£o
+                    Descrição
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Fornecedor
@@ -1159,7 +1184,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    AÃ§Ãµes
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -1200,7 +1225,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                             const statusEfetivo = getStatusEfetivo(conta)
                             const estaVencida = isVencida(conta, hoje)
                             
-                            // Se estÃ¡ vencida mas o status no banco Ã© pendente, mostrar badge de vencida + select
+                            // Se está vencida mas o status no banco é pendente, mostrar badge de vencida + select
                             if (estaVencida && conta.status === 'pendente') {
                               return (
                                 <div className="flex items-center space-x-2">
@@ -1211,7 +1236,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                                     value={conta.status || 'pendente'}
                                     onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
                                     className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
-                                    title="Status no banco: Pendente (mas estÃ¡ vencida)"
+                                    title="Status no banco: Pendente (mas está vencida)"
                                   >
                                     <option value="pendente">Pendente</option>
                                     <option value="aprovado">Aprovado</option>
@@ -1261,6 +1286,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                             <ActionButtons
                               onEdit={() => handleEdit(conta)}
                               onDelete={() => handleDelete(conta.id)}
+                            />
+                          )}
+                          {('conta_pagar_id' in conta) && (
+                            <ActionButtons
+                              onEdit={() => handleEdit(conta)}
+                              showDelete={false}
+                              editTitle="Editar conta parcelada (altera todas as parcelas)"
                             />
                           )}
                         </div>
@@ -1349,7 +1381,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição *</label>
                     <input
                       type="text"
                       required
@@ -1400,9 +1432,9 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         <option value="cancelado">Cancelado</option>
                       </select>
                       <p className="text-xs text-gray-500 mt-1">
-                        {formData.status === 'aprovado' && 'SerÃ¡ marcado como paga automaticamente'}
-                        {formData.status === 'cancelado' && 'NÃ£o entrarÃ¡ em nenhuma soma, apenas registro'}
-                        {formData.status === 'pendente' && 'EntrarÃ¡ na soma de contas pendentes'}
+                        {formData.status === 'aprovado' && 'Será marcado como paga automaticamente'}
+                        {formData.status === 'cancelado' && 'Não entrará em nenhuma soma, apenas registro'}
+                        {formData.status === 'pendente' && 'Entrará na soma de contas pendentes'}
                       </p>
                     </div>
 
@@ -1415,11 +1447,11 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
-                        <option value="transferencia">TransferÃªncia</option>
+                        <option value="transferencia">Transferência</option>
                         <option value="boleto">Boleto</option>
                         <option value="cheque">Cheque</option>
-                        <option value="cartao_debito">CartÃ£o de DÃ©bito</option>
-                        <option value="cartao_credito">CartÃ£o de CrÃ©dito</option>
+                        <option value="cartao_debito">Cartão de Débito</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
                       </select>
                     </div>
                   </div>
@@ -1450,13 +1482,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                     </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais..."
+                      placeholder="Observações adicionais..."
                     />
                   </div>
 
@@ -1475,7 +1507,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingConta ? 'Salvar AlteraÃ§Ãµes' : 'Criar Despesa'}
+                      {editingConta ? 'Salvar Alterações' : 'Criar Despesa'}
                     </button>
                   </div>
                 </form>
@@ -1572,24 +1604,24 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">EndereÃ§o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Endereço</label>
                     <input
                       type="text"
                       value={formDataFornecedor.endereco}
                       onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, endereco: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="EndereÃ§o completo"
+                      placeholder="Endereço completo"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formDataFornecedor.observacoes}
                       onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais..."
+                      placeholder="Observações adicionais..."
                     />
                   </div>
 
@@ -1661,13 +1693,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
                     <textarea
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="DescriÃ§Ã£o da categoria (opcional)"
+                      placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
 

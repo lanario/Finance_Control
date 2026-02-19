@@ -483,7 +483,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
           id: `orcamento_${orcamento.id}`,
           cliente_id: orcamento.cliente_id,
           categoria_id: null,
-          descricao: `OrÃ§amento ${orcamento.numero}`,
+          descricao: `Orçamento ${orcamento.numero}`,
           valor: Number(orcamento.valor_final || orcamento.valor_total || 0),
           data_vencimento: dataVencimento,
           data_recebimento: null,
@@ -505,7 +505,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         id: `orcamento_${orcamento.id}`,
         cliente_id: orcamento.cliente_id,
         categoria_id: null,
-        descricao: `OrÃ§amento ${orcamento.numero}`,
+        descricao: `Orçamento ${orcamento.numero}`,
         valor: Number(orcamento.valor_final || orcamento.valor_total || 0),
         data_vencimento: orcamento.data_validade || orcamento.data_emissao,
         data_recebimento: orcamento.updated_at ? orcamento.updated_at.split('T')[0] : orcamento.data_emissao,
@@ -736,12 +736,36 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
     }
   }
 
-  const handleEdit = (conta: ContaReceber) => {
-    // Verificar se Ã© uma parcela (tem conta_receber_id)
+  const handleEdit = async (conta: ContaReceber) => {
     const isParcela = 'conta_receber_id' in conta
-    
+
     if (isParcela) {
-      alert('Para editar uma parcela, edite a conta principal que gerou as parcelas.')
+      // Parcela: carregar a conta principal para editar em conjunto (todas as parcelas serão atualizadas ao salvar)
+      const parentId = (conta as ContaReceber & { conta_receber_id?: string }).conta_receber_id
+      if (!parentId) return
+      const { data: parent, error } = await supabase
+        .from('contas_a_receber')
+        .select('*')
+        .eq('id', parentId)
+        .single()
+      if (error || !parent) {
+        alert('Não foi possível carregar a conta principal. Tente novamente.')
+        return
+      }
+      const parentConta = parent as ContaReceber
+      setEditingConta(parentConta)
+      setFormData({
+        cliente_id: parentConta.cliente_id || '',
+        categoria_id: parentConta.categoria_id || '',
+        descricao: parentConta.descricao,
+        valor: parentConta.valor.toString(),
+        data_vencimento: parentConta.data_vencimento,
+        forma_recebimento: parentConta.forma_recebimento || 'pix',
+        observacoes: parentConta.observacoes || '',
+        parcelada: true,
+        total_parcelas: (parentConta.total_parcelas || 1).toString(),
+      })
+      setShowModal(true)
       return
     }
 
@@ -884,7 +908,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
 
       // ValidaÃ§Ã£o: deve ter CNPJ ou CPF, mas nÃ£o ambos
       if (formDataCliente.cnpj && formDataCliente.cpf) {
-        alert('Informe apenas CNPJ ou CPF, nÃ£o ambos.')
+        alert('Informe apenas CNPJ ou CPF, não ambos.')
         return
       }
 
@@ -992,7 +1016,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
       })
       setEditingContrato(null)
 
-      alert('Contrato criado com sucesso! Receitas serÃ£o geradas automaticamente todo mÃªs.')
+      alert('Contrato criado com sucesso! Receitas serão geradas automaticamente todo mês.')
     } catch (error: any) {
       console.error('Erro ao criar contrato:', error)
       alert('Erro ao criar contrato')
@@ -1055,12 +1079,12 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
 
   const handleDeleteContrato = async (id: string) => {
     const contrato = contratos.find(c => c.id === id)
-    const mensagem = `âš ï¸ ATENÃ‡ÃƒO: VocÃª estÃ¡ prestes a excluir permanentemente o contrato "${contrato?.nome_contrato || 'este contrato'}".\n\n` +
-      `Esta aÃ§Ã£o irÃ¡:\n` +
-      `â€¢ Remover todos os dados do contrato\n` +
-      `â€¢ NÃƒO removerÃ¡ as receitas jÃ¡ geradas\n` +
-      `â€¢ ImpedirÃ¡ a geraÃ§Ã£o de novas receitas\n\n` +
-      `Esta aÃ§Ã£o NÃƒO pode ser desfeita!\n\n` +
+    const mensagem = `âš ï¸ ATENÇÃO: Você está prestes a excluir permanentemente o contrato "${contrato?.nome_contrato || 'este contrato'}".\n\n` +
+      `Esta ação irá:\n` +
+      `• Remover todos os dados do contrato\n` +
+      `• NÃO removerá as receitas já geradas\n` +
+      `• Impedirá a geração de novas receitas\n\n` +
+      `Esta ação NÃO pode ser desfeita!\n\n` +
       `Deseja realmente continuar?`
 
     if (!confirm(mensagem)) return
@@ -1081,7 +1105,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
       if (error) throw error
 
       await loadContratos()
-      alert('Contrato excluÃ­do com sucesso!')
+      alert('Contrato excluído com sucesso!')
     } catch (error) {
       console.error('Erro ao excluir contrato:', error)
       alert('Erro ao excluir contrato')
@@ -1146,7 +1170,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
     } catch (error: any) {
       console.error('Erro ao criar categoria:', error)
       if (error.code === '23505') {
-        alert('JÃ¡ existe uma categoria com este nome para receitas.')
+        alert('Já existe uma categoria com este nome para receitas.')
       } else {
         alert('Erro ao criar categoria')
       }
@@ -1232,7 +1256,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
       return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
     }
     
-    // Para contas normais, verificar se estÃ¡ vencida
+    // Para contas normais, verificar se está vencida
     if (conta.data_vencimento < hoje) {
       return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencida</span>
     } else {
@@ -1293,15 +1317,15 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
 
           if (error) throw error
 
-          alert(`${movimentacoesOrfas.length} movimentaÃ§Ã£o(Ãµes) Ã³rfÃ£(s) foram removida(s). O saldo serÃ¡ recalculado.`)
+          alert(`${movimentacoesOrfas.length} movimentação(ões) órfã(s) foram removida(s). O saldo será recalculado.`)
           await loadContas()
         } else {
-          alert('Nenhuma movimentaÃ§Ã£o Ã³rfÃ£ encontrada. Tudo estÃ¡ sincronizado!')
+          alert('Nenhuma movimentação órfã encontrada. Tudo está sincronizado!')
         }
       }
     } catch (error) {
-      console.error('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s:', error)
-      alert('Erro ao limpar movimentaÃ§Ãµes Ã³rfÃ£s')
+      console.error('Erro ao limpar movimentações órfãs:', error)
+      alert('Erro ao limpar movimentações órfãs')
     }
   }
 
@@ -1427,7 +1451,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
           </div>
         </div>
 
-        {/* SeÃ§Ã£o de Contratos */}
+        {/* Seção de Contratos */}
         {contratos.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
             <div className="flex items-center justify-between mb-4">
@@ -1457,7 +1481,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                     </div>
                     {contrato.data_fim && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">TÃ©rmino:</span>
+                        <span className="text-gray-400">Término:</span>
                         <span className="text-white">{formatarData(contrato.data_fim)}</span>
                       </div>
                     )}
@@ -1523,7 +1547,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
               ))}
             </select>
             <div className="flex items-center gap-1.5">
-              <label className="text-sm text-gray-400 whitespace-nowrap">MÃªs:</label>
+              <label className="text-sm text-gray-400 whitespace-nowrap">Mês:</label>
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
@@ -1544,7 +1568,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
               <thead className="bg-gray-700/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    DescriÃ§Ã£o
+                    Descrição
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Cliente
@@ -1562,7 +1586,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    AÃ§Ãµes
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -1581,7 +1605,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                           <div className="text-sm text-white">{conta.descricao}</div>
                           {conta.origem === 'orcamento' && (
                             <span className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                              OrÃ§amento
+                              Orçamento
                             </span>
                           )}
                         </div>
@@ -1610,7 +1634,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                             const statusEfetivo = getStatusEfetivo(conta)
                             const estaVencida = isVencida(conta, hoje)
                             
-                            // Se estÃ¡ vencida mas o status no banco Ã© pendente, mostrar badge de vencida + select
+                            // Se está vencida mas o status no banco é pendente, mostrar badge de vencida + select
                             if (estaVencida && (conta.status || 'pendente') === 'pendente') {
                               return (
                                 <div className="flex items-center space-x-2">
@@ -1621,7 +1645,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                                     value={conta.status || 'pendente'}
                                     onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
                                     className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
-                                    title="Status no banco: Pendente (mas estÃ¡ vencida)"
+                                    title="Status no banco: Pendente (mas está vencida)"
                                   >
                                     <option value="pendente">Pendente</option>
                                     <option value="aprovado">Aprovado</option>
@@ -1673,6 +1697,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                             <ActionButtons
                               onEdit={() => handleEdit(conta)}
                               onDelete={() => handleDelete(conta.id)}
+                            />
+                          )}
+                          {('conta_receber_id' in conta) && conta.origem === 'conta' && (
+                            <ActionButtons
+                              onEdit={() => handleEdit(conta)}
+                              showDelete={false}
+                              editTitle="Editar conta parcelada (altera todas as parcelas)"
                             />
                           )}
                           {conta.origem === 'orcamento' && (
@@ -1768,7 +1799,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição *</label>
                     <input
                       type="text"
                       required
@@ -1815,11 +1846,11 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
-                        <option value="transferencia">TransferÃªncia</option>
+                        <option value="transferencia">Transferência</option>
                         <option value="boleto">Boleto</option>
                         <option value="cheque">Cheque</option>
-                        <option value="cartao_debito">CartÃ£o de DÃ©bito</option>
-                        <option value="cartao_credito">CartÃ£o de CrÃ©dito</option>
+                        <option value="cartao_debito">Cartão de Débito</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
                       </select>
                     </div>
 
@@ -1850,13 +1881,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais..."
+                      placeholder="Observações adicionais..."
                     />
                   </div>
 
@@ -1875,7 +1906,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingConta ? 'Salvar AlteraÃ§Ãµes' : 'Criar Receita'}
+                      {editingConta ? 'Salvar Alterações' : 'Criar Receita'}
                     </button>
                   </div>
                 </form>
@@ -1925,13 +1956,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">RazÃ£o Social</label>
+                    <label className="block text-sm text-gray-400 mb-1">Razão Social</label>
                     <input
                       type="text"
                       value={formDataCliente.razao_social}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, razao_social: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="RazÃ£o social (opcional)"
+                      placeholder="Razão social (opcional)"
                     />
                   </div>
 
@@ -1984,24 +2015,24 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">EndereÃ§o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Endereço</label>
                     <input
                       type="text"
                       value={formDataCliente.endereco}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, endereco: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="EndereÃ§o completo"
+                      placeholder="Endereço completo"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formDataCliente.observacoes}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais..."
+                      placeholder="Observações adicionais..."
                     />
                   </div>
 
@@ -2074,13 +2105,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
                     <textarea
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="DescriÃ§Ã£o da categoria (opcional)"
+                      placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
 
@@ -2174,7 +2205,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formDataContrato.nome_contrato}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, nome_contrato: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Ex: Contrato de ManutenÃ§Ã£o Mensal"
+                      placeholder="Ex: Contrato de Manutenção Mensal"
                     />
                   </div>
 
@@ -2233,13 +2264,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
                     <input
                       type="text"
                       value={formDataContrato.descricao}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, descricao: e.target.value })}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Breve descriÃ§Ã£o do contrato"
+                      placeholder="Breve descrição do contrato"
                     />
                   </div>
 
@@ -2269,7 +2300,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                         placeholder="1-31"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Dia do mÃªs em que a receita vence</p>
+                      <p className="text-xs text-gray-500 mt-1">Dia do mês em que a receita vence</p>
                     </div>
 
                     <div>
@@ -2281,18 +2312,18 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
-                        <option value="transferencia">TransferÃªncia</option>
+                        <option value="transferencia">Transferência</option>
                         <option value="boleto">Boleto</option>
                         <option value="cheque">Cheque</option>
-                        <option value="cartao_debito">CartÃ£o de DÃ©bito</option>
-                        <option value="cartao_credito">CartÃ£o de CrÃ©dito</option>
+                        <option value="cartao_debito">Cartão de Débito</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
                       </select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de InÃ­cio *</label>
+                      <label className="block text-sm text-gray-400 mb-1">Data de Início *</label>
                       <input
                         type="date"
                         required
@@ -2303,14 +2334,14 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de TÃ©rmino</label>
+                      <label className="block text-sm text-gray-400 mb-1">Data de Término</label>
                       <input
                         type="date"
                         value={formDataContrato.data_fim}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, data_fim: e.target.value })}
                         className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Deixe em branco para contrato sem tÃ©rmino</p>
+                      <p className="text-xs text-gray-500 mt-1">Deixe em branco para contrato sem término</p>
                     </div>
                   </div>
 
@@ -2321,18 +2352,18 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, detalhes_contrato: e.target.value })}
                       rows={4}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="Detalhes adicionais do contrato, termos, condiÃ§Ãµes, etc..."
+                      placeholder="Detalhes adicionais do contrato, termos, condições, etc..."
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formDataContrato.observacoes}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais..."
+                      placeholder="Observações adicionais..."
                     />
                   </div>
 
@@ -2344,7 +2375,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, ativo: e.target.checked })}
                         className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
                       />
-                      <span className="text-white">Contrato Ativo (gerarÃ¡ receitas automaticamente)</span>
+                      <span className="text-white">Contrato Ativo (gerará receitas automaticamente)</span>
                     </label>
                   </div>
 
@@ -2377,7 +2408,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingContrato ? 'Salvar AlteraÃ§Ãµes' : 'Criar Contrato'}
+                      {editingContrato ? 'Salvar Alterações' : 'Criar Contrato'}
                     </button>
                   </div>
                 </form>

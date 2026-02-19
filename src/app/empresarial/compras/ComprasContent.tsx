@@ -293,7 +293,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
       const valorFinal = valorTotal - valorDesconto
 
       if (valorFinal < 0) {
-        alert('O valor final nÃ£o pode ser negativo')
+        alert('O valor final não pode ser negativo')
         return
       }
 
@@ -438,7 +438,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
     } catch (error: any) {
       console.error('Erro ao criar categoria:', error)
       if (error.code === '23505') {
-        alert('JÃ¡ existe uma categoria com este nome para despesas.')
+        alert('Já existe uma categoria com este nome para despesas.')
       } else {
         alert('Erro ao criar categoria')
       }
@@ -621,7 +621,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
               ))}
             </select>
             <div className="flex items-center gap-1.5">
-              <label className="text-sm text-gray-400 whitespace-nowrap">MÃªs:</label>
+              <label className="text-sm text-gray-400 whitespace-nowrap">Mês:</label>
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
@@ -642,7 +642,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
               <thead className="bg-gray-700/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    DescriÃ§Ã£o
+                    Descrição
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Fornecedor
@@ -660,7 +660,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    AÃ§Ãµes
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -725,7 +725,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
           </div>
         </div>
 
-        {/* Dropdown de status em portal (fora da tabela, sempre visÃ­vel) */}
+        {/* Dropdown de status em portal (fora da tabela, sempre visível) */}
         {statusDropdownAberto && statusDropdownRect && typeof document !== 'undefined' &&
           createPortal(
             <>
@@ -815,7 +815,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                       </button>
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      {tipoCompra === 'compra' ? 'Sem vÃ­nculo com fornecedor.' : 'Fornecedor obrigatÃ³rio.'}
+                      {tipoCompra === 'compra' ? 'Sem vínculo com fornecedor.' : 'Fornecedor obrigatório.'}
                     </p>
                   </div>
 
@@ -867,7 +867,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o *</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição *</label>
                     <input
                       type="text"
                       required
@@ -936,11 +936,11 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
-                        <option value="transferencia">TransferÃªncia</option>
+                        <option value="transferencia">Transferência</option>
                         <option value="boleto">Boleto</option>
                         <option value="cheque">Cheque</option>
-                        <option value="cartao_debito">CartÃ£o de DÃ©bito</option>
-                        <option value="cartao_credito">CartÃ£o de CrÃ©dito</option>
+                        <option value="cartao_debito">Cartão de Débito</option>
+                        <option value="cartao_credito">Cartão de Crédito</option>
                         <option value="parcelado">Parcelado</option>
                       </select>
                     </div>
@@ -960,13 +960,13 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ObservaÃ§Ãµes</label>
+                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
                     <textarea
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="ObservaÃ§Ãµes adicionais sobre a compra..."
+                      placeholder="Observações adicionais sobre a compra..."
                     />
                   </div>
 
@@ -985,7 +985,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                       type="submit"
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                     >
-                      {editingCompra ? 'Salvar AlteraÃ§Ãµes' : 'Criar Compra'}
+                      {editingCompra ? 'Salvar Alterações' : 'Criar Compra'}
                     </button>
                   </div>
                 </form>
@@ -1030,13 +1030,13 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">DescriÃ§Ã£o</label>
+                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
                     <textarea
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
                       className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      placeholder="DescriÃ§Ã£o da categoria (opcional)"
+                      placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
 

@@ -44,13 +44,18 @@ interface DespesasPorCategoria {
   categoria: string
   valor: number
   porcentagem: number
+  cor: string
 }
 
 interface VendasPorCategoria {
   categoria: string
   valor: number
   porcentagem: number
+  cor: string
 }
+
+/** Cor usada para "Sem categoria" nos gráficos quando não há categoria associada */
+const COR_SEM_CATEGORIA = '#6b7280'
 
 interface FaturamentoMensal {
   mes: string
@@ -461,17 +466,17 @@ export default function DashboardEmpresarialPage() {
       setLucroMensal(lucroData)
       setDespesasMensais(despesasMensaisData)
 
-      // Carregar despesas e vendas por categoria (paralelizado)
+      // Carregar despesas e vendas por categoria (paralelizado) — incluir cor para refletir cores da aba Categorias
       const [categoriasDespesasResult, categoriasReceitasResult] = await Promise.all([
         supabase
           .from('categorias')
-          .select('id, nome')
+          .select('id, nome, cor')
           .eq('user_id', userId)
           .eq('tipo', 'despesa')
           .eq('ativo', true),
         supabase
           .from('categorias')
-          .select('id, nome')
+          .select('id, nome, cor')
           .eq('user_id', userId)
           .eq('tipo', 'receita')
           .eq('ativo', true),
@@ -519,6 +524,12 @@ export default function DashboardEmpresarialPage() {
           despesasPorCategoriaMap[nome] = (despesasPorCategoriaMap[nome] || 0) + Number(c.valor_final || 0)
         })
 
+        const mapaCorDespesa = new Map(
+          (categoriasDespesasResult.data as Array<{ id: string; nome: string; cor?: string | null }>).map((c) => [
+            c.nome,
+            c.cor && c.cor.trim() ? c.cor : '#6366f1',
+          ])
+        )
         const despesasPorCategoriaData: DespesasPorCategoria[] = Object.entries(despesasPorCategoriaMap)
           .map(([categoria, valor]) => ({
             categoria,
@@ -526,6 +537,7 @@ export default function DashboardEmpresarialPage() {
             porcentagem: totalContasPagar > 0
               ? Number(((valor / totalContasPagar) * 100).toFixed(1))
               : 0,
+            cor: mapaCorDespesa.get(categoria) ?? COR_SEM_CATEGORIA,
           }))
           .sort((a, b) => b.valor - a.valor)
 
@@ -606,6 +618,12 @@ export default function DashboardEmpresarialPage() {
         }
 
         const totalVendasChart = Object.values(vendasPorCategoriaMap).reduce((s, v) => s + v, 0)
+        const mapaCorReceita = new Map(
+          (categoriasReceitasResult.data as Array<{ id: string; nome: string; cor?: string | null }>).map((c) => [
+            c.nome,
+            c.cor && c.cor.trim() ? c.cor : '#10b981',
+          ])
+        )
         const vendasPorCategoriaData: VendasPorCategoria[] = Object.entries(vendasPorCategoriaMap)
           .map(([categoria, valor]) => ({
             categoria,
@@ -613,6 +631,7 @@ export default function DashboardEmpresarialPage() {
             porcentagem: totalVendasChart > 0
               ? Number(((valor / totalVendasChart) * 100).toFixed(1))
               : 0,
+            cor: mapaCorReceita.get(categoria) ?? COR_SEM_CATEGORIA,
           }))
           .sort((a, b) => b.valor - a.valor)
 
@@ -644,6 +663,7 @@ export default function DashboardEmpresarialPage() {
             categoria: 'Vendas',
             valor: Number(totalGeral.toFixed(2)),
             porcentagem: 100,
+            cor: COR_SEM_CATEGORIA,
           }])
         } else {
           setVendasPorCategoria([])
@@ -810,9 +830,6 @@ export default function DashboardEmpresarialPage() {
       loadDashboardData()
     }
   }, [session?.user?.id, loadDashboardData])
-
-  const COLORS_PURPLE = useMemo(() => ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'], [])
-  const COLORS_GREEN = useMemo(() => ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5'], [])
 
   interface StatCard {
     title: string
@@ -1107,7 +1124,7 @@ export default function DashboardEmpresarialPage() {
                       isAnimationActive={true}
                     >
                       {despesasPorCategoria.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS_PURPLE[index % COLORS_PURPLE.length]} />
+                        <Cell key={`cell-${index}`} fill={entry.cor} />
                       ))}
                     </Pie>
                     <Tooltip 
@@ -1122,12 +1139,12 @@ export default function DashboardEmpresarialPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
-                  {despesasPorCategoria.map((item, index) => (
+                  {despesasPorCategoria.map((item) => (
                     <div key={item.categoria} className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <div 
                           className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: COLORS_PURPLE[index % COLORS_PURPLE.length] }}
+                          style={{ backgroundColor: item.cor }}
                         />
                         <span className="text-gray-300">{item.categoria}</span>
                       </div>
@@ -1169,7 +1186,7 @@ export default function DashboardEmpresarialPage() {
                       isAnimationActive={true}
                     >
                       {vendasPorCategoria.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS_GREEN[index % COLORS_GREEN.length]} />
+                        <Cell key={`cell-${index}`} fill={entry.cor} />
                       ))}
                     </Pie>
                     <Tooltip 
@@ -1184,12 +1201,12 @@ export default function DashboardEmpresarialPage() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
-                  {vendasPorCategoria.map((item, index) => (
+                  {vendasPorCategoria.map((item) => (
                     <div key={item.categoria} className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
                         <div 
                           className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: COLORS_GREEN[index % COLORS_GREEN.length] }}
+                          style={{ backgroundColor: item.cor }}
                         />
                         <span className="text-gray-300">{item.categoria}</span>
                       </div>
