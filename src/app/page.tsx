@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { FiTrendingUp, FiBriefcase } from 'react-icons/fi'
 import { useMemo, useCallback } from 'react'
+import InstallAppBanner from '@/components/InstallAppBanner'
 
 export default function HomePage() {
   const router = useRouter()
@@ -137,7 +138,8 @@ export default function HomePage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-12 space-y-4">
+          <InstallAppBanner compact className="justify-center text-gray-400" />
           <p className="text-gray-400 text-sm">
             Plataforma Infinity Lines - Soluções Financeiras Completas
           </p>

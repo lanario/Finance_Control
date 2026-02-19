@@ -3,6 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_EMPRESARIAL_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_EMPRESARIAL_ANON_KEY
 
+// Tira-teima: em dev, confira se esta URL é o mesmo projeto onde o Google está habilitado
+if (typeof window === 'undefined' && process.env.NODE_ENV === 'development' && supabaseUrl) {
+  console.log('[Supabase Empresarial] Usando projeto:', supabaseUrl)
+}
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Erro: Variáveis de ambiente do Supabase (Empresarial) não configuradas!')
   console.error('')

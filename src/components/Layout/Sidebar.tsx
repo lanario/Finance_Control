@@ -29,15 +29,16 @@ import {
   FiTarget,
   FiTag,
 } from 'react-icons/fi'
+import InstallAppBanner from '@/components/InstallAppBanner'
 
 const menuItems = [
-  { href: '/pessoal/dashboard', label: 'Dashboard', icon: FiHome },
-  { href: '/pessoal/cartoes', label: 'Cartões', icon: FiCreditCard },
-  { href: '/pessoal/categorias', label: 'Categorias', icon: FiTag },
-  { href: '/pessoal/receitas', label: 'Receitas', icon: FiDollarSign },
-  { href: '/pessoal/gastos', label: 'Despesas', icon: FiTrendingUp },
-  { href: '/pessoal/investimentos', label: 'Investimentos', icon: FiPieChart },
-  { href: '/pessoal/sonhos', label: 'Sonhos Infinity', icon: FiTarget },
+  { href: '/pessoal/dashboard', label: 'Dashboard', icon: FiHome, tipo: undefined as undefined | 'receita' | 'despesa' },
+  { href: '/pessoal/cartoes', label: 'Cartões', icon: FiCreditCard, tipo: undefined },
+  { href: '/pessoal/categorias', label: 'Categorias', icon: FiTag, tipo: undefined },
+  { href: '/pessoal/receitas', label: 'Receitas', icon: FiDollarSign, tipo: 'receita' as const },
+  { href: '/pessoal/gastos', label: 'Despesas', icon: FiTrendingUp, tipo: 'despesa' as const },
+  { href: '/pessoal/investimentos', label: 'Investimentos', icon: FiPieChart, tipo: undefined },
+  { href: '/pessoal/sonhos', label: 'Sonhos Infinity', icon: FiTarget, tipo: undefined },
 ] as const
 
 export default function Sidebar() {
@@ -428,7 +429,7 @@ export default function Sidebar() {
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-200 ease-out z-50 flex flex-col will-change-width ${
+      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-200 ease-out z-50 flex flex-col will-change-width border-r border-white/10 ${
         isHovered ? 'w-64' : 'w-20'
       }`}
       onMouseEnter={() => setIsHovered(true)}
@@ -462,6 +463,11 @@ export default function Sidebar() {
         {memoizedMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
+          const isReceita = item.tipo === 'receita'
+          const isDespesa = item.tipo === 'despesa'
+          const corReceita = isReceita && (isActive ? 'bg-green-500/25 text-green-100' : 'text-green-400 hover:bg-green-500/15 hover:text-green-300')
+          const corDespesa = isDespesa && (isActive ? 'bg-red-500/25 text-red-100' : 'text-red-400 hover:bg-red-500/15 hover:text-red-300')
+          const corNeutra = !isReceita && !isDespesa && (isActive ? 'bg-primary-light text-white shadow-lg' : 'text-white hover:bg-primary-light/50 hover:text-white hover:shadow-md')
           return (
             <Link
               key={item.href}
@@ -469,13 +475,17 @@ export default function Sidebar() {
               prefetch={true}
               onMouseEnter={() => handleMenuItemHover(item.href)}
               className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-150 ease-out relative will-change-transform ${
-                isActive
-                  ? 'bg-primary-light text-white shadow-lg'
-                  : 'text-white hover:bg-primary-light/50 hover:text-white hover:shadow-md'
+                isReceita ? corReceita : isDespesa ? corDespesa : corNeutra
               }`}
             >
-              {isActive && (
+              {isActive && !isReceita && !isDespesa && (
                 <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
+              )}
+              {isActive && isReceita && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-green-400 rounded-r-full"></div>
+              )}
+              {isActive && isDespesa && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-red-400 rounded-r-full"></div>
               )}
               <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
               {isHovered && (
@@ -680,6 +690,12 @@ export default function Sidebar() {
             </div>
           )}
         </button>
+
+        {isHovered && (
+          <div className="px-2 py-2">
+            <InstallAppBanner compact className="!text-white/70 !gap-1 [&_a]:!text-white/90 [&_button]:!text-white/90" />
+          </div>
+        )}
 
         {/* Botão Sair */}
         <button

@@ -7,6 +7,7 @@ import { useAuth } from '@/app/pessoal/providers'
 import { FiMail, FiLock, FiDollarSign, FiTrendingUp, FiCreditCard, FiArrowLeft } from 'react-icons/fi'
 import { FcGoogle } from 'react-icons/fc'
 import Image from 'next/image'
+import InstallAppBanner from '@/components/InstallAppBanner'
 
 type OAuthProvider = 'google'
 
@@ -187,17 +188,19 @@ export default function LoginPage() {
 
   /**
    * Inicia login/cadastro via provedor OAuth (Google, etc.)
-   * O redirect após sucesso deve estar configurado no Supabase (Authentication > URL Configuration).
+   * O redirectTo deve ser igual ao configurado no Supabase (Authentication > URL Configuration).
+   * Ex.: http://69.62.87.91:3001/auth/callback
    */
   async function handleOAuthSignIn(provider: OAuthProvider) {
     setLoadingOAuth(true)
     setError('')
     setSuccess('')
     try {
-      const redirectTo =
+      const baseUrl =
         typeof window !== 'undefined'
-          ? `${window.location.origin}/pessoal/auth/login`
-          : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/pessoal/auth/login`
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
+      const redirectTo = `${baseUrl}/auth/callback`
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },
@@ -436,6 +439,9 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
+            <div className="mt-6 pt-6 border-t border-secondary-light/20">
+              <InstallAppBanner />
+            </div>
           </div>
         </div>
       </div>

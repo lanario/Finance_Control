@@ -1,0 +1,63 @@
+---
+description: Padrões e stack do app mobile (Expo / React Native)
+globs: apps/mobile/**/*
+alwaysApply: false
+---
+
+# Padrões do App Mobile (Infinity Lines)
+
+Regras para o app em `apps/mobile`. Alinhado ao planejamento em `docs/PLANEJAMENTO_APP_MOBILE.md`.
+
+## Stack tecnológica (mobile)
+
+| Área | Tecnologia | Observação |
+|------|------------|------------|
+| Framework | **Expo (React Native)** | Um código para Android e iOS |
+| Linguagem | **TypeScript** | Mesma rigidez do web; tipos compartilháveis via monorepo |
+| Backend/Auth | **@supabase/supabase-js** | Clientes `supabasePessoal` e `supabaseEmpresarial` com AsyncStorage |
+| Estilo | **StyleSheet** (React Native) ou **NativeWind** | Paleta alinhada ao web (#1e3a5f, #10b981, #ef4444) |
+| Gráficos | **Victory Native** ou **react-native-gifted-charts** | Evitar libs pesadas; limitar pontos em eixos temporais |
+| Ícones | **@expo/vector-icons** | Consistência com o brand |
+| Navegação | **Expo Router** (file-based) | Rotas em `app/` com grupos `(auth)` e `(tabs)` |
+| Deep link | Scheme **infinitylines** | Configurado em `app.json`; usar em OAuth e “Abrir no app” |
+
+## Regras de codificação (mobile)
+
+- **Componentes:** declarar com `function` (ex.: `function LoginScreen() { ... }`).
+- **Estilos:** usar `StyleSheet.create()` no mesmo arquivo ou em arquivo de estilo associado; evitar estilos inline complexos.
+- **Estado:** hooks (`useState`, `useEffect`); lógica reutilizável em custom hooks.
+- **Supabase:** usar `getSupabaseClient(context)` a partir de `lib/supabase`; contexto Pessoal/Empresarial persistido (ex.: AsyncStorage com `CONTEXT_STORAGE_KEY`).
+- **Variáveis de ambiente:** prefixo `EXPO_PUBLIC_*`; carregar via `app.config.js` (dotenv) e acessar por `expo-constants` em `lib/env.ts` quando necessário.
+- **OAuth:** `expo-web-browser` + `expo-auth-session`; redirect para `Linking.createURL('/(auth)/callback')`; adicionar URL nas Redirect URLs do Supabase.
+
+## Estrutura de pastas (referência)
+
+```
+apps/mobile/
+├── app/                 # Expo Router
+│   ├── (auth)/          # login, callback
+│   ├── (tabs)/          # dashboard, etc.
+│   ├── _layout.tsx
+│   └── index.tsx        # Escolha Pessoal / Empresarial
+├── components/
+├── lib/                 # supabase-pessoal, supabase-empresarial, context, env
+├── hooks/
+├── app.config.js
+└── app.json             # scheme: "infinitylines"
+```
+
+## UX e consistência com o web
+
+- Reutilizar paleta: azul marinho (#1e3a5f), verde (#10b981), vermelho (#ef4444), textos em branco/cinza.
+- Telas de auth e dashboard devem espelhar fluxos do web (login/cadastro com toggle, escolha de contexto antes do login).
+- Mensagens de erro e sucesso claras; loading states em ações assíncronas.
+
+## Referência de fases
+
+- **Fase 1:** Ambiente, auth (email/senha + Google), persistência de sessão, dashboard placeholder.
+- **Fase 2:** Navegação (tabs/drawer), layout base, perfil e logout.
+- **Fase 3:** Módulo Pessoal (dashboard, cartões, receitas, gastos, investimentos, sonhos).
+- **Fase 4:** Módulo Empresarial (dashboard, clientes, vendas, orçamentos, etc.).
+- **Fase 5:** Install CTA no web, deep link, publicação Android/iOS.
+
+Consultar `docs/PLANEJAMENTO_APP_MOBILE.md` para detalhes de cada fase.

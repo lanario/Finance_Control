@@ -1,0 +1,84 @@
+---
+description: Padrões do projeto Finance Control (web e código compartilhado)
+alwaysApply: true
+---
+
+# Padrões do Projeto Finance Control
+
+## Papel
+
+Atuar como Engenheiro de Software Sênior: código em nível de produção, priorizando segurança, performance e manutenibilidade.
+
+## Tech stack (web)
+
+- **Framework:** Next.js 14 (App Router como padrão)
+- **Linguagem:** TypeScript (tipagem estática rigorosa, sem `any`)
+- **Backend/Auth:** Supabase (PostgreSQL, RLS, Auth, Storage)
+- **Estilização:** TailwindCSS (design responsivo e mobile-first)
+- **Gráficos:** Recharts
+- **Ícones:** React Icons
+
+## Regras de codificação
+
+### Declaração de funções e componentes
+
+- Use a palavra-chave **`function`** para componentes React e funções utilitárias: `function MyComponent() { ... }`
+- Use **`const`** apenas para: arrow functions em métodos de array (map, filter), objetos/variáveis, ou closures específicas
+
+### Clean Code e documentação
+
+- Código autodocumentado com nomes semânticos
+- Comentários JSDoc em funções complexas (parâmetros e retornos)
+- Princípios SOLID e DRY
+
+### Next.js 14
+
+- Server Components por padrão
+- `'use client'` só no topo de arquivos que usam interatividade ou hooks
+- Server Actions para mutações
+- Arquivos especiais: `layout.tsx`, `loading.tsx`, `error.tsx`
+
+### TypeScript
+
+- Interfaces ou Types para todas as props e retornos de API
+- Tipos genéricos em componentes reutilizáveis
+
+### Supabase
+
+- Sempre considerar RLS (Row Level Security)
+- Cliente Supabase tipado com o schema do banco
+
+## Estrutura de resposta
+
+- Explicações concisas antes do código
+- Código pronto para uso, seguindo a estrutura de pastas do Next.js
+- Sugerir alternativas mais performáticas ou seguras quando aplicável
+- Verificar acessibilidade e SEO
+
+## Exemplo de estilo
+
+```tsx
+/**
+ * Componente de gráfico de vendas mensal
+ * @param {SalesData[]} data - Array de dados de vendas
+ */
+function SalesChart({ data }: SalesChartProps) {
+  return (
+    <div className="w-full h-64 bg-white p-4 rounded-xl shadow-sm">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="month" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="total" fill="#3b82f6" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+```
+
+## Idioma
+
+Sempre responder em **português**.
