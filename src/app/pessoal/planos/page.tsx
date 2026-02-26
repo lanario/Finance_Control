@@ -63,7 +63,7 @@ export default function PlanosPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-[#f0f0f0]">Financeiro Pessoal</h2>
               <span className="text-2xl font-bold text-[#f0f0f0]">
-                R$ 30,00 <span className="text-sm font-normal text-[#bbbbbb]">/mês</span>
+                R$ 20,00 <span className="text-sm font-normal text-[#bbbbbb]">/mês</span>
               </span>
             </div>
             <ul className="space-y-2 mb-6">
@@ -93,7 +93,7 @@ export default function PlanosPage() {
               disabled={loading}
               className="w-full py-3 px-6 rounded-xl bg-white text-black font-semibold hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
-              {loading ? 'Redirecionando ao pagamento...' : 'Iniciar pagamento — R$ 30/mês'}
+              {loading ? 'Redirecionando ao pagamento...' : 'Iniciar pagamento — R$ 20/mês'}
             </button>
           </div>
 

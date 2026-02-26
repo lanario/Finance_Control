@@ -42,7 +42,7 @@ function getMissingConfig(context: StripeContext): string[] {
 }
 
 /**
- * Cria uma Stripe Checkout Session para assinatura (R$ 30/mês).
+ * Cria uma Stripe Checkout Session para assinatura (R$ 20/mês Pessoal, R$ 30/mês Empresarial, R$ 49/mês Infinity).
  * Body: { context?: 'pessoal' | 'empresarial' } (default: 'pessoal').
  * Requer Authorization: Bearer <access_token> do Supabase Auth (do contexto informado).
  */
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
           console.error('[create-checkout-session] Retry após No such customer falhou:', retryErr)
         }
         return NextResponse.json(
-          { error: 'Cliente de pagamento inválido. Tente clicar em "Assinar por R$ 30/mês" novamente.' },
+          { error: 'Cliente de pagamento inválido. Tente clicar em "Assinar por R$ 20/mês" novamente.' },
           { status: 400 }
         )
       }

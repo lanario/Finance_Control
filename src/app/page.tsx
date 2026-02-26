@@ -204,7 +204,7 @@ export default function HomePage() {
                 <h3 className="text-xl font-semibold text-white mb-1">Pessoal</h3>
                 <p className="text-gray-300 text-sm mb-6">Para sua vida financeira</p>
                 <div className="mb-6">
-                  <span className="text-3xl md:text-4xl font-bold text-white">R$ 30</span>
+                  <span className="text-3xl md:text-4xl font-bold text-white">R$ 20</span>
                   <span className="text-gray-400">/mês</span>
                 </div>
                 <ul className="space-y-3 mb-8">

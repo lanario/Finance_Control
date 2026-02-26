@@ -21,8 +21,8 @@ function AssinaturaContent() {
   const isInfinity = plan === 'infinity'
   const stripeContext = isInfinity ? 'infinity' : 'pessoal'
   const title = isInfinity ? 'Plano Infinity' : 'Assinatura do site'
-  const priceLabel = isInfinity ? 'R$ 49,00' : 'R$ 30,00'
-  const buttonLabel = isInfinity ? 'Assinar Infinity — R$ 49/mês' : 'Assinar por R$ 30/mês'
+  const priceLabel = isInfinity ? 'R$ 49,00' : 'R$ 20,00'
+  const buttonLabel = isInfinity ? 'Assinar Infinity — R$ 49/mês' : 'Assinar por R$ 20/mês'
   const features = isInfinity
     ? [
         'Acesso completo ao Financeiro Pessoal',
