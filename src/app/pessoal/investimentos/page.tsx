@@ -758,7 +758,7 @@ export default function InvestimentosPage() {
               Nenhum investimento cadastrado
             </p>
             <p className="text-[#666666] text-sm">
-              Clique em "Adicionar Investimento" para começar
+              Clique em &quot;Adicionar Investimento&quot; para começar
             </p>
           </div>
         ) : (

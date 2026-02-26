@@ -592,7 +592,7 @@ export default function EditarOrcamentoPage() {
 
             {itens.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                <p>Nenhum item adicionado. Clique em "Adicionar Item" para começar.</p>
+                <p>Nenhum item adicionado. Clique em &quot;Adicionar Item&quot; para começar.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -1085,7 +1085,7 @@ export default function EditarOrcamentoPage() {
                   onClick={() => setMarcaDaguaExpandida(!marcaDaguaExpandida)}
                   className="w-full flex items-center justify-between text-white font-medium mb-4"
                 >
-                  <span>Marca d'água</span>
+                  <span>Marca d&apos;água</span>
                   {marcaDaguaExpandida ? <FiChevronUp /> : <FiChevronDown />}
                 </button>
                 {marcaDaguaExpandida && (
@@ -1102,7 +1102,7 @@ export default function EditarOrcamentoPage() {
                         onChange={(e) => setMarcaDaguaOpacidade(parseInt(e.target.value))}
                         className="w-full"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Controla a transparência da marca d'água</p>
+                      <p className="text-xs text-gray-500 mt-1">Controla a transparência da marca d&apos;água</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">
@@ -1116,7 +1116,7 @@ export default function EditarOrcamentoPage() {
                         onChange={(e) => setMarcaDaguaRotacao(parseInt(e.target.value))}
                         className="w-full"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Rotação da marca d'água em graus (0-360)</p>
+                      <p className="text-xs text-gray-500 mt-1">Rotação da marca d&apos;água em graus (0-360)</p>
                     </div>
                     <div>
                       <label className="flex items-center space-x-2 cursor-pointer">
@@ -1163,7 +1163,7 @@ export default function EditarOrcamentoPage() {
                         onChange={(e) => setMarcaDaguaTamanho(parseInt(e.target.value))}
                         className="w-full"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Tamanho da marca d'água em pixels</p>
+                      <p className="text-xs text-gray-500 mt-1">Tamanho da marca d&apos;água em pixels</p>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">Formato</label>
@@ -1366,7 +1366,7 @@ export default function EditarOrcamentoPage() {
               )}
               {!logoUrl && (
                 <div className="mb-2 text-xs text-yellow-400">
-                  ⚠️ Nenhuma logo carregada. Adicione uma logo na seção "Logo" acima.
+                  ⚠️ Nenhuma logo carregada. Adicione uma logo na seção &quot;Logo&quot; acima.
                 </div>
               )}
               
@@ -1398,9 +1398,11 @@ export default function EditarOrcamentoPage() {
                         justifyContent: 'center',
                       }}
                     >
-                      <img
+                      <Image
                         src={logoUrl}
                         alt="Logo"
+                        width={120}
+                        height={120}
                         style={{ 
                           maxWidth: '100%',
                           maxHeight: '100%',
@@ -1577,9 +1579,11 @@ export default function EditarOrcamentoPage() {
                       zIndex: 1,
                     }}
                   >
-                    <img
+                    <Image
                       src={marcaDaguaUrl}
                       alt="Marca d'água"
+                      width={marcaDaguaTamanho}
+                      height={marcaDaguaTamanho}
                       style={{
                         width: '100%',
                         height: '100%',

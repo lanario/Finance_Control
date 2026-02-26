@@ -474,7 +474,7 @@ export default function NovoOrcamentoPage() {
 
             {itens.length === 0 ? (
               <div className="text-center py-8 text-gray-400">
-                <p>Nenhum item adicionado. Clique em "+ Adicionar item" para começar.</p>
+                <p>Nenhum item adicionado. Clique em &quot;+ Adicionar item&quot; para começar.</p>
               </div>
             ) : (
               <div className="space-y-4">

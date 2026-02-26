@@ -429,7 +429,7 @@ export default function SonhosPage() {
               Nenhum sonho cadastrado
             </p>
             <p className="text-[#666666] text-sm">
-              Clique em "Adicionar Sonho" para começar a planejar seus objetivos
+              Clique em &quot;Adicionar Sonho&quot; para começar a planejar seus objetivos
             </p>
           </div>
         ) : (

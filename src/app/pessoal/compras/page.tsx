@@ -753,7 +753,7 @@ export default function ComprasPage() {
                   Nenhuma compra cadastrada
                 </p>
                 <p className="text-gray-500 text-sm">
-                  Clique em "Adicionar Compra" para começar
+                  Clique em &quot;Adicionar Compra&quot; para começar
                 </p>
               </div>
             ) : (

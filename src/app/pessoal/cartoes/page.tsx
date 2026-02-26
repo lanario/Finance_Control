@@ -1320,7 +1320,7 @@ export default function CartoesPage() {
               Nenhum cartão cadastrado
             </p>
             <p className="text-[#666666] text-sm">
-              Clique em "Adicionar Cartão" para começar
+              Clique em &quot;Adicionar Cartão&quot; para começar
             </p>
           </div>
         ) : (

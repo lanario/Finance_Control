@@ -580,7 +580,7 @@ export default function OrcamentoEstiloPage() {
           )}
           {!logoUrl && (
             <div className="mb-2 text-xs text-yellow-400">
-              ⚠️ Nenhuma logo carregada. Adicione uma logo na seção "Logo" acima.
+              ⚠️ Nenhuma logo carregada. Adicione uma logo na seção &quot;Logo&quot; acima.
             </div>
           )}
           

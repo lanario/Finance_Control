@@ -257,7 +257,7 @@ export default function ReceitasPage() {
                   Nenhuma receita {activeTab === 'fixa' ? 'fixa' : 'extra'} cadastrada
                 </p>
                 <p className="text-[#666666] text-sm">
-                  Clique em "Adicionar Receita" para começar
+                  Clique em &quot;Adicionar Receita&quot; para começar
                 </p>
               </div>
             ) : (

@@ -253,8 +253,8 @@ body {
 }
 
 @keyframes neon-glow-pulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(0, 204, 106, 0.5)); }
-  50% { filter: drop-shadow(0 0 12px rgba(0, 204, 106, 0.8)); }
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(2, 66, 35, 0.5)); }
+  50% { filter: drop-shadow(0 0 12px rgba(7, 154, 83, 0.8)); }
 }
 
 .neon-capsule {
