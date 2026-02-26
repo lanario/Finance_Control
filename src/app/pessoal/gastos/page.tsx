@@ -7,6 +7,7 @@ import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
 import { FiChevronDown, FiChevronUp, FiShoppingCart, FiEdit, FiTrash2, FiDownload, FiPlus, FiX, FiArrowUp, FiArrowDown } from 'react-icons/fi'
 import { formatDate, formatarMoeda } from '@/lib/utils'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Compra {
   id: string
@@ -1147,7 +1148,7 @@ export default function GastosPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white">Carregando...</div>
+          <div className="animate-pulse text-[#f0f0f0]">Carregando...</div>
         </div>
       </MainLayout>
     )
@@ -1158,8 +1159,8 @@ export default function GastosPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Despesas</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2 animate-nexus-reveal">Despesas</h1>
+            <p className="text-[#bbbbbb]">
               {activeTab === 'despesas' 
                 ? 'Todas as suas despesas organizadas por mês'
                 : 'Gerencie suas compras recorrentes mensais'}
@@ -1184,7 +1185,7 @@ export default function GastosPage() {
                 })
                 setShowModal(true)
               }}
-              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+              className="bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center space-x-2"
             >
               <FiPlus className="w-5 h-5" />
               <span>Adicionar Despesa</span>
@@ -1205,7 +1206,7 @@ export default function GastosPage() {
                 })
                 setShowModalRecorrente(true)
               }}
-              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+              className="bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center space-x-2"
             >
               <FiPlus className="w-5 h-5" />
               <span>Adicionar Compra Recorrente</span>
@@ -1213,13 +1214,13 @@ export default function GastosPage() {
           )}
         </div>
 
-        <div className="bg-gray-800 rounded-lg p-1 border border-gray-700 inline-flex">
+        <div className="bg-[#0d0d0d] rounded-lg p-1 border border-white/10 inline-flex">
           <button
             onClick={() => setActiveTab('despesas')}
             className={`px-6 py-2 rounded-md font-semibold transition-all ${
               activeTab === 'despesas'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white text-black shadow-md'
+                : 'text-[#bbbbbb] hover:text-[#f0f0f0]'
             }`}
           >
             Despesas
@@ -1228,8 +1229,8 @@ export default function GastosPage() {
             onClick={() => setActiveTab('recorrentes')}
             className={`px-6 py-2 rounded-md font-semibold transition-all ${
               activeTab === 'recorrentes'
-                ? 'bg-primary text-white shadow-md'
-                : 'text-gray-400 hover:text-white'
+                ? 'bg-white text-black shadow-md'
+                : 'text-[#bbbbbb] hover:text-[#f0f0f0]'
             }`}
           >
             Compras Recorrentes
@@ -1238,17 +1239,17 @@ export default function GastosPage() {
 
         {activeTab === 'despesas' && (
           <>
-            <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+            <div className="bg-[#0d0d0d] rounded-lg shadow-lg p-6 border border-white/10">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Total Geral</p>
-                  <p className="text-3xl font-bold text-white">
+                  <p className="text-[#bbbbbb] text-sm mb-1">Total Geral</p>
+                  <p className="text-3xl font-bold text-[#f0f0f0]">
                     R$ {formatarMoeda(totalGeral)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-gray-400 text-sm mb-1">Períodos</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-[#bbbbbb] text-sm mb-1">Períodos</p>
+                  <p className="text-2xl font-bold text-[#f0f0f0]">
                     {gastosPorMes.length}
                   </p>
                 </div>
@@ -1256,12 +1257,12 @@ export default function GastosPage() {
             </div>
 
             {gastosPorMes.length === 0 ? (
-              <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
+              <div className="bg-[#0d0d0d] rounded-lg shadow-md p-12 text-center border border-white/10">
                 <FiShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 text-lg mb-2">
+                <p className="text-[#bbbbbb] text-lg mb-2">
                   Nenhuma despesa registrada
                 </p>
-                <p className="text-gray-500 text-sm">
+                <p className="text-[#666666] text-sm">
                   As compras aparecerão aqui quando forem cadastradas
                 </p>
               </div>
@@ -1279,24 +1280,24 @@ export default function GastosPage() {
                       className={`rounded-lg shadow-md border overflow-hidden transition-all ${
                         estaPago
                           ? 'bg-green-900/30 border-green-500/50'
-                          : 'bg-gray-800 border-gray-700'
+                          : 'bg-[#0d0d0d] border-white/10'
                       }`}
                     >
                       <div className="flex items-center justify-between p-6 gap-4">
                         <button
                           onClick={() => toggleMes(gastoMes.ano, gastoMes.mes)}
-                          className="flex items-center space-x-4 hover:bg-gray-700/50 transition-colors text-left flex-1 min-w-0"
+                          className="flex items-center space-x-4 hover:bg-white/5/50 transition-colors text-left flex-1 min-w-0"
                         >
                           {aberto ? (
-                            <FiChevronUp className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                            <FiChevronUp className="w-5 h-5 text-[#bbbbbb] flex-shrink-0" />
                           ) : (
-                            <FiChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                            <FiChevronDown className="w-5 h-5 text-[#bbbbbb] flex-shrink-0" />
                           )}
                           <div className="min-w-0">
-                            <h2 className="text-xl font-semibold text-white">
+                            <h2 className="text-xl font-semibold text-[#f0f0f0]">
                               {gastoMes.mesNome} {gastoMes.ano}
                             </h2>
-                            <p className="text-sm text-gray-400">
+                            <p className="text-sm text-[#bbbbbb]">
                               {gastoMes.compras.length} compra{gastoMes.compras.length !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -1319,7 +1320,7 @@ export default function GastosPage() {
                               className={`p-3 rounded-lg transition-colors flex items-center space-x-2 whitespace-nowrap ${
                                 estaPago
                                   ? 'bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/50'
-                                  : 'bg-gray-700 hover:bg-gray-600 text-gray-300 border border-gray-600'
+                                  : 'bg-white/5 hover:bg-white/10 text-[#dddddd] border border-white/10'
                               }`}
                               title={estaPago ? 'Desmarcar como pago' : 'Marcar como pago'}
                             >
@@ -1345,7 +1346,7 @@ export default function GastosPage() {
                                   alert('Erro ao exportar PDF. Tente novamente.')
                                 }
                               }}
-                              className="p-3 rounded-lg bg-primary hover:bg-primary-dark text-white transition-colors flex items-center space-x-2 whitespace-nowrap"
+                              className="p-3 rounded-lg bg-white text-black hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center space-x-2 whitespace-nowrap"
                               title="Exportar PDF"
                             >
                               <FiDownload className="w-5 h-5" />
@@ -1356,13 +1357,13 @@ export default function GastosPage() {
                       </div>
 
                       {aberto && (
-                        <div className="border-t border-gray-700">
+                        <div className="border-t border-white/10">
                           <div className="overflow-x-auto">
                             <table className="w-full">
-                              <thead className="bg-gray-700/50">
+                              <thead className="bg-white/5/50">
                                 <tr>
                                   <th 
-                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-gray-600 transition-colors text-gray-300"
+                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10 transition-colors text-[#dddddd]"
                                     onClick={() => {
                                       setOrdenacao(prev => ({
                                         campo: 'descricao',
@@ -1378,7 +1379,7 @@ export default function GastosPage() {
                                     </div>
                                   </th>
                                   <th 
-                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-gray-600 transition-colors text-gray-300"
+                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10 transition-colors text-[#dddddd]"
                                     onClick={() => {
                                       setOrdenacao(prev => ({
                                         campo: 'valor',
@@ -1394,7 +1395,7 @@ export default function GastosPage() {
                                     </div>
                                   </th>
                                   <th 
-                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-gray-600 transition-colors text-gray-300"
+                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10 transition-colors text-[#dddddd]"
                                     onClick={() => {
                                       setOrdenacao(prev => ({
                                         campo: 'data',
@@ -1410,7 +1411,7 @@ export default function GastosPage() {
                                     </div>
                                   </th>
                                   <th 
-                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-gray-600 transition-colors text-gray-300"
+                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10 transition-colors text-[#dddddd]"
                                     onClick={() => {
                                       setOrdenacao(prev => ({
                                         campo: 'metodo_pagamento',
@@ -1426,7 +1427,7 @@ export default function GastosPage() {
                                     </div>
                                   </th>
                                   <th 
-                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-gray-600 transition-colors text-gray-300"
+                                    className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10 transition-colors text-[#dddddd]"
                                     onClick={() => {
                                       setOrdenacao(prev => ({
                                         campo: 'categoria',
@@ -1441,7 +1442,7 @@ export default function GastosPage() {
                                       )}
                                     </div>
                                   </th>
-                                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-300">
+                                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-[#dddddd]">
                                     Ações
                                   </th>
                                 </tr>
@@ -1503,15 +1504,15 @@ export default function GastosPage() {
                                   return (
                                     <tr
                                       key={compra.id}
-                                      className="hover:bg-gray-700/30 transition-colors"
+                                      className="hover:bg-white/5/30 transition-colors"
                                     >
-                                      <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                                      <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                                         {compra.descricao}
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-white font-semibold">
+                                      <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-semibold">
                                         R$ {formatarMoeda(compra.valor)}
                                       </td>
-                                      <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                                      <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                                         {formatDate(compra.data)}
                                       </td>
                                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1555,7 +1556,7 @@ export default function GastosPage() {
                                             {compra.categoria}
                                           </span>
                                         ) : (
-                                          <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
+                                          <span className="px-3 py-1 bg-white/5 text-[#dddddd] rounded-full text-xs">
                                             {compra.categoria}
                                           </span>
                                         )}
@@ -1597,20 +1598,20 @@ export default function GastosPage() {
         {activeTab === 'recorrentes' && (
           <div className="space-y-6">
             {comprasRecorrentes.length === 0 ? (
-              <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
+              <div className="bg-[#0d0d0d] rounded-lg shadow-md p-12 text-center border border-white/10">
                 <FiShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400 text-lg mb-2">
+                <p className="text-[#bbbbbb] text-lg mb-2">
                   Nenhuma compra recorrente cadastrada
                 </p>
-                <p className="text-gray-500 text-sm">
+                <p className="text-[#666666] text-sm">
                   Crie compras recorrentes para serem adicionadas automaticamente todo mês
                 </p>
               </div>
             ) : (
-              <div className="bg-gray-800 rounded-lg shadow-md border border-gray-700 overflow-hidden">
+              <div className="bg-[#0d0d0d] rounded-lg shadow-md border border-white/10 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-primary text-white">
+                    <thead className="bg-white text-black">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium uppercase">Descrição</th>
                         <th className="px-6 py-3 text-left text-xs font-medium uppercase">Valor</th>
@@ -1626,11 +1627,11 @@ export default function GastosPage() {
                         const tipo = tiposGastos.find((t) => t.nome === recorrente.categoria)
                         const cartao = cartoes.find((c) => c.id === recorrente.cartao_id)
                         return (
-                          <tr key={recorrente.id} className="hover:bg-gray-700/50 transition-colors">
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                          <tr key={recorrente.id} className="hover:bg-white/5/50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                               {recorrente.descricao}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-semibold">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-semibold">
                               R$ {formatarMoeda(recorrente.valor)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1646,7 +1647,7 @@ export default function GastosPage() {
                                   {recorrente.categoria}
                                 </span>
                               ) : (
-                                <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
+                                <span className="px-3 py-1 bg-white/5 text-[#dddddd] rounded-full text-xs">
                                   {recorrente.categoria}
                                 </span>
                               )}
@@ -1672,12 +1673,12 @@ export default function GastosPage() {
                                   💳 {cartao.nome}
                                 </span>
                               ) : (
-                                <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
+                                <span className="px-3 py-1 bg-white/5 text-[#dddddd] rounded-full text-xs">
                                   💳 Cartão
                                 </span>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                               Dia {recorrente.dia_compra}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1686,7 +1687,7 @@ export default function GastosPage() {
                                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                                   recorrente.ativa
                                     ? 'bg-green-500/20 text-green-400 border border-green-500/40 hover:bg-green-500/30'
-                                    : 'bg-gray-700 text-gray-400 border border-gray-600 hover:bg-gray-600'
+                                    : 'bg-white/5 text-[#bbbbbb] border border-white/10 hover:bg-white/10'
                                 }`}
                               >
                                 {recorrente.ativa ? 'Ativa' : 'Inativa'}
@@ -1723,9 +1724,9 @@ export default function GastosPage() {
 
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-md border border-white/10">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingCompra ? 'Editar Despesa' : 'Nova Despesa'}
                 </h2>
                 <button
@@ -1733,14 +1734,14 @@ export default function GastosPage() {
                     setShowModal(false)
                     setEditingCompra(null)
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Descrição
                   </label>
                   <select
@@ -1754,7 +1755,7 @@ export default function GastosPage() {
                       })
                     }}
                     required={!formData.descricao}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 mb-2"
                   >
                     <option value="">Selecione uma opção...</option>
                     {sugestoesDescricoes.map((sugestao) => (
@@ -1771,13 +1772,13 @@ export default function GastosPage() {
                         setFormData({ ...formData, descricao: e.target.value })
                       }
                       required={formData.descricaoSelecionada === 'PERSONALIZADO'}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                       placeholder="Digite a descrição personalizada..."
                     />
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor (R$)
                   </label>
                   <input
@@ -1788,26 +1789,20 @@ export default function GastosPage() {
                       setFormData({ ...formData, valor: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="0.00"
                   />
                 </div>
+                <DateInput
+                  label="Data"
+                  value={formData.data}
+                  onChange={(e) =>
+                    setFormData({ ...formData, data: e.target.value })
+                  }
+                  required
+                />
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Data
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data}
-                    onChange={(e) =>
-                      setFormData({ ...formData, data: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Método de Pagamento
                   </label>
                   <select
@@ -1820,7 +1815,7 @@ export default function GastosPage() {
                       })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-3"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 mb-3"
                   >
                     <option value="cartao">💳 Cartão de Crédito</option>
                     <option value="pix">💳 PIX</option>
@@ -1831,7 +1826,7 @@ export default function GastosPage() {
                   {formData.metodo_pagamento === 'cartao' && (
                     <>
                       <div className="mb-3">
-                        <div className="w-full bg-gray-700 border border-gray-600 rounded-lg overflow-hidden">
+                        <div className="w-full bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                           {cartoes.map((cartao) => {
                             const corCartao = cartao.cor || '#3b82f6'
                             const isSelected = formData.cartao_id === cartao.id
@@ -1842,7 +1837,7 @@ export default function GastosPage() {
                                 onClick={() =>
                                   setFormData({ ...formData, cartao_id: cartao.id })
                                 }
-                                className={`w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-gray-600 transition-colors ${
+                                className={`w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-white/10 transition-colors ${
                                   isSelected ? 'bg-gray-600' : ''
                                 }`}
                                 style={{
@@ -1850,7 +1845,7 @@ export default function GastosPage() {
                                 }}
                               >
                                 <span style={{ color: corCartao }}>💳</span>
-                                <span className="text-white">{cartao.nome}</span>
+                                <span className="text-[#f0f0f0]">{cartao.nome}</span>
                               </button>
                             )
                           })}
@@ -1872,13 +1867,13 @@ export default function GastosPage() {
                                   total_parcelas: e.target.checked ? formData.total_parcelas : '1'
                                 })
                               }
-                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary"
+                              className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:border-white/30"
                             />
-                            <span className="text-sm text-gray-300">Compra parcelada</span>
+                            <span className="text-sm text-[#dddddd]">Compra parcelada</span>
                           </label>
                           {formData.parcelada && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-[#dddddd] mb-2">
                                 Número de Parcelas
                               </label>
                               <input
@@ -1890,11 +1885,11 @@ export default function GastosPage() {
                                   setFormData({ ...formData, total_parcelas: e.target.value })
                                 }
                                 required={formData.parcelada}
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                                 placeholder="Ex: 3, 6, 12..."
                               />
                               {formData.valor && formData.total_parcelas && parseInt(formData.total_parcelas) > 0 && (
-                                <p className="text-xs text-gray-400 mt-2">
+                                <p className="text-xs text-[#bbbbbb] mt-2">
                                   Valor por parcela: R$ {formatarMoeda(parseFloat(formData.valor) / parseInt(formData.total_parcelas))}
                                 </p>
                               )}
@@ -1922,7 +1917,7 @@ export default function GastosPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Tipo de Gasto
                   </label>
                   <div className="flex items-center space-x-2">
@@ -1932,7 +1927,7 @@ export default function GastosPage() {
                         setFormData({ ...formData, categoria: e.target.value })
                       }
                       required
-                      className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     >
                       <option value="">Selecione um tipo de gasto...</option>
                       {tiposGastos.map((tipo) => (
@@ -1944,14 +1939,14 @@ export default function GastosPage() {
                     <button
                       type="button"
                       onClick={() => setShowModalCategoria(true)}
-                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-[#f0f0f0] rounded-lg transition-colors"
                       title="Adicionar nova categoria"
                     >
                       <FiPlus className="w-5 h-5" />
                     </button>
                   </div>
                   {tiposGastos.length === 0 && (
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-[#666666] mt-1">
                       Nenhum tipo de gasto cadastrado. Clique no botão + para criar um.
                     </p>
                   )}
@@ -1964,13 +1959,13 @@ export default function GastosPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, despesa_fixa: e.target.checked })
                       }
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary"
+                      className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:border-white/30"
                     />
-                    <span className="text-sm text-gray-300">Despesa fixa (recorrente mensal)</span>
+                    <span className="text-sm text-[#dddddd]">Despesa fixa (recorrente mensal)</span>
                   </label>
                   {formData.despesa_fixa && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-[#dddddd] mb-2">
                         Dia de vencimento (dia do mês)
                       </label>
                       <input
@@ -1982,10 +1977,10 @@ export default function GastosPage() {
                           setFormData({ ...formData, dia_vencimento: e.target.value })
                         }
                         required={formData.despesa_fixa}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                         placeholder="Ex: 10, 15, 20..."
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#666666] mt-1">
                         Esta despesa será criada automaticamente todo mês no dia especificado
                       </p>
                     </div>
@@ -1998,13 +1993,13 @@ export default function GastosPage() {
                       setShowModal(false)
                       setEditingCompra(null)
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
                   >
                     Salvar
                   </button>
@@ -2016,9 +2011,9 @@ export default function GastosPage() {
 
         {showNotificacaoDespesaFixa && despesaFixaParaCriar && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-md border border-white/10">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   Despesa Fixa Disponível
                 </h2>
                 <button
@@ -2027,7 +2022,7 @@ export default function GastosPage() {
                     setDespesaFixaParaCriar(null)
                     setValorDespesaFixa('')
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -2038,16 +2033,16 @@ export default function GastosPage() {
                   <p className="text-blue-400 text-sm font-medium mb-2">
                     Uma despesa fixa está disponível para ser adicionada este mês:
                   </p>
-                  <p className="text-white font-semibold text-lg">
+                  <p className="text-[#f0f0f0] font-semibold text-lg">
                     {despesaFixaParaCriar.descricao}
                   </p>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <p className="text-[#bbbbbb] text-sm mt-1">
                     Valor padrão: R$ {formatarMoeda(despesaFixaParaCriar.valor)}
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor para este mês (R$)
                   </label>
                   <input
@@ -2055,10 +2050,10 @@ export default function GastosPage() {
                     step="0.01"
                     value={valorDespesaFixa}
                     onChange={(e) => setValorDespesaFixa(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder={despesaFixaParaCriar.valor.toString()}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-[#666666] mt-1">
                     Deixe em branco para usar o valor padrão (R$ {formatarMoeda(despesaFixaParaCriar.valor)})
                   </p>
                 </div>
@@ -2072,7 +2067,7 @@ export default function GastosPage() {
                       setValorDespesaFixa('')
                       verificarDespesasFixas()
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Pular
                   </button>
@@ -2086,7 +2081,7 @@ export default function GastosPage() {
                       }
                       criarDespesaFixaMensal(despesaFixaParaCriar, valor)
                     }}
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
                   >
                     Adicionar
                   </button>
@@ -2098,9 +2093,9 @@ export default function GastosPage() {
 
         {showModalRecorrente && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-md border border-white/10">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingRecorrente ? 'Editar Compra Recorrente' : 'Nova Compra Recorrente'}
                 </h2>
                 <button
@@ -2108,14 +2103,14 @@ export default function GastosPage() {
                     setShowModalRecorrente(false)
                     setEditingRecorrente(null)
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
               <form onSubmit={handleSubmitRecorrente} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Descrição
                   </label>
                   <input
@@ -2125,12 +2120,12 @@ export default function GastosPage() {
                       setFormDataRecorrente({ ...formDataRecorrente, descricao: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="Ex: Assinatura Netflix"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor (R$)
                   </label>
                   <input
@@ -2141,12 +2136,12 @@ export default function GastosPage() {
                       setFormDataRecorrente({ ...formDataRecorrente, valor: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="0.00"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Categoria
                   </label>
                   <select
@@ -2155,7 +2150,7 @@ export default function GastosPage() {
                       setFormDataRecorrente({ ...formDataRecorrente, categoria: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                   >
                     <option value="">Selecione uma categoria...</option>
                     {tiposGastos.map((tipo) => (
@@ -2166,7 +2161,7 @@ export default function GastosPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Método de Pagamento
                   </label>
                   <select
@@ -2179,7 +2174,7 @@ export default function GastosPage() {
                       })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-3"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 mb-3"
                   >
                     <option value="cartao">💳 Cartão de Crédito</option>
                     <option value="pix">💳 PIX</option>
@@ -2188,7 +2183,7 @@ export default function GastosPage() {
                   </select>
                   
                   {formDataRecorrente.metodo_pagamento === 'cartao' && (
-                    <div className="w-full bg-gray-700 border border-gray-600 rounded-lg overflow-hidden">
+                    <div className="w-full bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       {cartoes.map((cartao) => {
                         const corCartao = cartao.cor || '#3b82f6'
                         const isSelected = formDataRecorrente.cartao_id === cartao.id
@@ -2199,7 +2194,7 @@ export default function GastosPage() {
                             onClick={() =>
                               setFormDataRecorrente({ ...formDataRecorrente, cartao_id: cartao.id })
                             }
-                            className={`w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-gray-600 transition-colors ${
+                            className={`w-full px-4 py-2 text-left flex items-center space-x-3 hover:bg-white/10 transition-colors ${
                               isSelected ? 'bg-gray-600' : ''
                             }`}
                             style={{
@@ -2207,7 +2202,7 @@ export default function GastosPage() {
                             }}
                           >
                             <span style={{ color: corCartao }}>💳</span>
-                            <span className="text-white">{cartao.nome}</span>
+                            <span className="text-[#f0f0f0]">{cartao.nome}</span>
                           </button>
                         )
                       })}
@@ -2215,7 +2210,7 @@ export default function GastosPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Dia do Mês (1-31)
                   </label>
                   <input
@@ -2227,10 +2222,10 @@ export default function GastosPage() {
                       setFormDataRecorrente({ ...formDataRecorrente, dia_compra: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="Ex: 10, 15, 20..."
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-[#666666] mt-1">
                     Esta compra será criada automaticamente todo mês no dia especificado
                   </p>
                 </div>
@@ -2242,9 +2237,9 @@ export default function GastosPage() {
                       onChange={(e) =>
                         setFormDataRecorrente({ ...formDataRecorrente, ativa: e.target.checked })
                       }
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary"
+                      className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:border-white/30"
                     />
-                    <span className="text-sm text-gray-300">Ativa (será criada automaticamente)</span>
+                    <span className="text-sm text-[#dddddd]">Ativa (será criada automaticamente)</span>
                   </label>
                 </div>
                 <div className="flex space-x-4 pt-4">
@@ -2254,13 +2249,13 @@ export default function GastosPage() {
                       setShowModalRecorrente(false)
                       setEditingRecorrente(null)
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
                   >
                     Salvar
                   </button>
@@ -2272,10 +2267,10 @@ export default function GastosPage() {
 
         {showModalCategoria && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
+            <div className="bg-[#0d0d0d] rounded-lg border border-white/10 w-full max-w-md">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Nova Categoria de Gasto</h2>
+                  <h2 className="text-2xl font-bold text-[#f0f0f0]">Nova Categoria de Gasto</h2>
                   <button
                     onClick={() => {
                       setShowModalCategoria(false)
@@ -2285,7 +2280,7 @@ export default function GastosPage() {
                         cor: '#6366f1',
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -2293,42 +2288,42 @@ export default function GastosPage() {
 
                 <form onSubmit={handleCriarCategoria} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Nome da Categoria *</label>
+                    <label className="block text-sm text-[#bbbbbb] mb-1">Nome da Categoria *</label>
                     <input
                       type="text"
                       required
                       value={formDataCategoria.nome}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30"
                       placeholder="Ex: Alimentação, Transporte, Lazer"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Descrição</label>
+                    <label className="block text-sm text-[#bbbbbb] mb-1">Descrição</label>
                     <textarea
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30"
                       placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Cor</label>
+                    <label className="block text-sm text-[#bbbbbb] mb-1">Cor</label>
                     <div className="flex items-center space-x-3">
                       <input
                         type="color"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="w-16 h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer"
+                        className="w-16 h-10 bg-white/5 border border-white/10 rounded-lg cursor-pointer"
                       />
                       <input
                         type="text"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30"
                         placeholder="#6366f1"
                       />
                     </div>
@@ -2345,13 +2340,13 @@ export default function GastosPage() {
                           cor: '#6366f1',
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-[#f0f0f0] rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-[#f0f0f0] rounded-lg transition-colors"
                     >
                       Criar Categoria
                     </button>

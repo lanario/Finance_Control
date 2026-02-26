@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
@@ -25,6 +25,7 @@ import {
   FiLayers,
   FiTag,
   FiPackage,
+  FiCreditCard,
 } from 'react-icons/fi'
 import InstallAppBanner from '@/components/InstallAppBanner'
 
@@ -52,8 +53,15 @@ const menuSections = [
     items: [
       { href: '/empresarial/compras-despesas', label: 'Compras/Despesas', icon: FiTrendingDown, tipo: 'despesa' as MenuItemTipo },
       { href: '/empresarial/vendas-receitas', label: 'Vendas/Receitas', icon: FiShoppingBag, tipo: 'receita' as MenuItemTipo },
+      { href: '/empresarial/cartoes-empresa', label: 'Cartão Empresa', icon: FiCreditCard, tipo: undefined },
       { href: '/empresarial/orcamentos', label: 'Orçamentos', icon: FiFileText, tipo: undefined },
       { href: '/empresarial/orcamentos/estilo', label: 'Orçamento (estilo)', icon: FiLayers, tipo: undefined },
+    ],
+  },
+  {
+    title: 'Assinatura',
+    items: [
+      { href: '/empresarial/planos', label: 'Planos', icon: FiPackage, tipo: undefined },
     ],
   },
 ]
@@ -62,7 +70,6 @@ export default function SidebarEmpresarial() {
   const pathname = usePathname()
   const router = useRouter()
   const { session } = useAuth()
-  const [isHovered, setIsHovered] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [profileName, setProfileName] = useState('')
@@ -316,15 +323,10 @@ export default function SidebarEmpresarial() {
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-900 via-purple-950 to-purple-900 transition-all duration-150 ease-out z-50 flex flex-col border-r border-white/10 ${
-        isHovered ? 'w-64' : 'w-20'
-      }`}
-      style={{ willChange: 'width' }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="fixed left-0 top-0 h-screen w-64 emp-bg-sidebar z-50 flex flex-col border-r emp-border"
     >
-      <div className={`py-6 transition-all duration-150 ease-out ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
-        <div className={`flex items-center ${isHovered ? 'space-x-3' : 'justify-center'}`}>
+      <div className="py-6 pl-2 pr-6 mb-2">
+        <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <Image
               src="/images/infinity_sem_fundo.png"
@@ -334,31 +336,27 @@ export default function SidebarEmpresarial() {
               className="object-contain"
             />
           </div>
-          {isHovered && (
-            <div className="overflow-hidden">
-              <h1 className="text-2xl font-bold text-white whitespace-nowrap animate-slide-in">
-                Infinity Lines
-              </h1>
-              <p className="text-white/80 text-sm whitespace-nowrap animate-slide-in-delay">
-                Empresarial
-              </p>
-            </div>
-          )}
+          <div className="overflow-hidden">
+            <h1 className="text-2xl font-bold emp-text-primary whitespace-nowrap">
+              Infinity Lines
+            </h1>
+            <p className="emp-text-secondary text-sm whitespace-nowrap">
+              Empresarial
+            </p>
+          </div>
         </div>
       </div>
 
-      <nav className={`flex-1 overflow-y-auto ${isHovered ? 'px-3' : 'px-0'}`}>
+      <nav className="flex-1 overflow-y-auto px-3">
         <div className="space-y-6">
-          {menuSections.map((section, sectionIndex) => (
+          {menuSections.map((section) => (
             <div key={section.title} className="space-y-2">
               {/* Título da Seção */}
-              {isHovered && (
-                <div className="px-4 py-2">
-                  <h3 className="text-xs font-semibold text-white/60 uppercase tracking-wider animate-slide-in">
-                    {section.title}
-                  </h3>
-                </div>
-              )}
+              <div className="px-4 py-2">
+                <h3 className="text-xs font-semibold emp-text-muted uppercase tracking-wider">
+                  {section.title}
+                </h3>
+              </div>
               
               {/* Itens do Menu */}
               {section.items.map((item) => {
@@ -366,32 +364,32 @@ export default function SidebarEmpresarial() {
                 const isActive = pathname === item.href
                 const isReceita = item.tipo === 'receita'
                 const isDespesa = item.tipo === 'despesa'
-                const corReceita = isReceita && (isActive ? 'bg-green-500/25 text-green-100' : 'text-green-400 hover:bg-green-500/15 hover:text-green-300')
-                const corDespesa = isDespesa && (isActive ? 'bg-red-500/25 text-red-100' : 'text-red-400 hover:bg-red-500/15 hover:text-red-300')
-                const corNeutra = !isReceita && !isDespesa && (isActive ? 'bg-purple-800/80 text-white shadow-lg' : 'text-white hover:bg-purple-800/40 hover:text-white hover:shadow-md')
+                const corReceita = isReceita && (isActive ? 'bg-neon/20 text-neon' : 'text-green-400 hover:bg-neon/20 hover:text-neon')
+                const corDespesa = isDespesa && (isActive ? 'bg-red-500/25 text-red-300' : 'text-red-400 hover:bg-red-500/15')
+                const corNeutra = !isReceita && !isDespesa && (isActive ? 'emp-text-primary shadow-lg text-white' : 'emp-text-primary emp-sidebar-item-neutro')
+                const styleNeutra = !isReceita && !isDespesa && isActive ? { backgroundColor: 'var(--emp-bg-sidebar-active)' } : undefined
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-150 ease-out relative ${
+                    className={`group flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors relative ${
                       isReceita ? corReceita : isDespesa ? corDespesa : corNeutra
                     }`}
+                    style={styleNeutra}
                   >
                     {isActive && !isReceita && !isDespesa && (
-                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full"></div>
+                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-8 bg-neon rounded-r-full shadow-[0_0_8px_rgba(0,255,136,0.6)]"></div>
                     )}
                     {isActive && isReceita && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-green-400 rounded-r-full"></div>
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-neon rounded-r-full"></div>
                     )}
                     {isActive && isDespesa && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-red-400 rounded-r-full"></div>
                     )}
-                    <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                    {isHovered && (
-                      <span className={`whitespace-nowrap animate-slide-in ${isActive ? 'font-semibold' : ''}`}>
-                        {item.label}
-                      </span>
-                    )}
+                    <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    <span className={`whitespace-nowrap ${isActive ? 'font-semibold' : ''}`}>
+                      {item.label}
+                    </span>
                   </Link>
                 )
               })}
@@ -400,13 +398,16 @@ export default function SidebarEmpresarial() {
         </div>
       </nav>
 
-      <div className={`${isHovered ? 'px-3' : 'px-0'} pb-6 mt-auto space-y-2`}>
+      <div className="px-3 pb-6 mt-auto space-y-2">
         {/* Perfil do Usuário */}
         <button
           onClick={() => setShowProfileModal(true)}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-purple-800/40 transition-all duration-150 ease-out`}
+          className="group w-full flex items-center space-x-3 px-4 py-3 rounded-lg emp-text-primary transition-colors"
+          style={{ backgroundColor: 'transparent' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--emp-bg-sidebar-hover)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
         >
-          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center overflow-hidden emp-border" style={{ backgroundColor: 'var(--emp-bg-sidebar-hover)' }}>
             {profilePhoto ? (
               <Image
                 src={profilePhoto}
@@ -419,52 +420,46 @@ export default function SidebarEmpresarial() {
               <FiUser className="w-5 h-5" />
             )}
           </div>
-          {isHovered && (
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium whitespace-nowrap animate-slide-in truncate">
-                {profileName}
-              </p>
-              <p className="text-xs text-white/60 whitespace-nowrap animate-slide-in-delay truncate">
-                Ver perfil
-              </p>
-            </div>
-          )}
+          <div className="flex-1 overflow-hidden text-left">
+            <p className="text-sm font-medium whitespace-nowrap truncate">
+              {profileName}
+            </p>
+            <p className="text-xs emp-text-muted whitespace-nowrap truncate">
+              Ver perfil
+            </p>
+          </div>
         </button>
 
-        {isHovered && (
-          <div className="px-2 py-2">
-            <InstallAppBanner compact className="!text-white/70 !gap-1 [&_a]:!text-white/90 [&_button]:!text-white/90" />
-          </div>
-        )}
+        <div className="px-2 py-2">
+          <InstallAppBanner compact className="emp-text-secondary !gap-1 [&_a]:!emp-text-primary [&_button]:!emp-text-primary" />
+        </div>
 
         {/* Botão Sair */}
         <button
           onClick={handleLogout}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-red-500/20 hover:text-red-200 transition-all duration-150 ease-out`}
+          className="group w-full flex items-center space-x-3 px-4 py-3 rounded-lg emp-text-primary hover:bg-red-500/20 hover:text-red-200 transition-colors"
         >
-          <FiLogOut className="w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out group-hover:rotate-12" />
-          {isHovered && (
-            <span className="whitespace-nowrap animate-slide-in">Sair</span>
-          )}
+          <FiLogOut className="w-5 h-5 flex-shrink-0 transition-transform duration-150 group-hover:rotate-12" />
+          <span className="whitespace-nowrap">Sair</span>
         </button>
       </div>
 
       {/* Modal de Crop de Imagem */}
       {showCropModal && imageToCrop && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700">
+          <div className="emp-modal-bg rounded-lg p-6 w-full max-w-2xl border emp-border">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Enquadrar Imagem</h2>
+              <h2 className="text-xl font-bold emp-text-primary">Enquadrar Imagem</h2>
               <button
                 onClick={handleCancelCrop}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="emp-text-muted hover:emp-text-primary transition-colors"
                 disabled={uploading}
               >
                 <FiX className="w-6 h-6" />
               </button>
             </div>
-            
-            <div className="relative w-full" style={{ height: '400px', background: '#1f2937' }}>
+
+            <div className="relative w-full emp-input-bg" style={{ height: '400px' }}>
               <Cropper
                 image={imageToCrop}
                 crop={crop}
@@ -480,7 +475,7 @@ export default function SidebarEmpresarial() {
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Zoom: {Math.round(zoom * 100)}%
                 </label>
                 <input
@@ -490,7 +485,7 @@ export default function SidebarEmpresarial() {
                   step={0.1}
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 emp-input-bg rounded-lg appearance-none cursor-pointer"
                   disabled={uploading}
                 />
               </div>
@@ -498,14 +493,15 @@ export default function SidebarEmpresarial() {
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={handleCancelCrop}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 emp-input-bg emp-text-primary rounded-lg hover:opacity-90 transition-colors border emp-border"
                   disabled={uploading}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleCropComplete}
-                  className="px-4 py-2 bg-purple-800 text-white rounded-lg hover:bg-purple-900 transition-colors flex items-center space-x-2"
+                  className="px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 emp-text-primary"
+                  style={{ backgroundColor: 'var(--emp-accent)' }}
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -529,12 +525,12 @@ export default function SidebarEmpresarial() {
       {/* Modal de Perfil */}
       {showProfileModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+          <div className="emp-modal-bg rounded-lg p-8 w-full max-w-md border emp-border">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Meu Perfil</h2>
+              <h2 className="text-2xl font-bold emp-text-primary">Meu Perfil</h2>
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="emp-text-muted hover:emp-text-primary transition-colors"
               >
                 <FiX className="w-6 h-6" />
               </button>
@@ -543,7 +539,7 @@ export default function SidebarEmpresarial() {
             <div className="space-y-6">
               {/* Foto do Perfil */}
               <div className="flex flex-col items-center space-y-4">
-                <div className="relative w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                <div className="relative w-32 h-32 rounded-full emp-input-bg flex items-center justify-center overflow-hidden border emp-border">
                   {profilePhoto ? (
                     <Image
                       src={profilePhoto}
@@ -553,7 +549,7 @@ export default function SidebarEmpresarial() {
                       className="object-cover w-full h-full"
                     />
                   ) : (
-                    <FiUser className="w-16 h-16 text-gray-400" />
+                    <FiUser className="w-16 h-16 emp-text-muted" />
                   )}
                 </div>
                 <label className="cursor-pointer">
@@ -564,7 +560,7 @@ export default function SidebarEmpresarial() {
                     disabled={uploading}
                     className="hidden"
                   />
-                  <span className="px-4 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-lg transition-colors inline-block">
+                  <span className="px-4 py-2 rounded-lg transition-colors inline-block emp-text-primary hover:opacity-90" style={{ backgroundColor: 'var(--emp-accent)' }}>
                     {uploading ? 'Enviando...' : 'Alterar Foto'}
                   </span>
                 </label>
@@ -572,28 +568,28 @@ export default function SidebarEmpresarial() {
 
               {/* Nome */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Nome
                 </label>
                 <input
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-700"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Seu nome"
                 />
               </div>
 
               {/* Email (somente leitura) */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={session?.user?.email || ''}
                   disabled
-                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-muted cursor-not-allowed opacity-80"
                 />
               </div>
 
@@ -602,13 +598,14 @@ export default function SidebarEmpresarial() {
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="flex-1 px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:opacity-90 transition-colors emp-input-bg"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-purple-800 text-white rounded-lg hover:bg-purple-900 transition-colors"
+                  className="flex-1 px-4 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                  style={{ backgroundColor: 'var(--emp-accent)' }}
                 >
                   Salvar
                 </button>

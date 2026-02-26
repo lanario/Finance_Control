@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import MainLayout from '@/components/Layout/MainLayout'
 import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
@@ -65,9 +65,16 @@ interface DespesasPorCategoria {
   porcentagem: number
 }
 
-export default function DashboardPage() {
+const MESES_NOMES_ABREV = [
+  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
+]
+
+function DashboardContent() {
   const { session } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     totalGastos: 0,
     totalCartoes: 0,
@@ -84,6 +91,15 @@ export default function DashboardPage() {
   const [anoSelecionado, setAnoSelecionado] = useState<number>(now.getFullYear())
 
   useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      setShowCheckoutSuccess(true)
+      router.replace('/pessoal/dashboard', { scroll: false })
+      const t = setTimeout(() => setShowCheckoutSuccess(false), 5000)
+      return () => clearTimeout(t)
+    }
+  }, [searchParams, router])
+
+  useEffect(() => {
     if (session) {
       loadDashboardData()
     }
@@ -92,86 +108,89 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       const userId = session?.user?.id
+      if (!userId) return
 
-      // Buscar cartões
-      const { data: cartoes } = await supabase
-        .from('cartoes')
-        .select('*')
-        .eq('user_id', userId)
-
-      // Usar mês e ano selecionados
       const startOfMonth = new Date(anoSelecionado, mesSelecionado - 1, 1)
       const endOfMonth = new Date(anoSelecionado, mesSelecionado, 0)
-
-      // Buscar compras do mês atual
-      const { data: todasComprasMes } = await supabase
-        .from('compras')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('data', startOfMonth.toISOString().split('T')[0])
-        .lte('data', endOfMonth.toISOString().split('T')[0])
-
-      // Filtrar apenas compras NÃO parceladas (compras parceladas são representadas pelas parcelas)
-      // Excluir compras onde parcelada = true OU total_parcelas > 1
-      const comprasMes = todasComprasMes?.filter(compra => {
-        const isParcelada = compra.parcelada === true || (compra as any).total_parcelas > 1
-        return !isParcelada
-      }) || []
-
-      // Buscar TODAS as parcelas que vencem no mês atual (pagas e não pagas)
-      // As parcelas devem ser contabilizadas no mês em que vencem, independente do status de pagamento
-      const { data: parcelasMes } = await supabase
-        .from('parcelas')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('data_vencimento', startOfMonth.toISOString().split('T')[0])
-        .lte('data_vencimento', endOfMonth.toISOString().split('T')[0])
-
-      // Buscar receitas do mês selecionado (baseado no mês de referência)
-      const { data: receitasMes } = await supabase
-        .from('receitas')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('mes_referencia', mesSelecionado)
-        .eq('ano_referencia', anoSelecionado)
-
-      // Buscar todas as compras dos últimos 6 meses (relativo ao mês selecionado)
+      const startStr = startOfMonth.toISOString().split('T')[0]
+      const endStr = endOfMonth.toISOString().split('T')[0]
       const sixMonthsAgo = new Date(anoSelecionado, mesSelecionado - 6, 1)
-      const { data: todasCompras6Meses } = await supabase
-        .from('compras')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('data', sixMonthsAgo.toISOString())
-        .order('data', { ascending: true })
+      const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0]
 
-      // Filtrar apenas compras NÃO parceladas (compras parceladas são representadas pelas parcelas)
-      // Excluir compras onde parcelada = true OU total_parcelas > 1
-      const compras6Meses = todasCompras6Meses?.filter(compra => {
-        const isParcelada = compra.parcelada === true || (compra as any).total_parcelas > 1
+      // Paralelizar todas as queries independentes para reduzir latência (evita soma de round-trips)
+      const [
+        cartoesResult,
+        todasComprasMesResult,
+        parcelasMesResult,
+        receitasMesResult,
+        todasCompras6MesesResult,
+        parcelas6MesesResult,
+        investimentosResult,
+      ] = await Promise.all([
+        supabase.from('cartoes').select('id').eq('user_id', userId),
+        supabase
+          .from('compras')
+          .select('id, valor, data, categoria, parcelada, total_parcelas')
+          .eq('user_id', userId)
+          .gte('data', startStr)
+          .lte('data', endStr),
+        supabase
+          .from('parcelas')
+          .select('valor, data_vencimento, categoria')
+          .eq('user_id', userId)
+          .gte('data_vencimento', startStr)
+          .lte('data_vencimento', endStr),
+        supabase
+          .from('receitas')
+          .select('valor')
+          .eq('user_id', userId)
+          .eq('mes_referencia', mesSelecionado)
+          .eq('ano_referencia', anoSelecionado),
+        supabase
+          .from('compras')
+          .select('id, valor, data, parcelada, total_parcelas')
+          .eq('user_id', userId)
+          .gte('data', sixMonthsAgo.toISOString())
+          .order('data', { ascending: true }),
+        supabase
+          .from('parcelas')
+          .select('valor, data_vencimento')
+          .eq('user_id', userId)
+          .gte('data_vencimento', sixMonthsAgoStr)
+          .order('data_vencimento', { ascending: true }),
+        supabase
+          .from('investimentos')
+          .select('id, nome, tipo, valor_investido, valor_atual, data_aquisicao, user_id')
+          .eq('user_id', userId)
+          .order('data_aquisicao', { ascending: false }),
+      ])
+
+      const cartoes = cartoesResult.data ?? []
+      const todasComprasMes = todasComprasMesResult.data ?? []
+      const parcelasMes = parcelasMesResult.data ?? []
+      const receitasMes = receitasMesResult.data ?? []
+      const todasCompras6Meses = todasCompras6MesesResult.data ?? []
+      const parcelas6Meses = parcelas6MesesResult.data ?? []
+      const investimentosData = investimentosResult.data ?? []
+
+      // Filtrar compras NÃO parceladas no cliente (compatível com schemas com/sem coluna parcelada)
+      const comprasMes = todasComprasMes.filter((c: { parcelada?: boolean; total_parcelas?: number }) => {
+        const isParcelada = c.parcelada === true || (c.total_parcelas ?? 0) > 1
         return !isParcelada
-      }) || []
-
-      // Buscar TODAS as parcelas dos últimos 6 meses (baseado na data de vencimento)
-      // Incluir todas as parcelas (pagas e não pagas) pois são despesas que vencem naquele mês
-      const { data: parcelas6Meses } = await supabase
-        .from('parcelas')
-        .select('*')
-        .eq('user_id', userId)
-        .gte('data_vencimento', sixMonthsAgo.toISOString().split('T')[0])
-        .order('data_vencimento', { ascending: true })
+      })
+      const compras6Meses = todasCompras6Meses.filter((c: { parcelada?: boolean; total_parcelas?: number }) => {
+        const isParcelada = c.parcelada === true || (c.total_parcelas ?? 0) > 1
+        return !isParcelada
+      })
 
       // Calcular total de gastos do mês atual (compras não parceladas + parcelas que vencem no mês)
-      const totalGastosCompras = comprasMes?.reduce((sum, compra) => sum + compra.valor, 0) || 0
-      const totalGastosParcelas = parcelasMes?.reduce((sum, parcela) => sum + parcela.valor, 0) || 0
+      const totalGastosCompras = comprasMes.reduce((sum, compra) => sum + Number(compra.valor), 0)
+      const totalGastosParcelas = parcelasMes.reduce((sum, parcela) => sum + Number(parcela.valor), 0)
       const totalGastos = totalGastosCompras + totalGastosParcelas
-      const totalReceitas = receitasMes?.reduce((sum, receita) => sum + receita.valor, 0) || 0
+      const totalReceitas = receitasMes.reduce((sum, receita) => sum + Number(receita.valor), 0)
 
       // Processar dados mensais (últimos 6 meses para o gráfico de linha)
       const gastosPorMes: { [key: string]: number } = {}
-      const mesesNomes = [
-        'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-        'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-      ]
 
       // Inicializar últimos 6 meses com zero (relativo ao mês selecionado)
       for (let i = 5; i >= 0; i--) {
@@ -181,22 +200,20 @@ export default function DashboardPage() {
       }
 
       // Agregar gastos por mês (últimos 6 meses) - Compras não parceladas
-      // As compras já foram filtradas acima, então apenas adicionar ao cálculo mensal
-      compras6Meses?.forEach((compra) => {
+      compras6Meses.forEach((compra) => {
         const compraDate = new Date(compra.data)
         const key = `${compraDate.getFullYear()}-${String(compraDate.getMonth() + 1).padStart(2, '0')}`
         if (gastosPorMes[key] !== undefined) {
-          gastosPorMes[key] += compra.valor
+          gastosPorMes[key] += Number(compra.valor)
         }
       })
 
       // Agregar parcelas por mês (baseado na data de vencimento) - TODAS as parcelas
-      // As parcelas são contabilizadas no mês em que vencem, independente do status de pagamento
-      parcelas6Meses?.forEach((parcela) => {
+      parcelas6Meses.forEach((parcela) => {
         const vencimentoDate = new Date(parcela.data_vencimento)
         const key = `${vencimentoDate.getFullYear()}-${String(vencimentoDate.getMonth() + 1).padStart(2, '0')}`
         if (gastosPorMes[key] !== undefined) {
-          gastosPorMes[key] += parcela.valor
+          gastosPorMes[key] += Number(parcela.valor)
         }
       })
 
@@ -205,30 +222,23 @@ export default function DashboardPage() {
         .sort() // Ordena as chaves (formato YYYY-MM)
         .map((key) => {
           const [ano, mes] = key.split('-')
-          const anoNumero = parseInt(ano)
-          const mesNumero = parseInt(mes)
+          const anoNumero = parseInt(ano, 10)
+          const mesNumero = parseInt(mes, 10)
           return {
-            mes: `${mesesNomes[mesNumero - 1]}/${ano.slice(2)}`,
+            mes: `${MESES_NOMES_ABREV[mesNumero - 1]}/${ano.slice(2)}`,
             gastos: gastosPorMes[key],
             ano: anoNumero,
             mesNumero: mesNumero,
           }
         })
 
-      // Buscar investimentos
-      const { data: investimentosData } = await supabase
-        .from('investimentos')
-        .select('*')
-        .eq('user_id', userId)
-        .order('data_aquisicao', { ascending: false })
-
-      setInvestimentos(investimentosData || [])
+      setInvestimentos(investimentosData)
 
       // Processar investimentos por tipo
       const investimentosPorTipoMap: { [key: string]: { valor_investido: number; valor_atual: number } } = {}
-      const totalInvestidoGeral = investimentosData?.reduce((sum, inv) => sum + inv.valor_investido, 0) || 0
+      const totalInvestidoGeral = investimentosData.reduce((sum, inv) => sum + Number(inv.valor_investido), 0)
 
-      investimentosData?.forEach((investimento) => {
+      investimentosData.forEach((investimento) => {
         const tipo = investimento.tipo || 'Outros'
         if (!investimentosPorTipoMap[tipo]) {
           investimentosPorTipoMap[tipo] = { valor_investido: 0, valor_atual: 0 }
@@ -252,24 +262,14 @@ export default function DashboardPage() {
 
       // Processar despesas por categoria do mês atual
       const despesasPorCategoriaMap: { [key: string]: number } = {}
-      
-      // Agregar compras do mês por categoria
-      comprasMes?.forEach((compra) => {
-        const categoria = compra.categoria || 'Outros'
-        if (!despesasPorCategoriaMap[categoria]) {
-          despesasPorCategoriaMap[categoria] = 0
-        }
-        despesasPorCategoriaMap[categoria] += compra.valor
+
+      comprasMes.forEach((compra) => {
+        const categoria = (compra as { categoria?: string }).categoria || 'Outros'
+        despesasPorCategoriaMap[categoria] = (despesasPorCategoriaMap[categoria] ?? 0) + Number(compra.valor)
       })
-      
-      // Agregar parcelas do mês por categoria - TODAS as parcelas (pagas e não pagas)
-      parcelasMes?.forEach((parcela) => {
-        const categoria = parcela.categoria || 'Outros'
-        if (!despesasPorCategoriaMap[categoria]) {
-          despesasPorCategoriaMap[categoria] = 0
-        }
-        // Contar todas as parcelas que vencem no mês, independente de estarem pagas
-        despesasPorCategoriaMap[categoria] += parcela.valor
+      parcelasMes.forEach((parcela) => {
+        const categoria = (parcela as { categoria?: string }).categoria || 'Outros'
+        despesasPorCategoriaMap[categoria] = (despesasPorCategoriaMap[categoria] ?? 0) + Number(parcela.valor)
       })
       
       const despesasPorCategoriaData: DespesasPorCategoria[] = Object.entries(despesasPorCategoriaMap)
@@ -286,7 +286,7 @@ export default function DashboardPage() {
 
       setStats({
         totalGastos,
-        totalCartoes: cartoes?.length || 0,
+        totalCartoes: cartoes.length,
         gastosMes: totalGastos,
         receitasMes: totalReceitas,
       })
@@ -364,20 +364,25 @@ export default function DashboardPage() {
   return (
     <MainLayout>
       <div className="space-y-8">
+        {showCheckoutSuccess && (
+          <div className="rounded-xl bg-green-500/20 border border-green-500/50 text-green-300 px-4 py-3 text-center">
+            Pagamento confirmado. Sua assinatura está ativa.
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2 animate-nexus-reveal">Dashboard</h1>
+            <p className="text-[#bbbbbb] animate-nexus-reveal" style={{ animationDelay: '0.05s', animationFillMode: 'backwards' }}>
               Visão geral das suas finanças pessoais
             </p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <label className="text-gray-400 text-sm">Mês:</label>
+              <label className="text-[#bbbbbb] text-sm">Mês:</label>
               <select
                 value={mesSelecionado}
                 onChange={(e) => setMesSelecionado(parseInt(e.target.value))}
-                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                className="px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30 transition-colors duration-200"
               >
                 {mesesNomes.map((mes, index) => (
                   <option key={index} value={index + 1}>
@@ -387,11 +392,11 @@ export default function DashboardPage() {
               </select>
             </div>
             <div className="flex items-center space-x-2">
-              <label className="text-gray-400 text-sm">Ano:</label>
+              <label className="text-[#bbbbbb] text-sm">Ano:</label>
               <select
                 value={anoSelecionado}
                 onChange={(e) => setAnoSelecionado(parseInt(e.target.value))}
-                className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                className="px-4 py-2 bg-[#0d0d0d] border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30 transition-colors duration-200"
               >
                 {anosDisponiveis.map((ano) => (
                   <option key={ano} value={ano}>
@@ -411,7 +416,7 @@ export default function DashboardPage() {
             const cardContent = (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">{card.title}</p>
+                  <p className="text-[#bbbbbb] text-sm mb-1">{card.title}</p>
                   <p className={`text-2xl font-bold ${card.color}`}>
                     {card.value}
                   </p>
@@ -431,7 +436,7 @@ export default function DashboardPage() {
                 <button
                   key={index}
                   onClick={() => href && router.push(href)}
-                  className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 cursor-pointer w-full text-left"
+                  className="nexus-card p-6 w-full text-left cursor-pointer"
                 >
                   {cardContent}
                 </button>
@@ -439,10 +444,7 @@ export default function DashboardPage() {
             }
             
             return (
-              <div
-                key={index}
-                className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-xl hover:-translate-y-1"
-              >
+              <div key={index} className="nexus-card p-6">
                 {cardContent}
               </div>
             )
@@ -451,12 +453,12 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico de Despesas Mensais */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all">
+          <div className="nexus-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-xl font-semibold text-[#f0f0f0]">
                 Despesas Mensais
               </h2>
-              <span className="text-xs text-gray-400">Últimos 6 meses • Clique para detalhes</span>
+              <span className="text-xs text-[#888888]">Últimos 6 meses • Clique para detalhes</span>
             </div>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart 
@@ -507,16 +509,16 @@ export default function DashboardPage() {
               </LineChart>
             </ResponsiveContainer>
             {gastosMensais.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-[#666666]">
                 <p>Nenhum dado disponível</p>
               </div>
             )}
           </div>
 
           {/* Gráfico de Investimentos - Barras */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all">
+          <div className="nexus-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-xl font-semibold text-[#f0f0f0]">
                 Investimentos por Tipo
               </h2>
               <button
@@ -603,7 +605,7 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
             {investimentosPorTipo.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-[#666666]">
                 <p>Nenhum investimento cadastrado</p>
                 <button
                   onClick={() => router.push('/pessoal/investimentos')}
@@ -618,9 +620,9 @@ export default function DashboardPage() {
 
         {/* Gráfico de Pizza para Despesas do Mês por Categoria */}
         {despesasPorCategoria.length > 0 && (
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-gray-600 transition-all">
+          <div className="nexus-card p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-xl font-semibold text-[#f0f0f0]">
                 Despesas de {mesNome} {anoSelecionado} por Categoria
               </h2>
               <button
@@ -700,13 +702,13 @@ export default function DashboardPage() {
                           e.stopPropagation()
                           router.push(`/pessoal/gastos/categoria/${encodeURIComponent(item.categoria)}`)
                         }}
-                        className="flex items-center space-x-2 px-3 py-1.5 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                        className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all duration-200 cursor-pointer"
                       >
                         <div 
                           className="w-3 h-3 rounded-full"
                           style={{ backgroundColor: colors[index % colors.length] }}
                         />
-                        <span className="text-gray-300 text-xs font-medium">{item.categoria}</span>
+                        <span className="text-[#dddddd] text-xs font-medium">{item.categoria}</span>
                       </button>
                     )
                   })}
@@ -731,18 +733,18 @@ export default function DashboardPage() {
                           e.stopPropagation()
                           router.push(`/pessoal/gastos/categoria/${encodeURIComponent(item.categoria)}`)
                         }}
-                        className="w-full flex items-center justify-between p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition-colors text-left cursor-pointer active:bg-gray-600 select-none"
+                        className="w-full flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all duration-200 text-left cursor-pointer select-none"
                       >
                         <div className="flex items-center space-x-3">
                           <div 
                             className="w-4 h-4 rounded-full flex-shrink-0"
                             style={{ backgroundColor: colors[index % colors.length] }}
                           />
-                          <span className="text-white text-sm font-medium">{item.categoria}</span>
+                          <span className="text-[#f0f0f0] text-sm font-medium">{item.categoria}</span>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <p className="text-white font-semibold">R$ {formatarMoeda(item.valor)}</p>
-                          <p className="text-xs text-gray-400 font-medium">
+                          <p className="text-[#f0f0f0] font-semibold">R$ {formatarMoeda(item.valor)}</p>
+                          <p className="text-xs text-[#888888] font-medium">
                             {item.porcentagem.toFixed(1)}%
                           </p>
                         </div>
@@ -755,11 +757,11 @@ export default function DashboardPage() {
           </div>
         )}
         {despesasPorCategoria.length === 0 && stats.gastosMes === 0 && (
-          <div className="bg-gray-800 rounded-lg shadow-lg p-12 border border-gray-700 text-center">
-            <p className="text-gray-400 text-lg mb-2">
+          <div className="nexus-card p-12 text-center">
+            <p className="text-[#bbbbbb] text-lg mb-2">
               Nenhuma despesa registrada em {mesNome} {anoSelecionado}
             </p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-[#666666] text-sm">
               As despesas do mês aparecerão aqui quando registradas
             </p>
           </div>
@@ -769,3 +771,10 @@ export default function DashboardPage() {
   )
 }
 
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[200px]">Carregando...</div>}>
+      <DashboardContent />
+    </Suspense>
+  )
+}

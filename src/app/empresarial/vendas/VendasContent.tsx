@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
@@ -17,6 +18,7 @@ import {
   FiTrendingUp,
 } from 'react-icons/fi'
 import ActionButtons from '@/components/Empresarial/ActionButtons'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Venda {
   id: string
@@ -37,6 +39,7 @@ interface Venda {
   servico_id?: string | null
   preco_custo?: number
   margem_lucro?: number
+  orcamento_id?: string | null
   cliente_nome?: string | null
   categoria_nome?: string | null
   produto_nome?: string | null
@@ -102,6 +105,7 @@ interface VendasContentProps {
 
 export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProps = {}) {
   const { session } = useAuth()
+  const searchParams = useSearchParams()
   const [vendas, setVendas] = useState<Venda[]>([])
   const [parcelas, setParcelas] = useState<ParcelaVenda[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
@@ -175,7 +179,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
   const [filtroCategoria, setFiltroCategoria] = useState<string>('')
   const [buscaTexto, setBuscaTexto] = useState<string>('')
 
-  // FormulÃ¡rio
+  // Formulário
   const [formData, setFormData] = useState({
     tipo_venda: 'servico' as 'servico' | 'produto',
     cliente_id: '',
@@ -193,6 +197,10 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     parcelada: false,
     total_parcelas: '1',
     observacoes: '',
+    /** Receber parte agora (entrada) e restante em outra data */
+    com_entrada: false,
+    valor_entrada: '',
+    data_vencimento_restante: '',
   })
 
   useEffect(() => {
@@ -200,6 +208,14 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
       loadData()
     }
   }, [session])
+
+  // Aplicar filtro de categoria vindo da URL (ex.: link do dashboard por categoria)
+  useEffect(() => {
+    const categoriaId = searchParams.get('categoria_id')
+    if (categoriaId) {
+      setFiltroCategoria(categoriaId)
+    }
+  }, [searchParams])
 
   const loadData = async () => {
     try {
@@ -246,7 +262,12 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
       setServicos(servicosData || [])
 
-      await loadVendas()
+      await loadVendas({
+        clientesList: clientesData || [],
+        categoriasList: categoriasData || [],
+        produtosList: produtosData || [],
+        servicosList: servicosData || [],
+      })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -254,11 +275,20 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     }
   }
 
-  const loadVendas = async () => {
+  const loadVendas = async (dadosRef?: {
+    clientesList?: Cliente[]
+    categoriasList?: Categoria[]
+    produtosList?: Produto[]
+    servicosList?: Servico[]
+  }) => {
     try {
       const userId = session?.user?.id
+      const clientesParaMap = dadosRef?.clientesList ?? clientes
+      const categoriasParaMap = dadosRef?.categoriasList ?? categorias
+      const produtosParaMap = dadosRef?.produtosList ?? produtos
+      const servicosParaMap = dadosRef?.servicosList ?? servicos
 
-      // Buscar vendas nÃ£o parceladas
+      // Buscar vendas não parceladas
       let query = supabase
         .from('vendas')
         .select('*')
@@ -313,11 +343,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
       if (parcelasError) throw parcelasError
 
-      // Processar dados - buscar nomes de clientes, categorias, produtos e serviÃ§os
-      const clientesMap = new Map(clientes.map(c => [c.id, c.nome]))
-      const categoriasMap = new Map(categorias.map(c => [c.id, c.nome]))
-      const produtosMap = new Map(produtos.map(p => [p.id, p.nome]))
-      const servicosMap = new Map(servicos.map(s => [s.id, s.nome]))
+      // Processar dados - buscar nomes de clientes, categorias, produtos e serviços (usar dados passados ou state)
+      const clientesMap = new Map(clientesParaMap.map(c => [c.id, c.nome]))
+      const categoriasMap = new Map(categoriasParaMap.map(c => [c.id, c.nome]))
+      const produtosMap = new Map(produtosParaMap.map(p => [p.id, p.nome]))
+      const servicosMap = new Map(servicosParaMap.map(s => [s.id, s.nome]))
 
       const vendasProcessadas = (vendasData || []).map((venda: any) => ({
         ...venda,
@@ -461,9 +491,17 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     e.preventDefault()
     try {
       const userId = session?.user?.id
+      if (!userId) return
       const valorTotal = parseFloat(formData.valor_total)
       const valorDesconto = parseFloat(formData.valor_desconto) || 0
       const valorFinal = Math.max(0, valorTotal - valorDesconto)
+      const comEntrada = formData.com_entrada && !!formData.valor_entrada && !!formData.data_vencimento_restante
+      const valorEntrada = comEntrada ? parseFloat(formData.valor_entrada) || 0 : 0
+      const valorRestante = comEntrada ? Math.max(0, valorFinal - valorEntrada) : 0
+      if (comEntrada && (valorEntrada <= 0 || valorEntrada >= valorFinal)) {
+        alert('Valor da entrada deve ser maior que zero e menor que o valor final.')
+        return
+      }
 
       if (editingVenda) {
         // Verificar se o status mudou
@@ -472,6 +510,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
         // Editar venda existente
         const precoCusto = formData.tipo_venda === 'produto' ? parseFloat(formData.preco_custo) || 0 : 0
+        const parcelada = comEntrada || formData.parcelada
+        const totalParcelas = comEntrada ? 2 : (formData.parcelada ? parseInt(formData.total_parcelas) : 1)
         const { error } = await supabase
           .from('vendas')
           .update({
@@ -487,9 +527,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             valor_final: valorFinal,
             data_venda: formData.data_venda,
             forma_pagamento: formData.forma_pagamento,
-            status: novoStatus,
-            parcelada: formData.parcelada,
-            total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
+            status: comEntrada ? 'pendente' : novoStatus,
+            parcelada,
+            total_parcelas: totalParcelas,
             observacoes: formData.observacoes || null,
           })
           .eq('id', editingVenda.id)
@@ -521,23 +561,80 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
           }
         }
 
-        // Se for parcelada, criar parcelas
-        if (formData.parcelada) {
-          // Deletar parcelas antigas
+        // Ao editar: remover fluxo de caixa das parcelas antigas e depois deletar parcelas
+        const { data: parcelasAntigas } = await supabase
+          .from('parcelas_vendas')
+          .select('id')
+          .eq('venda_id', editingVenda.id)
+        if (parcelasAntigas?.length) {
+          const ids = parcelasAntigas.map((p: { id: string }) => p.id)
           await supabase
-            .from('parcelas_vendas')
+            .from('fluxo_caixa')
             .delete()
-            .eq('venda_id', editingVenda.id)
+            .eq('user_id', userId)
+            .eq('origem', 'venda')
+            .in('origem_id', ids)
+        }
+        await supabase.from('parcelas_vendas').delete().eq('venda_id', editingVenda.id)
 
-          // Criar novas parcelas
+        if (comEntrada) {
+          // Entrada (recebida hoje) + Restante (data futura)
+          const hoje = new Date().toISOString().split('T')[0]
+          await supabase.from('parcelas_vendas').insert([
+            {
+              user_id: userId,
+              venda_id: editingVenda.id,
+              cliente_id: formData.cliente_id || null,
+              categoria_id: formData.categoria_id || null,
+              descricao: `${formData.descricao} - Entrada`,
+              valor: valorEntrada,
+              data_vencimento: hoje,
+              data_recebimento: hoje,
+              recebida: true,
+              forma_pagamento: formData.forma_pagamento,
+              parcela_numero: 1,
+              total_parcelas: 2,
+              status: 'aprovado',
+            },
+            {
+              user_id: userId,
+              venda_id: editingVenda.id,
+              cliente_id: formData.cliente_id || null,
+              categoria_id: formData.categoria_id || null,
+              descricao: `${formData.descricao} - Restante`,
+              valor: valorRestante,
+              data_vencimento: formData.data_vencimento_restante,
+              recebida: false,
+              forma_pagamento: formData.forma_pagamento,
+              parcela_numero: 2,
+              total_parcelas: 2,
+              status: 'pendente',
+            },
+          ])
+          await supabase
+            .from('fluxo_caixa')
+            .delete()
+            .eq('user_id', userId)
+            .eq('origem', 'venda')
+            .eq('origem_id', editingVenda.id)
+          await supabase.from('fluxo_caixa').insert({
+            user_id: userId,
+            tipo: 'entrada',
+            origem: 'venda',
+            origem_id: editingVenda.id,
+            descricao: `${formData.descricao} - Entrada`,
+            valor: valorEntrada,
+            data_movimentacao: hoje,
+            forma_pagamento: formData.forma_pagamento || 'pix',
+          })
+        } else if (formData.parcelada) {
+          // Criar parcelas normais (N parcelas)
           const totalParcelas = parseInt(formData.total_parcelas)
           const valorParcela = valorFinal / totalParcelas
           const dataVenda = new Date(formData.data_venda)
-
           for (let i = 0; i < totalParcelas; i++) {
             const dataVencimentoParcela = new Date(dataVenda)
             dataVencimentoParcela.setMonth(dataVencimentoParcela.getMonth() + i)
-
             await supabase.from('parcelas_vendas').insert({
               user_id: userId,
               venda_id: editingVenda.id,
@@ -554,7 +651,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         }
       } else {
         // Criar nova venda
-        const statusVenda = formData.status
+        const statusVenda = comEntrada ? 'pendente' : formData.status
+        const parcelada = comEntrada || formData.parcelada
+        const totalParcelas = comEntrada ? 2 : (formData.parcelada ? parseInt(formData.total_parcelas) : 1)
         const precoCusto = formData.tipo_venda === 'produto' ? parseFloat(formData.preco_custo) || 0 : 0
         const { data: novaVenda, error } = await supabase
           .from('vendas')
@@ -573,8 +672,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             data_venda: formData.data_venda,
             forma_pagamento: formData.forma_pagamento,
             status: statusVenda,
-            parcelada: formData.parcelada,
-            total_parcelas: formData.parcelada ? parseInt(formData.total_parcelas) : 1,
+            parcelada,
+            total_parcelas: totalParcelas,
             observacoes: formData.observacoes || null,
           })
           .select()
@@ -582,8 +681,51 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
         if (error) throw error
 
-        // Se status for aprovado, criar movimentaÃ§Ã£o no fluxo de caixa
-        if (statusVenda === 'aprovado' && novaVenda && !formData.parcelada) {
+        if (comEntrada && novaVenda) {
+          const hoje = new Date().toISOString().split('T')[0]
+          const parcelasEntradaRestante = [
+            {
+              user_id: userId,
+              venda_id: novaVenda.id,
+              cliente_id: formData.cliente_id || null,
+              categoria_id: formData.categoria_id || null,
+              descricao: `${formData.descricao} - Entrada`,
+              valor: valorEntrada,
+              data_vencimento: hoje,
+              data_recebimento: hoje,
+              recebida: true,
+              forma_pagamento: formData.forma_pagamento,
+              parcela_numero: 1,
+              total_parcelas: 2,
+              status: 'aprovado',
+            },
+            {
+              user_id: userId,
+              venda_id: novaVenda.id,
+              cliente_id: formData.cliente_id || null,
+              categoria_id: formData.categoria_id || null,
+              descricao: `${formData.descricao} - Restante`,
+              valor: valorRestante,
+              data_vencimento: formData.data_vencimento_restante,
+              recebida: false,
+              forma_pagamento: formData.forma_pagamento,
+              parcela_numero: 2,
+              total_parcelas: 2,
+              status: 'pendente',
+            },
+          ]
+          await supabase.from('parcelas_vendas').insert(parcelasEntradaRestante)
+          await supabase.from('fluxo_caixa').insert({
+            user_id: userId,
+            tipo: 'entrada',
+            origem: 'venda',
+            origem_id: novaVenda.id,
+            descricao: `${formData.descricao} - Entrada`,
+            valor: valorEntrada,
+            data_movimentacao: hoje,
+            forma_pagamento: formData.forma_pagamento || 'pix',
+          })
+        } else if (statusVenda === 'aprovado' && novaVenda && !parcelada) {
           await supabase.from('fluxo_caixa').insert({
             user_id: userId,
             tipo: 'entrada',
@@ -596,39 +738,38 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
           })
         }
 
-        // Se for parcelada, criar parcelas
-        if (formData.parcelada && novaVenda) {
-          const totalParcelas = parseInt(formData.total_parcelas)
-          const valorParcela = valorFinal / totalParcelas
+        if (formData.parcelada && novaVenda && !comEntrada) {
+          const totalParcelasNorm = parseInt(formData.total_parcelas)
+          const valorParcela = valorFinal / totalParcelasNorm
           const dataVenda = new Date(formData.data_venda)
-
-          for (let i = 0; i < totalParcelas; i++) {
+          for (let i = 0; i < totalParcelasNorm; i++) {
             const dataVencimentoParcela = new Date(dataVenda)
             dataVencimentoParcela.setMonth(dataVencimentoParcela.getMonth() + i)
-
-            const parcelaStatus = statusVenda === 'aprovado' ? 'aprovado' : 'pendente'
-            const { data: novaParcela } = await supabase.from('parcelas_vendas').insert({
-              user_id: userId,
-              venda_id: novaVenda.id,
-              cliente_id: formData.cliente_id || null,
-              categoria_id: formData.categoria_id || null,
-              descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelas}`,
-              valor: valorParcela,
-              data_vencimento: dataVencimentoParcela.toISOString().split('T')[0],
-              forma_pagamento: formData.forma_pagamento,
-              parcela_numero: i + 1,
-              total_parcelas: totalParcelas,
-              status: parcelaStatus,
-            }).select().single()
-
-            // Se parcela for aprovada, criar movimentaÃ§Ã£o no fluxo de caixa
+            const parcelaStatus = formData.status === 'aprovado' ? 'aprovado' : 'pendente'
+            const { data: novaParcela } = await supabase
+              .from('parcelas_vendas')
+              .insert({
+                user_id: userId,
+                venda_id: novaVenda.id,
+                cliente_id: formData.cliente_id || null,
+                categoria_id: formData.categoria_id || null,
+                descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelasNorm}`,
+                valor: valorParcela,
+                data_vencimento: dataVencimentoParcela.toISOString().split('T')[0],
+                forma_pagamento: formData.forma_pagamento,
+                parcela_numero: i + 1,
+                total_parcelas: totalParcelasNorm,
+                status: parcelaStatus,
+              })
+              .select()
+              .single()
             if (parcelaStatus === 'aprovado' && novaParcela) {
               await supabase.from('fluxo_caixa').insert({
                 user_id: userId,
                 tipo: 'entrada',
                 origem: 'venda',
                 origem_id: novaParcela.id,
-                descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelas}`,
+                descricao: `${formData.descricao} - Parcela ${i + 1}/${totalParcelasNorm}`,
                 valor: valorParcela,
                 data_movimentacao: dataVencimentoParcela.toISOString().split('T')[0],
                 forma_pagamento: formData.forma_pagamento || 'pix',
@@ -651,7 +792,6 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
   const handleEdit = (venda: Venda) => {
     setEditingVenda(venda)
     const tipoVenda = venda.tipo_venda || 'servico'
-    // Atualizar a aba ativa para corresponder ao tipo da venda sendo editada
     setAbaAtiva(tipoVenda)
     setFormData({
       tipo_venda: tipoVenda,
@@ -670,6 +810,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
       parcelada: venda.parcelada,
       total_parcelas: venda.total_parcelas.toString(),
       observacoes: venda.observacoes || '',
+      com_entrada: false,
+      valor_entrada: '',
+      data_vencimento_restante: '',
     })
     setShowModal(true)
   }
@@ -769,6 +912,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
       parcelada: false,
       total_parcelas: '1',
       observacoes: '',
+      com_entrada: false,
+      valor_entrada: '',
+      data_vencimento_restante: '',
     })
     setEditingVenda(null)
   }
@@ -923,7 +1069,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     if (venda.status === 'aprovado') {
       return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Recebido</span>
     } else if (venda.status === 'cancelado') {
-      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">Cancelado</span>
+      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 emp-text-muted">Cancelado</span>
     } else {
       return <span className="px-2 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400">Pendente</span>
     }
@@ -935,7 +1081,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     if (parcela.status === 'aprovado' || parcela.recebida) {
       return <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">Recebida</span>
     } else if (parcela.status === 'cancelado') {
-      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 text-gray-400">Cancelado</span>
+      return <span className="px-2 py-1 text-xs rounded-full bg-gray-500/20 emp-text-muted">Cancelado</span>
     } else if (parcela.data_vencimento < hoje) {
       return <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">Vencida</span>
     } else {
@@ -1050,11 +1196,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             {hideMainTitle && sectionLabel ? (
-              <h2 className="text-xl font-semibold text-white">{sectionLabel}</h2>
+              <h2 className="text-xl font-semibold emp-text-primary">{sectionLabel}</h2>
             ) : (
               <>
-                <h1 className="text-3xl font-bold text-white">Vendas/Receitas</h1>
-                <p className="text-gray-400 mt-1">Gerencie vendas e receitas (contas a receber)</p>
+                <h1 className="text-3xl font-bold emp-text-primary">Vendas/Receitas</h1>
+                <p className="emp-text-muted mt-1">Gerencie vendas e receitas (contas a receber)</p>
               </>
             )}
           </div>
@@ -1064,11 +1210,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               setFormData(prev => ({ ...prev, tipo_venda: abaAtiva }))
               setShowModal(true)
             }}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-              abaAtiva === 'servico'
-                ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+            style={{ backgroundColor: 'var(--emp-accent)' }}
           >
             <FiPlus className="w-5 h-5" />
             <span>Nova {abaAtiva === 'servico' ? 'Venda de Serviço' : 'Venda de Produto'}</span>
@@ -1076,15 +1219,16 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         </div>
 
         {/* Abas de Navegação */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-1">
+        <div className="emp-bg-card rounded-lg border emp-border p-1">
           <div className="flex gap-2">
             <button
               onClick={() => setAbaAtiva('servico')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
                 abaAtiva === 'servico'
-                  ? 'bg-purple-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  ? 'emp-text-primary shadow-lg'
+                  : 'emp-text-muted hover:emp-text-primary hover:opacity-90'
               }`}
+              style={abaAtiva === 'servico' ? { backgroundColor: 'var(--emp-accent)' } : undefined}
             >
               <div className="flex items-center justify-center gap-2">
                 <FiShoppingBag className="w-5 h-5" />
@@ -1095,9 +1239,10 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               onClick={() => setAbaAtiva('produto')}
               className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
                 abaAtiva === 'produto'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  ? 'emp-text-primary shadow-lg'
+                  : 'emp-text-muted hover:emp-text-primary hover:opacity-90'
               }`}
+              style={abaAtiva === 'produto' ? { backgroundColor: 'var(--emp-accent)' } : undefined}
             >
               <div className="flex items-center justify-center gap-2">
                 <FiShoppingBag className="w-5 h-5" />
@@ -1122,11 +1267,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-6 border emp-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total de Vendas</p>
-                <p className="text-2xl font-bold text-white mt-1">{resumo.totalVendas}</p>
+                <p className="emp-text-muted text-sm">Total de Vendas</p>
+                <p className="text-2xl font-bold emp-text-primary mt-1">{resumo.totalVendas}</p>
               </div>
               <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
                 <FiShoppingBag className="w-6 h-6 text-purple-400" />
@@ -1134,12 +1279,12 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-6 border emp-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Pendentes</p>
+                <p className="emp-text-muted text-sm">Pendentes</p>
                 <p className="text-2xl font-bold text-yellow-400 mt-1">{resumo.totalPendentes}</p>
-                <p className="text-sm text-gray-400 mt-1">{formatarMoeda(resumo.valorPendente)}</p>
+                <p className="text-sm emp-text-muted mt-1">{formatarMoeda(resumo.valorPendente)}</p>
               </div>
               <div className="w-12 h-12 bg-yellow-500/20 rounded-lg flex items-center justify-center">
                 <FiAlertCircle className="w-6 h-6 text-yellow-400" />
@@ -1147,12 +1292,12 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-6 border emp-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Pagas</p>
+                <p className="emp-text-muted text-sm">Pagas</p>
                 <p className="text-2xl font-bold text-green-400 mt-1">{resumo.totalPagas}</p>
-                <p className="text-sm text-gray-400 mt-1">{formatarMoeda(resumo.valorRecebido)}</p>
+                <p className="text-sm emp-text-muted mt-1">{formatarMoeda(resumo.valorRecebido)}</p>
               </div>
               <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
                 <FiCheck className="w-6 h-6 text-green-400" />
@@ -1160,11 +1305,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-6 border emp-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Valor Total</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatarMoeda(resumo.valorTotalVendas)}</p>
+                <p className="emp-text-muted text-sm">Valor Total</p>
+                <p className="text-2xl font-bold emp-text-primary mt-1">{formatarMoeda(resumo.valorTotalVendas)}</p>
               </div>
               <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                 <FiDollarSign className="w-6 h-6 text-blue-400" />
@@ -1174,22 +1319,22 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         </div>
 
         {/* Filtros â€” compactos: busca, status, cliente, categoria, mÃªs (padrÃ£o atual); ordem mais recente primeiro */}
-        <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+        <div className="emp-bg-card rounded-lg p-3 border emp-border">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px] max-w-xs">
-              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 emp-text-muted w-4 h-4" />
               <input
                 type="text"
                 placeholder="Buscar..."
                 value={buscaTexto}
                 onChange={(e) => setBuscaTexto(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full pl-8 pr-3 py-2 text-sm emp-input-bg border emp-border rounded-lg emp-text-primary placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
               />
             </div>
             <select
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value as 'todas' | 'pendentes' | 'aprovadas' | 'canceladas')}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 text-sm emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
             >
               <option value="todas">Todas</option>
               <option value="pendentes">Pendentes</option>
@@ -1199,7 +1344,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             <select
               value={filtroCliente}
               onChange={(e) => setFiltroCliente(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] min-w-[140px]"
             >
               <option value="">Todos clientes</option>
               {clientes.map((c) => (
@@ -1209,7 +1354,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] min-w-[140px]"
             >
               <option value="">Todas categorias</option>
               {categorias.map((c) => (
@@ -1217,11 +1362,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               ))}
             </select>
             <div className="flex items-center gap-1.5">
-              <label className="text-sm text-gray-400 whitespace-nowrap">Mês:</label>
+              <label className="text-sm emp-text-muted whitespace-nowrap">Mês:</label>
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
-                className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[110px]"
+                className="px-3 py-2 text-sm emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] min-w-[110px]"
               >
                 {getMonthOptions().map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1232,26 +1377,26 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         </div>
 
         {/* Tabela */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="emp-bg-card rounded-lg border emp-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/50">
+              <thead className="emp-input-bg/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Tipo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Descrição</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cliente</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Categoria</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Valor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Margem</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Ações</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Data</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Tipo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Descrição</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Cliente</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Categoria</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Valor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Margem</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-[var(--emp-border)]">
                 {vendasFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-gray-400">
+                    <td colSpan={9} className="px-6 py-12 text-center emp-text-muted">
                       Nenhuma venda de {abaAtiva === 'servico' ? 'serviço' : 'produto'} encontrada
                     </td>
                   </tr>
@@ -1263,8 +1408,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                       : getStatusBadge(venda as Venda)
                     
                     return (
-                      <tr key={venda.id} className="hover:bg-gray-700/30 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <tr key={venda.id} className="hover:opacity-90/30 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                           {formatarData(venda.data_venda)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1273,32 +1418,32 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                             return (
                               <span className={`px-2 py-1 text-xs rounded-full ${
                                 tipoVenda === 'produto'
-                                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                  : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                  ? 'bg-blue-500/20 emp-text-primary border border-blue-500/30'
+                                  : 'bg-purple-500/20 emp-text-primary border border-purple-500/30'
                               }`}>
                                 {tipoVenda === 'produto' ? 'Produto' : 'Serviço'}
                               </span>
                             )
                           })()}
                         </td>
-                        <td className="px-6 py-4 text-sm text-white">
+                        <td className="px-6 py-4 text-sm emp-text-primary">
                           {venda.descricao}
                           {isParcela && (
-                            <span className="ml-2 text-xs text-gray-400">
+                            <span className="ml-2 text-xs emp-text-muted">
                               (Parcela {venda.total_parcelas > 1 ? `${(venda as any).parcela_numero}/${venda.total_parcelas}` : ''})
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                           {venda.cliente_nome || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                           {venda.categoria_nome || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium emp-text-primary">
                           {formatarMoeda(venda.valor_final)}
                           {venda.valor_desconto > 0 && (
-                            <span className="block text-xs text-gray-400 line-through">
+                            <span className="block text-xs emp-text-muted line-through">
                               {formatarMoeda(venda.valor_total)}
                             </span>
                           )}
@@ -1320,7 +1465,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                                 </span>
                               )
                             }
-                            return <span className="text-gray-500">-</span>
+                            return <span className="emp-text-muted">-</span>
                           })()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1340,7 +1485,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                                     <select
                                       value={(venda as Venda).status || 'pendente'}
                                       onChange={(e) => handleAlterarStatus(venda.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                      className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                      className="px-2 py-1 text-xs rounded-full emp-input-bg border emp-border emp-text-muted focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] cursor-pointer"
                                       title="Status no banco: Pendente (mas está vencida)"
                                     >
                                       <option value="pendente">Pendente</option>
@@ -1356,9 +1501,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                                 <select
                                   value={(venda as Venda).status || 'pendente'}
                                   onChange={(e) => handleAlterarStatus(venda.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] cursor-pointer transition-all ${
                                     (venda as Venda).status === 'cancelado'
-                                      ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                                      ? 'bg-gray-500/20 emp-text-muted border-gray-500/30'
                                       : (venda as Venda).status === 'aprovado'
                                       ? 'bg-green-500/20 text-green-400 border-green-500/30'
                                       : estaVencida
@@ -1382,9 +1527,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                                 <select
                                   value={statusParcela}
                                   onChange={(e) => handleAlterarStatus(venda.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', true)}
-                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                  className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)] cursor-pointer transition-all ${
                                     statusParcela === 'cancelado'
-                                      ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                                      ? 'bg-gray-500/20 emp-text-muted border-gray-500/30'
                                       : statusParcela === 'aprovado' || parcela.recebida
                                       ? 'bg-green-500/20 text-green-400 border-green-500/30'
                                       : estaVencidaParcela
@@ -1454,9 +1599,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg p-6 w-full max-w-2xl border emp-border max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold emp-text-primary">
                   {editingVenda 
                     ? `Editar Venda de ${formData.tipo_venda === 'servico' ? 'Serviço' : 'Produto'}`
                     : `Nova Venda de ${formData.tipo_venda === 'servico' ? 'Serviço' : 'Produto'}`
@@ -1467,7 +1612,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                     setShowModal(false)
                     resetForm()
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="emp-text-muted hover:emp-text-primary transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -1487,12 +1632,12 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                 {formData.tipo_venda === 'produto' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Produto</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Produto</label>
                     <div className="flex gap-2">
                       <select
                         value={formData.produto_id}
                         onChange={(e) => setFormData({ ...formData, produto_id: e.target.value })}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Selecione um produto</option>
                         {produtos.map((produto) => (
@@ -1504,7 +1649,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                       <button
                         type="button"
                         onClick={() => setShowModalProduto(true)}
-                        className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                        className="px-3 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                        style={{ backgroundColor: 'var(--emp-accent)' }}
                         title="Cadastrar novo produto"
                       >
                         <FiPlus className="w-5 h-5" />
@@ -1515,7 +1661,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                 {formData.tipo_venda === 'servico' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Serviço</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Serviço</label>
                     <div className="flex gap-2">
                       <select
                         value={formData.servico_id}
@@ -1528,7 +1674,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                             valor_total: servicoSelecionado ? servicoSelecionado.valor_unitario.toString() : formData.valor_total
                           })
                         }}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="flex-1 px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       >
                         <option value="">Selecione um serviço</option>
                         {servicos.map((servico) => (
@@ -1544,11 +1690,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Cliente */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Cliente</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Cliente</label>
                     <select
                       value={formData.cliente_id}
                       onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     >
                       <option value="">Selecione um cliente</option>
                       {clientes.map((cliente) => (
@@ -1561,11 +1707,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                   {/* Categoria */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Categoria</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Categoria</label>
                     <select
                       value={formData.categoria_id}
                       onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     >
                       <option value="">Selecione uma categoria</option>
                       {categorias.map((categoria) => (
@@ -1579,37 +1725,37 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                 {/* Descrição */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Descrição *</label>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Descrição *</label>
                   <input
                     type="text"
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     placeholder={formData.tipo_venda === 'produto' ? 'Nome do produto' : 'Descrição do serviço'}
                   />
                 </div>
 
                 {formData.tipo_venda === 'produto' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Preço de Custo *</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Preço de Custo *</label>
                     <input
                       type="number"
                       step="0.01"
                       value={formData.preco_custo}
                       onChange={(e) => setFormData({ ...formData, preco_custo: e.target.value })}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="0.00"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Preço que você pagou pelo produto</p>
+                    <p className="text-xs emp-text-muted mt-1">Preço que você pagou pelo produto</p>
                   </div>
                 )}
 
                 <div className={`grid grid-cols-1 md:grid-cols-${formData.tipo_venda === 'produto' ? '4' : '3'} gap-4`}>
                   {/* Valor Total */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">
                       {formData.tipo_venda === 'produto' ? 'Preço de Venda' : 'Valor Total'} *
                     </label>
                     <input
@@ -1618,44 +1764,44 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                       value={formData.valor_total}
                       onChange={(e) => setFormData({ ...formData, valor_total: e.target.value })}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="0.00"
                     />
                   </div>
 
                   {/* Valor Desconto */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Desconto</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Desconto</label>
                     <input
                       type="number"
                       step="0.01"
                       value={formData.valor_desconto}
                       onChange={(e) => setFormData({ ...formData, valor_desconto: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="0.00"
                     />
                   </div>
 
                   {/* Valor Final */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Valor Final</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Valor Final</label>
                     <input
                       type="text"
                       value={formatarMoeda(parseFloat(formData.valor_final) || 0)}
                       disabled
-                      className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white cursor-not-allowed"
+                      className="w-full px-4 py-2 emp-input-bg/50 border emp-border rounded-lg emp-text-primary cursor-not-allowed"
                     />
                   </div>
 
                   {/* Margem de Lucro (apenas para produtos) */}
                   {formData.tipo_venda === 'produto' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">Margem de Lucro</label>
+                      <label className="block text-sm font-medium emp-text-secondary mb-2">Margem de Lucro</label>
                       <input
                         type="text"
                         value={`${calcularMargemLucro()}%`}
                         disabled
-                        className={`w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white cursor-not-allowed ${
+                        className={`w-full px-4 py-2 emp-input-bg/50 border emp-border rounded-lg emp-text-primary cursor-not-allowed ${
                           parseFloat(calcularMargemLucro()) >= 50
                             ? 'text-green-400'
                             : parseFloat(calcularMargemLucro()) >= 30
@@ -1671,24 +1817,20 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Data Venda */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Data da Venda</label>
-                    <input
-                      type="date"
-                      value={formData.data_venda}
-                      onChange={(e) => setFormData({ ...formData, data_venda: e.target.value })}
-                      required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    />
-                  </div>
+                  <DateInput
+                    label="Data da Venda"
+                    value={formData.data_venda}
+                    onChange={(e) => setFormData({ ...formData, data_venda: e.target.value })}
+                    required
+                  />
 
                   {/* Forma de Pagamento */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Forma de Pagamento</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Forma de Pagamento</label>
                     <select
                       value={formData.forma_pagamento}
                       onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     >
                       <option value="dinheiro">Dinheiro</option>
                       <option value="pix">PIX</option>
@@ -1705,11 +1847,11 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Status */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Status</label>
                     <select
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     >
                       <option value="pendente">Pendente</option>
                       <option value="aprovado">Recebido</option>
@@ -1724,9 +1866,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                         type="checkbox"
                         checked={formData.parcelada}
                         onChange={(e) => setFormData({ ...formData, parcelada: e.target.checked })}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                        className="w-4 h-4 text-purple-600 emp-input-bg emp-border rounded focus:ring-[var(--emp-accent)]"
                       />
-                      <span className="text-sm text-gray-300">Venda Parcelada</span>
+                      <span className="text-sm emp-text-secondary">Venda Parcelada</span>
                     </label>
                     {formData.parcelada && (
                       <input
@@ -1734,21 +1876,71 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                         min="1"
                         value={formData.total_parcelas}
                         onChange={(e) => setFormData({ ...formData, total_parcelas: e.target.value })}
-                        className="w-20 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="w-20 px-3 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="Parcelas"
                       />
                     )}
                   </div>
                 </div>
 
+                {/* Entrada + restante em outra data */}
+                <div className="rounded-lg border emp-border p-4 emp-input-bg/50 space-y-3">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.com_entrada}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          com_entrada: e.target.checked,
+                          valor_entrada: e.target.checked ? formData.valor_entrada : '',
+                          data_vencimento_restante: e.target.checked ? formData.data_vencimento_restante : '',
+                        })
+                      }
+                      className="w-4 h-4 text-purple-600 emp-input-bg emp-border rounded focus:ring-[var(--emp-accent)]"
+                    />
+                    <span className="text-sm font-medium emp-text-secondary">
+                      Receber parte agora (entrada) e restante em outra data
+                    </span>
+                  </label>
+                  {formData.com_entrada && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6">
+                      <div>
+                        <label className="block text-sm font-medium emp-text-muted mb-1">Valor da entrada (R$)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.valor_entrada}
+                          onChange={(e) => setFormData({ ...formData, valor_entrada: e.target.value })}
+                          className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
+                          placeholder="0,00"
+                        />
+                      </div>
+                      <div>
+                        <DateInput
+                          label="Data para receber o restante"
+                          value={formData.data_vencimento_restante}
+                          onChange={(e) => setFormData({ ...formData, data_vencimento_restante: e.target.value })}
+                        />
+                      </div>
+                      {formData.valor_entrada && formData.data_vencimento_restante && (
+                        <p className="text-xs emp-text-muted col-span-full">
+                          Restante: {formatarMoeda(Math.max(0, (parseFloat(formData.valor_final) || 0) - parseFloat(formData.valor_entrada)))}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Observações */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Observações</label>
                   <textarea
                     value={formData.observacoes}
                     onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     placeholder="Observações adicionais..."
                   />
                 </div>
@@ -1761,13 +1953,14 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                       setShowModal(false)
                       resetForm()
                     }}
-                    className="px-6 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="px-6 py-2 border emp-border rounded-lg emp-text-secondary hover:opacity-90 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                    className="px-6 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                    style={{ backgroundColor: 'var(--emp-accent)' }}
                   >
                     {editingVenda ? 'Salvar Alterações' : 'Criar Venda'}
                   </button>
@@ -1780,12 +1973,12 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
         {/* Modal Criar Produto */}
         {showModalProduto && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
-            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg p-6 w-full max-w-2xl border emp-border max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">Cadastrar Novo Produto</h2>
+                <h2 className="text-2xl font-bold emp-text-primary">Cadastrar Novo Produto</h2>
                 <button
                   onClick={() => setShowModalProduto(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="emp-text-muted hover:emp-text-primary transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -1794,72 +1987,72 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               <form onSubmit={handleCriarProduto} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Nome do Produto *</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Nome do Produto *</label>
                     <input
                       type="text"
                       value={formDataProduto.nome}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, nome: e.target.value })}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Ex: Notebook Dell"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Código (SKU)</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Código (SKU)</label>
                     <input
                       type="text"
                       value={formDataProduto.codigo}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, codigo: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Código do produto"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Descrição</label>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Descrição</label>
                   <textarea
                     value={formDataProduto.descricao}
                     onChange={(e) => setFormDataProduto({ ...formDataProduto, descricao: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Descrição do produto"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Preço de Venda *</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Preço de Venda *</label>
                     <input
                       type="number"
                       step="0.01"
                       value={formDataProduto.valor_unitario}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, valor_unitario: e.target.value })}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Preço de Custo</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Preço de Custo</label>
                     <input
                       type="number"
                       step="0.01"
                       value={formDataProduto.preco_custo}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, preco_custo: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0.00"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Categoria</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Categoria</label>
                     <select
                       value={formDataProduto.categoria_id}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, categoria_id: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Selecione uma categoria</option>
                       {categorias.map((categoria) => (
@@ -1873,48 +2066,48 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Unidade</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Unidade</label>
                     <input
                       type="text"
                       value={formDataProduto.unidade}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, unidade: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="un, kg, m, etc"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Estoque Inicial</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Estoque Inicial</label>
                     <input
                       type="number"
                       step="0.001"
                       value={formDataProduto.estoque}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, estoque: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Estoque Mínimo</label>
+                    <label className="block text-sm font-medium emp-text-secondary mb-2">Estoque Mínimo</label>
                     <input
                       type="number"
                       step="0.001"
                       value={formDataProduto.estoque_minimo}
                       onChange={(e) => setFormDataProduto({ ...formDataProduto, estoque_minimo: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="0"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">Observações</label>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Observações</label>
                   <textarea
                     value={formDataProduto.observacoes}
                     onChange={(e) => setFormDataProduto({ ...formDataProduto, observacoes: e.target.value })}
                     rows={2}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Observações adicionais..."
                   />
                 </div>
@@ -1923,13 +2116,14 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                   <button
                     type="button"
                     onClick={() => setShowModalProduto(false)}
-                    className="px-6 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="px-6 py-2 border emp-border rounded-lg emp-text-secondary hover:opacity-90 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    className="px-6 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                    style={{ backgroundColor: 'var(--emp-accent)' }}
                   >
                     Criar Produto
                   </button>

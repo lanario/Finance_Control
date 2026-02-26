@@ -15,10 +15,11 @@ export function formatDate(date: string | Date): string {
     dateStr = date
   }
   
-  // Se a data está no formato YYYY-MM-DD, converter para DD/MM/YYYY
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-    const [year, month, day] = dateStr.split('-')
-    return `${day}/${month}/${year}`
+  // Se a data está no formato YYYY-MM-DD (ou com hora), converter para DD/MM/YYYY sem usar timezone
+  const onlyDate = dateStr.split('T')[0]
+  if (onlyDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const [y, m, d] = onlyDate.split('-')
+    return `${d}/${m}/${y}`
   }
   
   // Se já estiver em outro formato, tentar parsear como Date

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
-import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiFileText } from 'react-icons/fi'
+import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiFileText, FiSearch, FiPackage, FiTool } from 'react-icons/fi'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Cliente {
   id: string
@@ -26,6 +27,20 @@ interface ItemOrcamento {
   observacoes: string
 }
 
+interface ProdutoCatalogo {
+  id: string
+  nome: string
+  valor_unitario: number
+  unidade: string
+}
+
+interface ServicoCatalogo {
+  id: string
+  nome: string
+  valor_unitario: number
+  unidade: string
+}
+
 export default function NovoOrcamentoPage() {
   const { session } = useAuth()
   const router = useRouter()
@@ -43,6 +58,12 @@ export default function NovoOrcamentoPage() {
   const [condicoesPagamento, setCondicoesPagamento] = useState('')
   const [prazoEntrega, setPrazoEntrega] = useState('')
   
+  /** Índice do item em que a busca de produto/serviço está aberta; null = fechado */
+  const [buscaItemIndex, setBuscaItemIndex] = useState<number | null>(null)
+  const [buscaTermo, setBuscaTermo] = useState('')
+  const [produtos, setProdutos] = useState<ProdutoCatalogo[]>([])
+  const [servicos, setServicos] = useState<ServicoCatalogo[]>([])
+
   // Dados do usuário
   const [perfilUsuario, setPerfilUsuario] = useState<{
     nome: string | null
@@ -59,8 +80,24 @@ export default function NovoOrcamentoPage() {
       loadClientes()
       gerarNumeroOrcamento()
       loadPerfilUsuario()
+      loadProdutosServicos()
     }
   }, [session])
+
+  const loadProdutosServicos = async () => {
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+      const [resProdutos, resServicos] = await Promise.all([
+        supabase.from('produtos').select('id, nome, valor_unitario, unidade').eq('user_id', userId).eq('ativo', true).order('nome'),
+        supabase.from('servicos').select('id, nome, valor_unitario, unidade').eq('user_id', userId).eq('ativo', true).order('nome'),
+      ])
+      setProdutos((resProdutos.data as ProdutoCatalogo[]) || [])
+      setServicos((resServicos.data as ServicoCatalogo[]) || [])
+    } catch (e) {
+      console.error('Erro ao carregar produtos/serviços:', e)
+    }
+  }
 
   const loadPerfilUsuario = async () => {
     try {
@@ -155,6 +192,22 @@ export default function NovoOrcamentoPage() {
       item_numero: i + 1,
     }))
     setItens(itensRenumerados)
+  }
+
+  /** Aplica produto ou serviço ao item na posição index e fecha a busca */
+  const handleSelecionarProdutoServico = (index: number, tipo: 'produto' | 'servico', item: ProdutoCatalogo | ServicoCatalogo) => {
+    const novosItens = [...itens]
+    const qtd = novosItens[index].quantidade
+    novosItens[index] = {
+      ...novosItens[index],
+      descricao: item.nome,
+      valor_unitario: item.valor_unitario,
+      unidade: item.unidade || 'un',
+      valor_total: (qtd * item.valor_unitario) - (novosItens[index].desconto || 0),
+    }
+    setItens(novosItens)
+    setBuscaItemIndex(null)
+    setBuscaTermo('')
   }
 
   const handleItemChange = (index: number, field: keyof ItemOrcamento, value: any) => {
@@ -367,30 +420,18 @@ export default function NovoOrcamentoPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Data inicial
-                </label>
-                <input
-                  type="date"
-                  value={dataEmissao}
-                  onChange={(e) => setDataEmissao(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Validade
-                </label>
-                <input
-                  type="date"
-                  value={dataValidade}
-                  onChange={(e) => setDataValidade(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
-                  placeholder="dd/mm/aaaa"
-                />
-              </div>
+              <DateInput
+                label="Data inicial"
+                value={dataEmissao}
+                onChange={(e) => setDataEmissao(e.target.value)}
+                required
+              />
+              <DateInput
+                label="Validade"
+                value={dataValidade}
+                onChange={(e) => setDataValidade(e.target.value)}
+                placeholder="dd/mm/aaaa"
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Status
@@ -456,21 +497,79 @@ export default function NovoOrcamentoPage() {
                         </div>
                         <div className="col-span-6">
                           <label className="block text-xs text-gray-400 mb-1">Descrição</label>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 relative">
                             <input
                               type="text"
                               value={item.descricao}
                               onChange={(e) => handleItemChange(index, 'descricao', e.target.value)}
                               required
                               className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-800"
-                              placeholder="Descrição do item"
+                              placeholder="Digite manual ou busque um produto/serviço"
                             />
-                            <button
-                              type="button"
-                              className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm"
-                            >
-                              Q Buscar
-                            </button>
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setBuscaItemIndex(buscaItemIndex === index ? null : index)}
+                                className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm flex items-center space-x-1"
+                                title="Buscar produto ou serviço cadastrado"
+                              >
+                                <FiSearch className="w-4 h-4" />
+                                <span>Buscar</span>
+                              </button>
+                              {buscaItemIndex === index && (
+                                <div className="absolute right-0 top-full mt-1 z-20 w-80 max-h-64 bg-gray-700 border border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col">
+                                  <div className="p-2 border-b border-gray-600">
+                                    <input
+                                      type="text"
+                                      value={buscaTermo}
+                                      onChange={(e) => setBuscaTermo(e.target.value)}
+                                      placeholder="Buscar por nome..."
+                                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-800"
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <div className="overflow-y-auto flex-1 p-1">
+                                    {(() => {
+                                      const termo = buscaTermo.trim().toLowerCase()
+                                      const prods = termo ? produtos.filter(p => p.nome.toLowerCase().includes(termo)) : produtos
+                                      const servs = termo ? servicos.filter(s => s.nome.toLowerCase().includes(termo)) : servicos
+                                      const total = prods.length + servs.length
+                                      if (total === 0) {
+                                        return <p className="text-gray-400 text-sm p-2">Nenhum produto ou serviço encontrado. Preencha manualmente.</p>
+                                      }
+                                      return (
+                                        <>
+                                          {prods.map((p) => (
+                                            <button
+                                              key={`p-${p.id}`}
+                                              type="button"
+                                              onClick={() => handleSelecionarProdutoServico(index, 'produto', p)}
+                                              className="w-full text-left px-3 py-2 rounded hover:bg-gray-600 text-white text-sm flex items-center space-x-2"
+                                            >
+                                              <FiPackage className="w-4 h-4 text-blue-400 shrink-0" />
+                                              <span className="flex-1 truncate">{p.nome}</span>
+                                              <span className="text-gray-400 shrink-0">R$ {Number(p.valor_unitario).toFixed(2)}</span>
+                                            </button>
+                                          ))}
+                                          {servs.map((s) => (
+                                            <button
+                                              key={`s-${s.id}`}
+                                              type="button"
+                                              onClick={() => handleSelecionarProdutoServico(index, 'servico', s)}
+                                              className="w-full text-left px-3 py-2 rounded hover:bg-gray-600 text-white text-sm flex items-center space-x-2"
+                                            >
+                                              <FiTool className="w-4 h-4 text-green-400 shrink-0" />
+                                              <span className="flex-1 truncate">{s.nome}</span>
+                                              <span className="text-gray-400 shrink-0">R$ {Number(s.valor_unitario).toFixed(2)}</span>
+                                            </button>
+                                          ))}
+                                        </>
+                                      )
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="col-span-2">

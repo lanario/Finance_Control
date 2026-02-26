@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseEmpresarial } from '@/lib/supabase/empresarial'
+import NeonGridBackground from '@/components/Layout/NeonGridBackground'
 
 /**
  * Página de callback OAuth para o fluxo empresarial.
  * O Supabase redireciona aqui após login com Google (ou outro provider).
  * A URL deve estar em Authentication > URL Configuration > Redirect URLs no Supabase (projeto empresarial).
- * Ex.: http://69.62.87.91:3001/empresarial/auth/callback
  */
 export default function AuthCallbackEmpresarialPage() {
   const router = useRouter()
@@ -57,15 +57,18 @@ export default function AuthCallbackEmpresarialPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-800 via-gray-700 to-purple-900">
-      <div className="text-white text-center">
+    <div className="min-h-screen flex items-center justify-center relative" style={{ backgroundColor: '#0d0d0d' }}>
+      <NeonGridBackground />
+      <div className="relative z-10 text-white text-center">
         {status === 'loading' && (
           <>
-            <div className="animate-spin w-10 h-10 border-2 border-white border-t-transparent rounded-full mx-auto mb-4" />
-            <p>Conectando... Aguarde.</p>
+            <div className="animate-spin w-10 h-10 border-2 border-neon border-t-transparent rounded-full mx-auto mb-4" />
+            <p className="text-gray-300">Conectando... Aguarde.</p>
           </>
         )}
-        {status === 'error' && <p>Redirecionando para o login...</p>}
+        {status === 'error' && (
+          <p className="text-gray-400">Redirecionando para o login...</p>
+        )}
       </div>
     </div>
   )

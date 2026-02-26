@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
-import jsPDF from 'jspdf'
+import jsPDF, { GState } from 'jspdf'
 
 interface Orcamento {
   id: string
@@ -179,8 +179,11 @@ class PDFGenerator {
 
             // Aplicar rotação (em graus, jsPDF converte internamente)
             const rotation = watermark.rotation || 0
+            const opacity = (watermark.opacity ?? 25) / 100
 
-            // Desenhar imagem com rotação
+            // Aplicar opacidade via GState e desenhar imagem com rotação
+            this.doc.saveGraphicsState()
+            this.doc.setGState(new GState({ opacity }))
             this.doc.addImage(
               img,
               'PNG',
@@ -192,6 +195,7 @@ class PDFGenerator {
               'FAST',
               rotation
             )
+            this.doc.restoreGraphicsState()
             resolve()
           } catch (error) {
             console.error('Erro ao desenhar marca d\'água:', error)
@@ -813,12 +817,12 @@ function createPDFConfig(templateConfig: TemplateConfig | null, orcamento: Orcam
     },
     watermark: {
       url: null, // Será preenchido com a logo do perfil
-      opacity: 30, // 30% de opacidade fixa
-      rotation: -45, // -45 graus fixo (diagonal)
-      positionX: undefined, // Centralizada
-      positionY: undefined, // Centralizada
-      size: 200, // 200px fixo
-      format: 'quadrado', // Formato fixo
+      opacity: templateConfig?.marcaDaguaOpacidade ?? 25, // Padrão mais transparente (25%)
+      rotation: templateConfig?.marcaDaguaRotacao ?? -45,
+      positionX: templateConfig?.marcaDaguaPosicaoPersonalizada ? templateConfig?.marcaDaguaPosicaoX : undefined,
+      positionY: templateConfig?.marcaDaguaPosicaoPersonalizada ? templateConfig?.marcaDaguaPosicaoY : undefined,
+      size: templateConfig?.marcaDaguaTamanho ?? 200,
+      format: templateConfig?.marcaDaguaFormato ?? 'quadrado',
     },
   }
 }

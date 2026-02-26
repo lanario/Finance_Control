@@ -279,13 +279,13 @@ export default function OrcamentoEstiloPage() {
     <MainLayoutEmpresarial>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-150px)]">
         {/* Painel Esquerdo - Configurações de Estilo */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 overflow-y-auto">
+        <div className="emp-bg-card rounded-lg border emp-border p-6 overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Orçamento (estilo)</h2>
+            <h2 className="text-xl font-semibold emp-text-primary">Orçamento (estilo)</h2>
             <button
               onClick={handleSalvar}
               disabled={saving}
-              className="flex items-center space-x-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center space-x-2 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg transition-colors disabled:opacity-50"
             >
               <FiSave className="w-4 h-4" />
               <span>{saving ? 'Salvando...' : 'Salvar Template'}</span>
@@ -297,7 +297,7 @@ export default function OrcamentoEstiloPage() {
             <button
               type="button"
               onClick={() => setCoresExpandida(!coresExpandida)}
-              className="w-full flex items-center justify-between text-white font-medium mb-4"
+              className="w-full flex items-center justify-between emp-text-primary font-medium mb-4"
             >
               <span>Cores</span>
               {coresExpandida ? <FiChevronUp /> : <FiChevronDown />}
@@ -305,123 +305,123 @@ export default function OrcamentoEstiloPage() {
             {coresExpandida && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor Primária</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor Primária</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corPrimaria}
                       onChange={(e) => setCorPrimaria(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corPrimaria}
                       onChange={(e) => setCorPrimaria(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Usada no header e bordas</p>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor Secundária</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor Secundária</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corSecundaria}
                       onChange={(e) => setCorSecundaria(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corSecundaria}
                       onChange={(e) => setCorSecundaria(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Usada em títulos</p>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor do Texto</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor do Texto</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corTexto}
                       onChange={(e) => setCorTexto(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corTexto}
                       onChange={(e) => setCorTexto(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor de Fundo</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor de Fundo</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corFundo}
                       onChange={(e) => setCorFundo(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corFundo}
                       onChange={(e) => setCorFundo(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor das Bordas</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor das Bordas</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corBordas}
                       onChange={(e) => setCorBordas(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corBordas}
                       onChange={(e) => setCorBordas(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor do Header</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor do Header</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corHeader}
                       onChange={(e) => setCorHeader(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corHeader}
                       onChange={(e) => setCorHeader(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Cor do Texto do Header</label>
+                  <label className="block text-sm emp-text-muted mb-2">Cor do Texto do Header</label>
                   <div className="flex items-center space-x-3">
                     <input
                       type="color"
                       value={corTextoHeader}
                       onChange={(e) => setCorTextoHeader(e.target.value)}
-                      className="w-12 h-10 bg-gray-700 border border-gray-600 rounded cursor-pointer"
+                      className="w-12 h-10 emp-input-bg border border-gray-600 rounded cursor-pointer"
                     />
                     <input
                       type="text"
                       value={corTextoHeader}
                       onChange={(e) => setCorTextoHeader(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                      className="flex-1 px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                     />
                   </div>
                 </div>
@@ -434,7 +434,7 @@ export default function OrcamentoEstiloPage() {
             <button
               type="button"
               onClick={() => setFontesExpandida(!fontesExpandida)}
-              className="w-full flex items-center justify-between text-white font-medium mb-4"
+              className="w-full flex items-center justify-between emp-text-primary font-medium mb-4"
             >
               <span>Fontes</span>
               {fontesExpandida ? <FiChevronUp /> : <FiChevronDown />}
@@ -442,7 +442,7 @@ export default function OrcamentoEstiloPage() {
             {fontesExpandida && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm emp-text-muted mb-2">
                     Tamanho do Título do Header: {fonteTituloHeader}px
                   </label>
                   <input
@@ -455,7 +455,7 @@ export default function OrcamentoEstiloPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm emp-text-muted mb-2">
                     Tamanho dos Títulos de Seção: {fonteTituloSecao}px
                   </label>
                   <input
@@ -468,11 +468,11 @@ export default function OrcamentoEstiloPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Família da Fonte</label>
+                  <label className="block text-sm emp-text-muted mb-2">Família da Fonte</label>
                   <select
                     value={fonteFamilia}
                     onChange={(e) => setFonteFamilia(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
+                    className="w-full px-3 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary text-sm"
                   >
                     <option value="Arial">Arial</option>
                     <option value="Helvetica">Helvetica</option>
@@ -492,7 +492,7 @@ export default function OrcamentoEstiloPage() {
             <button
               type="button"
               onClick={() => setLogoExpandido(!logoExpandido)}
-              className="w-full flex items-center justify-between text-white font-medium mb-4"
+              className="w-full flex items-center justify-between emp-text-primary font-medium mb-4"
             >
               <span>Logo</span>
               {logoExpandido ? <FiChevronUp /> : <FiChevronDown />}
@@ -500,7 +500,7 @@ export default function OrcamentoEstiloPage() {
             {logoExpandido && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">
+                  <label className="block text-sm emp-text-muted mb-2">
                     Logo do Orçamento
                   </label>
                   <p className="text-xs text-gray-500 mb-3">
@@ -525,7 +525,7 @@ export default function OrcamentoEstiloPage() {
                         <button
                           type="button"
                           onClick={() => setLogoUrl(null)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                          className="absolute -top-2 -right-2 p-1 bg-red-600 emp-text-primary rounded-full hover:bg-red-700"
                         >
                           <FiX className="w-4 h-4" />
                         </button>
@@ -540,7 +540,7 @@ export default function OrcamentoEstiloPage() {
                           disabled={uploadingLogo}
                           className="hidden"
                         />
-                        <span className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                        <span className="inline-flex items-center space-x-2 px-4 py-2 emp-input-bg hover:bg-gray-600 emp-text-primary rounded-lg transition-colors">
                           <FiImage className="w-5 h-5" />
                           <span>{uploadingLogo ? 'Enviando...' : logoUrl ? 'Alterar Logo' : 'Adicionar Logo'}</span>
                         </span>
@@ -556,7 +556,7 @@ export default function OrcamentoEstiloPage() {
                             alert('Nenhuma logo encontrada no seu perfil. Adicione uma logo na página de Perfil primeiro.')
                           }
                         }}
-                        className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-700 hover:bg-purple-600 text-white rounded-lg transition-colors text-sm"
+                        className="inline-flex items-center space-x-2 px-4 py-2 bg-purple-700 hover:bg-purple-600 emp-text-primary rounded-lg transition-colors text-sm"
                       >
                         <FiImage className="w-4 h-4" />
                         <span>Usar Logo do Perfil</span>
@@ -571,10 +571,10 @@ export default function OrcamentoEstiloPage() {
         </div>
 
         {/* Painel Direito - Preview */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 overflow-y-auto">
-          <h2 className="text-xl font-semibold text-white mb-4">Preview do Orçamento</h2>
+        <div className="emp-bg-card rounded-lg border emp-border p-6 overflow-y-auto">
+          <h2 className="text-xl font-semibold emp-text-primary mb-4">Preview do Orçamento</h2>
           {logoUrl && (
-            <div className="mb-2 text-xs text-gray-400">
+            <div className="mb-2 text-xs emp-text-muted">
               Logo carregada: {logoUrl.substring(0, 50)}...
             </div>
           )}

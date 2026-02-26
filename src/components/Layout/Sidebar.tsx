@@ -28,6 +28,7 @@ import {
   FiTrash2,
   FiTarget,
   FiTag,
+  FiLayers,
 } from 'react-icons/fi'
 import InstallAppBanner from '@/components/InstallAppBanner'
 
@@ -39,13 +40,13 @@ const menuItems = [
   { href: '/pessoal/gastos', label: 'Despesas', icon: FiTrendingUp, tipo: 'despesa' as const },
   { href: '/pessoal/investimentos', label: 'Investimentos', icon: FiPieChart, tipo: undefined },
   { href: '/pessoal/sonhos', label: 'Sonhos Infinity', icon: FiTarget, tipo: undefined },
+  { href: '/pessoal/planos', label: 'Planos', icon: FiLayers, tipo: undefined },
 ] as const
 
 export default function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { session } = useAuth()
-  const [isHovered, setIsHovered] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [profileName, setProfileName] = useState('')
@@ -428,15 +429,9 @@ export default function Sidebar() {
   }, [])
 
   return (
-    <div
-      className={`fixed left-0 top-0 h-screen bg-primary transition-all duration-200 ease-out z-50 flex flex-col will-change-width border-r border-white/10 ${
-        isHovered ? 'w-64' : 'w-20'
-      }`}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <div className={`py-6 transition-all duration-200 ease-out ${isHovered ? 'pl-2 pr-6 mb-8' : 'px-0 mb-4'}`}>
-        <div className={`flex items-center ${isHovered ? 'space-x-3' : 'justify-center'}`}>
+    <div className="fixed left-0 top-0 h-screen w-64 bg-[#080808] z-50 flex flex-col border-r border-white/10 backdrop-blur-sm">
+      <div className="py-6 pl-2 pr-6 mb-8">
+        <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <Image
               src="/images/infinity_sem_fundo.png"
@@ -446,35 +441,33 @@ export default function Sidebar() {
               className="object-contain"
             />
           </div>
-          {isHovered && (
-            <div className="overflow-hidden">
-              <h1 className="text-2xl font-bold text-white whitespace-nowrap animate-slide-in">
-                Infinity Lines
-              </h1>
-              <p className="text-white/80 text-sm whitespace-nowrap animate-slide-in-delay">
-                Controle Total
-              </p>
-            </div>
-          )}
+          <div className="overflow-hidden">
+            <h1 className="text-2xl font-bold text-[#f0f0f0] whitespace-nowrap">
+              Infinity Lines
+            </h1>
+            <p className="text-[#bbbbbb] text-sm whitespace-nowrap">
+              Controle Total
+            </p>
+          </div>
         </div>
       </div>
 
-      <nav className={`flex-1 space-y-2 ${isHovered ? 'px-3' : 'px-0'}`}>
+      <nav className="flex-1 space-y-2 px-3">
         {memoizedMenuItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
           const isReceita = item.tipo === 'receita'
           const isDespesa = item.tipo === 'despesa'
-          const corReceita = isReceita && (isActive ? 'bg-green-500/25 text-green-100' : 'text-green-400 hover:bg-green-500/15 hover:text-green-300')
-          const corDespesa = isDespesa && (isActive ? 'bg-red-500/25 text-red-100' : 'text-red-400 hover:bg-red-500/15 hover:text-red-300')
-          const corNeutra = !isReceita && !isDespesa && (isActive ? 'bg-primary-light text-white shadow-lg' : 'text-white hover:bg-primary-light/50 hover:text-white hover:shadow-md')
+          const corReceita = isReceita && (isActive ? 'bg-green-500/20 text-green-200' : 'text-green-400/90 hover:bg-white/5 hover:text-green-300')
+          const corDespesa = isDespesa && (isActive ? 'bg-red-500/20 text-red-200' : 'text-red-400/90 hover:bg-white/5 hover:text-red-300')
+          const corNeutra = !isReceita && !isDespesa && (isActive ? 'bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.06)]' : 'text-[#dddddd] hover:bg-white/5 hover:text-white hover:shadow-[0_0_20px_rgba(255,255,255,0.04)]')
           return (
             <Link
               key={item.href}
               href={item.href}
               prefetch={true}
               onMouseEnter={() => handleMenuItemHover(item.href)}
-              className={`group flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg transition-all duration-150 ease-out relative will-change-transform ${
+              className={`group flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-[250ms] ease-out relative ${
                 isReceita ? corReceita : isDespesa ? corDespesa : corNeutra
               }`}
             >
@@ -488,22 +481,20 @@ export default function Sidebar() {
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-red-400 rounded-r-full"></div>
               )}
               <Icon className={`w-5 h-5 flex-shrink-0 transition-transform duration-150 ease-out ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-              {isHovered && (
-                <span className={`whitespace-nowrap animate-slide-in ${isActive ? 'font-semibold' : ''}`}>
-                  {item.label}
-                </span>
-              )}
+              <span className={`whitespace-nowrap ${isActive ? 'font-semibold' : ''}`}>
+                {item.label}
+              </span>
             </Link>
           )
         })}
       </nav>
 
-      <div className={`${isHovered ? 'px-3' : 'px-0'} pb-6 mt-auto space-y-2`}>
+      <div className="px-3 pb-6 mt-auto space-y-2">
         {/* Notificações */}
         <div className="relative">
           <button
             onClick={handleToggleNotifications}
-            className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-150 ease-out relative`}
+            className="group w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[#dddddd] hover:bg-white/5 hover:text-white transition-all duration-[250ms] ease-out relative"
           >
             <div className="relative flex-shrink-0">
               <FiBell className="w-5 h-5" />
@@ -513,11 +504,9 @@ export default function Sidebar() {
                 </span>
               )}
             </div>
-            {isHovered && (
-              <span className="whitespace-nowrap animate-slide-in">
-                Notificações
-              </span>
-            )}
+            <span className="whitespace-nowrap">
+              Notificações
+            </span>
           </button>
 
           {/* Modal de Notificações - Balão ao lado */}
@@ -531,24 +520,24 @@ export default function Sidebar() {
               <div 
                 className="fixed z-50 w-96 flex flex-col"
                 style={{ 
-                  left: isHovered ? '16rem' : '5rem',
+                  left: '16rem',
                   top: '1rem',
                   maxHeight: 'calc(100vh - 2rem)',
                   marginLeft: '0.75rem',
                   animation: 'scaleInVertical 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}
               >
-                <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-700/50">
+                <div className="bg-[#0d0d0d] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-white/10">
                   {/* Header */}
-                  <div className="flex justify-between items-center p-6 border-b border-gray-700/50 bg-gray-800/50">
+                  <div className="flex justify-between items-center p-6 border-b border-white/10 bg-white/[0.02]">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <FiBell className="w-5 h-5 text-primary" />
+                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                        <FiBell className="w-5 h-5 text-[#f0f0f0]" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold text-white">Notificações</h2>
+                        <h2 className="text-xl font-bold text-[#f0f0f0]">Notificações</h2>
                         {notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 && (
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-[#888888]">
                             {notifications.filter(n => !dismissedNotifications.has(n.id)).length} {notifications.filter(n => !dismissedNotifications.has(n.id)).length === 1 ? 'notificação' : 'notificações'}
                           </p>
                         )}
@@ -558,7 +547,7 @@ export default function Sidebar() {
                       {notifications.filter(n => !dismissedNotifications.has(n.id)).length > 0 && (
                         <button
                           onClick={handleClearAllNotifications}
-                          className="px-3 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-700/50 rounded-lg transition-all duration-200 flex items-center space-x-1"
+                          className="px-3 py-1.5 text-xs text-[#888888] hover:text-[#f0f0f0] hover:bg-white/10 rounded-lg transition-all duration-200 flex items-center space-x-1"
                           title="Limpar todas"
                         >
                           <FiTrash2 className="w-4 h-4" />
@@ -567,7 +556,7 @@ export default function Sidebar() {
                       )}
                       <button
                         onClick={() => setShowNotifications(false)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/50 transition-all duration-200"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-[#888888] hover:text-[#f0f0f0] hover:bg-white/10 transition-all duration-200"
                       >
                         <FiX className="w-5 h-5" />
                       </button>
@@ -578,11 +567,11 @@ export default function Sidebar() {
                   <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
                     {notifications.filter(n => !dismissedNotifications.has(n.id)).length === 0 ? (
                       <div className="text-center py-12">
-                        <div className="w-16 h-16 rounded-full bg-gray-700/30 flex items-center justify-center mx-auto mb-4">
-                          <FiBell className="w-8 h-8 text-gray-600" />
+                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+                          <FiBell className="w-8 h-8 text-[#666666]" />
                         </div>
-                        <p className="text-gray-400 font-medium">Nenhuma notificação no momento</p>
-                        <p className="text-gray-500 text-sm mt-1">Você está em dia!</p>
+                        <p className="text-[#bbbbbb] font-medium">Nenhuma notificação no momento</p>
+                        <p className="text-[#666666] text-sm mt-1">Você está em dia!</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -620,7 +609,7 @@ export default function Sidebar() {
                                 {/* Botão de fechar */}
                                 <button
                                   onClick={() => handleDismissNotification(notif.id)}
-                                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-gray-700/80 hover:bg-gray-600 flex items-center justify-center text-gray-400 hover:text-white transition-all duration-200 opacity-0 group-hover/notif:opacity-100 z-10"
+                                  className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-[#888888] hover:text-[#f0f0f0] transition-all duration-200 opacity-0 group-hover/notif:opacity-100 z-10"
                                   title="Remover notificação"
                                 >
                                   <FiX className="w-3.5 h-3.5" />
@@ -630,7 +619,7 @@ export default function Sidebar() {
                                 }`}>
                                   {notif.title}
                                 </h3>
-                                <p className="text-sm text-gray-300 leading-relaxed mb-3">{notif.message}</p>
+                                <p className="text-sm text-[#bbbbbb] leading-relaxed mb-3">{notif.message}</p>
                                 {notif.link && (
                                   <button
                                     onClick={() => {
@@ -664,7 +653,7 @@ export default function Sidebar() {
         {/* Perfil do Usuário */}
         <button
           onClick={handleOpenProfileModal}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-primary-light/50 transition-all duration-150 ease-out`}
+          className="group w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[#dddddd] hover:bg-white/5 hover:text-white transition-all duration-[250ms] ease-out"
         >
           <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
             {profilePhoto ? (
@@ -679,52 +668,46 @@ export default function Sidebar() {
               <FiUser className="w-5 h-5" />
             )}
           </div>
-          {isHovered && (
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-medium whitespace-nowrap animate-slide-in truncate">
-                {profileName}
-              </p>
-              <p className="text-xs text-white/60 whitespace-nowrap animate-slide-in-delay truncate">
-                Ver perfil
-              </p>
-            </div>
-          )}
+          <div className="flex-1 overflow-hidden">
+            <p className="text-sm font-medium whitespace-nowrap truncate text-[#f0f0f0]">
+              {profileName}
+            </p>
+            <p className="text-xs text-[#888888] whitespace-nowrap truncate">
+              Ver perfil
+            </p>
+          </div>
         </button>
 
-        {isHovered && (
-          <div className="px-2 py-2">
-            <InstallAppBanner compact className="!text-white/70 !gap-1 [&_a]:!text-white/90 [&_button]:!text-white/90" />
-          </div>
-        )}
+        <div className="px-2 py-2">
+          <InstallAppBanner compact className="!text-white/70 !gap-1 [&_a]:!text-white/90 [&_button]:!text-white/90" />
+        </div>
 
         {/* Botão Sair */}
         <button
           onClick={handleLogout}
-          className={`group w-full flex items-center ${isHovered ? 'space-x-3 px-4' : 'justify-center px-0'} py-3 rounded-lg text-white hover:bg-red-500/20 hover:text-red-200 transition-all duration-200`}
+          className="group w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-[#dddddd] hover:bg-red-500/15 hover:text-red-200 transition-all duration-[250ms] ease-out"
         >
           <FiLogOut className="w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:rotate-12" />
-          {isHovered && (
-            <span className="whitespace-nowrap animate-slide-in">Sair</span>
-          )}
+          <span className="whitespace-nowrap">Sair</span>
         </button>
       </div>
 
       {/* Modal de Crop de Imagem */}
       {showCropModal && imageToCrop && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-gray-700">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#0d0d0d] rounded-lg p-6 w-full max-w-2xl border border-white/10">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">Enquadrar Imagem</h2>
+              <h2 className="text-xl font-bold text-[#f0f0f0]">Enquadrar Imagem</h2>
               <button
                 onClick={handleCancelCrop}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-[#888888] hover:text-[#f0f0f0] transition-colors duration-200"
                 disabled={uploading}
               >
                 <FiX className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="relative w-full" style={{ height: '400px', background: '#1f2937' }}>
+            <div className="relative w-full" style={{ height: '400px', background: '#111' }}>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
@@ -746,7 +729,7 @@ export default function Sidebar() {
 
             <div className="mt-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#bbbbbb] mb-2">
                   Zoom: {Math.round(zoom * 100)}%
                 </label>
                 <input
@@ -756,7 +739,7 @@ export default function Sidebar() {
                   step={0.1}
                   value={zoom}
                   onChange={(e) => setZoom(Number(e.target.value))}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
                   disabled={uploading}
                 />
               </div>
@@ -764,14 +747,14 @@ export default function Sidebar() {
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={handleCancelCrop}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="px-4 py-2 bg-white/10 text-[#f0f0f0] rounded-lg hover:bg-white/20 transition-all duration-200 border border-white/10"
                   disabled={uploading}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleCropComplete}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                  className="px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] transition-all duration-200 flex items-center space-x-2"
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -794,13 +777,13 @@ export default function Sidebar() {
 
       {/* Modal de Perfil */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-md border border-white/10">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-white">Meu Perfil</h2>
+              <h2 className="text-2xl font-bold text-[#f0f0f0]">Meu Perfil</h2>
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-[#888888] hover:text-[#f0f0f0] transition-colors duration-200"
               >
                 <FiX className="w-6 h-6" />
               </button>
@@ -809,7 +792,7 @@ export default function Sidebar() {
             <div className="space-y-6">
               {/* Foto do Perfil */}
               <div className="flex flex-col items-center space-y-4">
-                <div className="relative w-32 h-32 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden">
+                <div className="relative w-32 h-32 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
                   {profilePhoto ? (
                     <Image
                       src={profilePhoto}
@@ -819,7 +802,7 @@ export default function Sidebar() {
                       className="object-cover w-full h-full"
                     />
                   ) : (
-                    <FiUser className="w-16 h-16 text-gray-400" />
+                    <FiUser className="w-16 h-16 text-[#666666]" />
                   )}
                 </div>
                 <label className="cursor-pointer">
@@ -830,7 +813,7 @@ export default function Sidebar() {
                     disabled={uploading}
                     className="hidden"
                   />
-                  <span className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors inline-block">
+                  <span className="px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all duration-200 inline-block">
                     {uploading ? 'Enviando...' : 'Alterar Foto'}
                   </span>
                 </label>
@@ -838,28 +821,28 @@ export default function Sidebar() {
 
               {/* Nome */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#bbbbbb] mb-2">
                   Nome
                 </label>
                 <input
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:border-white/30 transition-colors"
                   placeholder="Seu nome"
                 />
               </div>
 
               {/* Email (somente leitura) */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-[#bbbbbb] mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={session?.user?.email || ''}
                   disabled
-                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#666666] cursor-not-allowed"
                 />
               </div>
 
@@ -868,13 +851,13 @@ export default function Sidebar() {
                 <button
                   type="button"
                   onClick={() => setShowProfileModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                  className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#bbbbbb] hover:bg-white/10 transition-all duration-200"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all duration-200"
                 >
                   Salvar
                 </button>

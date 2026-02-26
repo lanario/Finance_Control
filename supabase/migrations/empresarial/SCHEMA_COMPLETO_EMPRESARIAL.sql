@@ -1,16 +1,42 @@
 -- =====================================================
 -- SCHEMA COMPLETO - FINANCEIRO EMPRESARIAL
 -- =====================================================
--- Execute este arquivo no SQL Editor do Supabase Empresarial
--- 
--- IMPORTANTE: Este schema está otimizado e atualizado com:
--- - Funções com search_path seguro (corrige vulnerabilidades)
--- - Status de orçamentos atualizados (concluido, em_processo, cancelado)
--- - Todas as tabelas, índices, RLS e triggers configurados
--- - Storage buckets e políticas configuradas
--- - Tabela de produtos com controle de estoque
 --
--- ORDEM DE EXECUÇÃO: Execute este arquivo completo de uma vez
+-- USO NO SQL EDITOR DO SUPABASE:
+-- 1. Abra o projeto Empresarial no Supabase → SQL Editor → New query
+-- 2. Copie TODO o conteúdo deste arquivo e cole no editor
+-- 3. Execute (Run). O script é idempotente: pode rodar em banco novo ou existente.
+--
+-- CONTEÚDO ATUALIZADO:
+-- - Funções com search_path seguro (corrige vulnerabilidades)
+-- - Status de orçamentos (concluido, em_processo, cancelado)
+-- - Todas as tabelas, índices, RLS e triggers
+-- - Storage buckets e políticas (Logo, avatars)
+-- - Produtos com controle de estoque
+-- - Cartões empresa (022) e vínculo compras/cartão (023): compras.cartao_empresa_id, compras_cartao_empresa.compra_id
+-- - Assinatura Stripe em perfis (024): trial_ends_at, subscription_status, stripe_*
+-- - Status 'free' em perfis (025): usuários isentos de pagamento (subscription_status = 'free')
+-- - vendas.orcamento_id (026): vínculo venda ↔ orçamento concluído
+--
+-- ÍNDICE DAS 26 MIGRAÇÕES (incorporadas neste schema):
+-- 001 = Schema inicial (categorias, fornecedores, clientes)
+-- 002 = Contas a pagar
+-- 003 = Contas a receber
+-- 004 = Vendas
+-- 005 = Compras
+-- 006 = Fluxo de caixa
+-- 007 = Perfis (inclui 024 assinatura Stripe + 025 status free)
+-- 008 = Orçamentos (inclui 013 status concluido/em_processo/cancelado)
+-- 009 = Produtos (002-009 incluem 014 status contas pagar, 015 status vendas, 017 status contas receber, 018 tipo_venda/produto)
+-- 010 = Contratos (016)
+-- 011 = Serviços (019)
+-- 020 = Grupos produtos/serviços (grupo_produtos, grupo_servicos)
+-- 021 = Campos app produtos/serviços (preco_custo, foto_url)
+-- 022 = Cartões de crédito empresarial
+-- 023 = Vínculo compras / cartão empresa
+-- 026 = orcamento_id em vendas (venda originada de orçamento concluído)
+-- 012 = Storage (buckets Logo, avatars)
+--
 -- =====================================================
 
 -- =====================================================
@@ -899,7 +925,7 @@ CREATE TRIGGER update_fluxo_caixa_updated_at BEFORE UPDATE ON fluxo_caixa
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
--- 007 - PERFIS
+-- 007 - PERFIS (024 assinatura Stripe, 025 status free)
 -- =====================================================
 
 -- Tabela de perfis de usuários (para empresa)
@@ -914,12 +940,26 @@ CREATE TABLE IF NOT EXISTS perfis (
   celular TEXT,
   endereco TEXT,
   logo_empresa_url TEXT,
+  -- Assinatura (trial 24h + Stripe)
+  trial_ends_at TIMESTAMP WITH TIME ZONE,
+  subscription_status TEXT DEFAULT 'trialing',
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  CONSTRAINT perfis_subscription_status_check CHECK (subscription_status IS NULL OR subscription_status IN ('trialing', 'active', 'expired', 'canceled', 'free')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Compatibilidade: se perfis já existir sem colunas de assinatura (execução em DB existente)
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'trialing';
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE perfis ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_perfis_user_id ON perfis(user_id);
+CREATE INDEX IF NOT EXISTS idx_perfis_stripe_customer_id ON perfis(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_perfis_stripe_subscription_id ON perfis(stripe_subscription_id) WHERE stripe_subscription_id IS NOT NULL;
 
 -- RLS (Row Level Security) Policies
 ALTER TABLE perfis ENABLE ROW LEVEL SECURITY;
@@ -951,6 +991,42 @@ DROP TRIGGER IF EXISTS update_perfis_updated_at ON perfis;
 
 CREATE TRIGGER update_perfis_updated_at BEFORE UPDATE ON perfis
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Função: ao inserir novo perfil, definir trial_ends_at = created_at + 24h (assinatura)
+CREATE OR REPLACE FUNCTION set_trial_ends_at_on_perfil_insert()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.trial_ends_at IS NULL THEN
+    NEW.trial_ends_at := NEW.created_at + INTERVAL '24 hours';
+  END IF;
+  IF NEW.subscription_status IS NULL THEN
+    NEW.subscription_status := 'trialing';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS set_trial_ends_at_perfis ON perfis;
+CREATE TRIGGER set_trial_ends_at_perfis
+  BEFORE INSERT ON perfis
+  FOR EACH ROW
+  EXECUTE FUNCTION set_trial_ends_at_on_perfil_insert();
+
+COMMENT ON COLUMN perfis.trial_ends_at IS 'Fim do período de degustação (24h após created_at)';
+COMMENT ON COLUMN perfis.subscription_status IS 'trialing | active | expired | canceled | free (isentos de pagamento)';
+COMMENT ON COLUMN perfis.stripe_customer_id IS 'ID do cliente no Stripe';
+COMMENT ON COLUMN perfis.stripe_subscription_id IS 'ID da assinatura no Stripe';
+
+-- Ajuste de constraint e dados para perfis existentes (compatibilidade)
+ALTER TABLE perfis DROP CONSTRAINT IF EXISTS perfis_subscription_status_check;
+ALTER TABLE perfis ADD CONSTRAINT perfis_subscription_status_check
+  CHECK (subscription_status IS NULL OR subscription_status IN ('trialing', 'active', 'expired', 'canceled', 'free'));
+UPDATE perfis SET trial_ends_at = created_at + INTERVAL '24 hours' WHERE trial_ends_at IS NULL;
+UPDATE perfis SET subscription_status = 'trialing' WHERE subscription_status IS NULL;
 
 -- =====================================================
 -- 008 - ORÇAMENTOS
@@ -1070,6 +1146,14 @@ CREATE TRIGGER update_orcamentos_updated_at BEFORE UPDATE ON orcamentos
 
 CREATE TRIGGER update_orcamento_itens_updated_at BEFORE UPDATE ON orcamento_itens
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- 026 - ORCAMENTO_ID EM VENDAS
+-- =====================================================
+-- Vincula venda ao orçamento quando a venda foi criada ao marcar orçamento como concluído.
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS orcamento_id UUID REFERENCES orcamentos(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_vendas_orcamento_id ON vendas(orcamento_id) WHERE orcamento_id IS NOT NULL;
+COMMENT ON COLUMN vendas.orcamento_id IS 'Orçamento que originou esta venda (quando status do orçamento foi alterado para concluído)';
 
 -- =====================================================
 -- 009 - PRODUTOS
@@ -1297,6 +1381,209 @@ BEGIN
 END $$;
 
 -- =====================================================
+-- 020 - GRUPOS DE PRODUTOS E SERVIÇOS
+-- =====================================================
+-- Tabelas: grupo_produtos, grupo_servicos; FKs em produtos e servicos
+
+CREATE TABLE IF NOT EXISTS grupo_produtos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  ordem INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS grupo_servicos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  ordem INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_grupo_produtos_user_id ON grupo_produtos(user_id);
+CREATE INDEX IF NOT EXISTS idx_grupo_servicos_user_id ON grupo_servicos(user_id);
+
+ALTER TABLE grupo_produtos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE grupo_servicos ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own grupo_produtos" ON grupo_produtos;
+DROP POLICY IF EXISTS "Users can insert their own grupo_produtos" ON grupo_produtos;
+DROP POLICY IF EXISTS "Users can update their own grupo_produtos" ON grupo_produtos;
+DROP POLICY IF EXISTS "Users can delete their own grupo_produtos" ON grupo_produtos;
+CREATE POLICY "Users can view their own grupo_produtos" ON grupo_produtos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own grupo_produtos" ON grupo_produtos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own grupo_produtos" ON grupo_produtos FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own grupo_produtos" ON grupo_produtos FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view their own grupo_servicos" ON grupo_servicos;
+DROP POLICY IF EXISTS "Users can insert their own grupo_servicos" ON grupo_servicos;
+DROP POLICY IF EXISTS "Users can update their own grupo_servicos" ON grupo_servicos;
+DROP POLICY IF EXISTS "Users can delete their own grupo_servicos" ON grupo_servicos;
+CREATE POLICY "Users can view their own grupo_servicos" ON grupo_servicos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own grupo_servicos" ON grupo_servicos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own grupo_servicos" ON grupo_servicos FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own grupo_servicos" ON grupo_servicos FOR DELETE USING (auth.uid() = user_id);
+
+DROP TRIGGER IF EXISTS update_grupo_produtos_updated_at ON grupo_produtos;
+DROP TRIGGER IF EXISTS update_grupo_servicos_updated_at ON grupo_servicos;
+CREATE TRIGGER update_grupo_produtos_updated_at BEFORE UPDATE ON grupo_produtos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_grupo_servicos_updated_at BEFORE UPDATE ON grupo_servicos FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS grupo_produto_id UUID REFERENCES grupo_produtos(id) ON DELETE SET NULL;
+ALTER TABLE servicos ADD COLUMN IF NOT EXISTS grupo_servico_id UUID REFERENCES grupo_servicos(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_produtos_grupo_produto_id ON produtos(grupo_produto_id);
+CREATE INDEX IF NOT EXISTS idx_servicos_grupo_servico_id ON servicos(grupo_servico_id);
+
+-- =====================================================
+-- 021 - CAMPOS APP PRODUTOS/SERVIÇOS
+-- =====================================================
+-- preco_custo e foto_url em produtos; foto_url em servicos (uso pelo app)
+
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_custo DECIMAL(10, 2) DEFAULT NULL;
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS foto_url TEXT DEFAULT NULL;
+ALTER TABLE servicos ADD COLUMN IF NOT EXISTS foto_url TEXT DEFAULT NULL;
+
+-- =====================================================
+-- 022 - CARTÕES DE CRÉDITO EMPRESARIAL
+-- =====================================================
+-- cartoes_empresa, compras_cartao_empresa, parcelas_cartao_empresa, faturas_pagas_cartao_empresa
+
+CREATE TABLE IF NOT EXISTS cartoes_empresa (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  bandeira TEXT NOT NULL,
+  limite DECIMAL(10, 2) NOT NULL,
+  fechamento INTEGER NOT NULL CHECK (fechamento >= 1 AND fechamento <= 31),
+  vencimento INTEGER NOT NULL CHECK (vencimento >= 1 AND vencimento <= 31),
+  cor TEXT DEFAULT '#1e3a5f',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS compras_cartao_empresa (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  cartao_id UUID NOT NULL REFERENCES cartoes_empresa(id) ON DELETE CASCADE,
+  compra_id UUID REFERENCES compras(id) ON DELETE SET NULL,
+  descricao TEXT NOT NULL,
+  valor DECIMAL(10, 2) NOT NULL,
+  data DATE NOT NULL,
+  categoria TEXT NOT NULL,
+  metodo_pagamento TEXT DEFAULT 'cartao',
+  parcelada BOOLEAN DEFAULT FALSE,
+  total_parcelas INTEGER CHECK (total_parcelas IS NULL OR total_parcelas >= 1),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Garantir compra_id em bases que já tinham compras_cartao_empresa sem essa coluna
+ALTER TABLE compras_cartao_empresa ADD COLUMN IF NOT EXISTS compra_id UUID REFERENCES compras(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS parcelas_cartao_empresa (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  compra_id UUID REFERENCES compras_cartao_empresa(id) ON DELETE CASCADE,
+  cartao_id UUID REFERENCES cartoes_empresa(id) ON DELETE CASCADE,
+  descricao TEXT NOT NULL,
+  valor DECIMAL(10, 2) NOT NULL,
+  numero_parcela INTEGER NOT NULL CHECK (numero_parcela >= 1),
+  total_parcelas INTEGER NOT NULL CHECK (total_parcelas >= 1),
+  data_vencimento DATE NOT NULL,
+  categoria TEXT NOT NULL,
+  paga BOOLEAN DEFAULT FALSE,
+  data_pagamento DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  CHECK (numero_parcela <= total_parcelas)
+);
+
+CREATE TABLE IF NOT EXISTS faturas_pagas_cartao_empresa (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  cartao_id UUID NOT NULL REFERENCES cartoes_empresa(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  mes_referencia INTEGER NOT NULL CHECK (mes_referencia >= 1 AND mes_referencia <= 12),
+  ano_referencia INTEGER NOT NULL,
+  data_pagamento DATE NOT NULL,
+  total_pago DECIMAL(10, 2) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  UNIQUE(cartao_id, mes_referencia, ano_referencia)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cartoes_empresa_user_id ON cartoes_empresa(user_id);
+CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_user_id ON compras_cartao_empresa(user_id);
+CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_cartao_id ON compras_cartao_empresa(cartao_id);
+CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_compra_id ON compras_cartao_empresa(compra_id);
+CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_data ON compras_cartao_empresa(data);
+CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_empresa_user_id ON parcelas_cartao_empresa(user_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_empresa_cartao_id ON parcelas_cartao_empresa(cartao_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_empresa_compra_id ON parcelas_cartao_empresa(compra_id);
+CREATE INDEX IF NOT EXISTS idx_parcelas_cartao_empresa_data_vencimento ON parcelas_cartao_empresa(data_vencimento);
+CREATE INDEX IF NOT EXISTS idx_faturas_pagas_cartao_empresa_cartao_id ON faturas_pagas_cartao_empresa(cartao_id);
+CREATE INDEX IF NOT EXISTS idx_faturas_pagas_cartao_empresa_user_id ON faturas_pagas_cartao_empresa(user_id);
+
+ALTER TABLE cartoes_empresa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE compras_cartao_empresa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE parcelas_cartao_empresa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faturas_pagas_cartao_empresa ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own cartoes_empresa" ON cartoes_empresa;
+DROP POLICY IF EXISTS "Users can insert their own cartoes_empresa" ON cartoes_empresa;
+DROP POLICY IF EXISTS "Users can update their own cartoes_empresa" ON cartoes_empresa;
+DROP POLICY IF EXISTS "Users can delete their own cartoes_empresa" ON cartoes_empresa;
+CREATE POLICY "Users can view their own cartoes_empresa" ON cartoes_empresa FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own cartoes_empresa" ON cartoes_empresa FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own cartoes_empresa" ON cartoes_empresa FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own cartoes_empresa" ON cartoes_empresa FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view their own compras_cartao_empresa" ON compras_cartao_empresa;
+DROP POLICY IF EXISTS "Users can insert their own compras_cartao_empresa" ON compras_cartao_empresa;
+DROP POLICY IF EXISTS "Users can update their own compras_cartao_empresa" ON compras_cartao_empresa;
+DROP POLICY IF EXISTS "Users can delete their own compras_cartao_empresa" ON compras_cartao_empresa;
+CREATE POLICY "Users can view their own compras_cartao_empresa" ON compras_cartao_empresa FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own compras_cartao_empresa" ON compras_cartao_empresa FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own compras_cartao_empresa" ON compras_cartao_empresa FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own compras_cartao_empresa" ON compras_cartao_empresa FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view their own parcelas_cartao_empresa" ON parcelas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can insert their own parcelas_cartao_empresa" ON parcelas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can update their own parcelas_cartao_empresa" ON parcelas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can delete their own parcelas_cartao_empresa" ON parcelas_cartao_empresa;
+CREATE POLICY "Users can view their own parcelas_cartao_empresa" ON parcelas_cartao_empresa FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own parcelas_cartao_empresa" ON parcelas_cartao_empresa FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own parcelas_cartao_empresa" ON parcelas_cartao_empresa FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own parcelas_cartao_empresa" ON parcelas_cartao_empresa FOR DELETE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can insert their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can update their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa;
+DROP POLICY IF EXISTS "Users can delete their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa;
+CREATE POLICY "Users can view their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own faturas_pagas_cartao_empresa" ON faturas_pagas_cartao_empresa FOR DELETE USING (auth.uid() = user_id);
+
+DROP TRIGGER IF EXISTS update_cartoes_empresa_updated_at ON cartoes_empresa;
+DROP TRIGGER IF EXISTS update_compras_cartao_empresa_updated_at ON compras_cartao_empresa;
+DROP TRIGGER IF EXISTS update_parcelas_cartao_empresa_updated_at ON parcelas_cartao_empresa;
+CREATE TRIGGER update_cartoes_empresa_updated_at BEFORE UPDATE ON cartoes_empresa FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_compras_cartao_empresa_updated_at BEFORE UPDATE ON compras_cartao_empresa FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_parcelas_cartao_empresa_updated_at BEFORE UPDATE ON parcelas_cartao_empresa FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================
+-- 023 - VÍNCULO COMPRAS / CARTÃO EMPRESA
+-- =====================================================
+-- compras: cartão usado quando forma_pagamento = cartao_credito
+
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS cartao_empresa_id UUID REFERENCES cartoes_empresa(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_id ON compras(cartao_empresa_id);
+
+-- compras_cartao_empresa já possui compra_id (criado na seção 022)
+
+-- =====================================================
 -- 012 - CONFIGURAÇÃO DO STORAGE - BUCKETS E POLÍTICAS
 -- =====================================================
 -- IMPORTANTE: Antes de executar este SQL, você precisa criar os buckets manualmente:
@@ -1389,7 +1676,7 @@ USING (
 );
 
 -- =====================================================
--- FIM DO SCHEMA COMPLETO
+-- FIM DO SCHEMA COMPLETO (26 MIGRAÇÕES INCORPORADAS)
 -- =====================================================
 -- 
 -- RESUMO DAS TABELAS CRIADAS:
@@ -1400,17 +1687,23 @@ USING (
 -- 5. parcelas_contas_pagar - Parcelas de contas a pagar (status: pendente, aprovado, cancelado)
 -- 6. contas_a_receber - Contas a receber (status: pendente, aprovado, cancelado)
 -- 7. parcelas_contas_receber - Parcelas de contas a receber (status: pendente, aprovado, cancelado)
--- 8. vendas - Vendas realizadas (status: pendente, aprovado, cancelado) - Suporta vendas por serviço e produto com cálculo automático de margem de lucro
+-- 8. vendas - Vendas realizadas (status: pendente, aprovado, cancelado); orcamento_id (026) quando venda originada de orçamento concluído
 -- 9. parcelas_vendas - Parcelas de vendas (status: pendente, aprovado, cancelado)
--- 10. compras - Compras empresariais (status: finalizado, em_andamento, cancelado)
+-- 10. compras - Compras empresariais (status: finalizado, em_andamento, cancelado); cartao_empresa_id quando forma_pagamento = cartao_credito
 -- 11. fluxo_caixa - Fluxo de caixa consolidado (origens: conta_pagar, conta_receber, venda, compra, outro)
--- 12. perfis - Perfis de usuários (com campos: celular, endereco, logo_empresa_url)
+-- 12. perfis - Perfis de usuários (assinatura: trial_ends_at, subscription_status trialing|active|expired|canceled|free, stripe_*)
 -- 13. orcamentos - Orçamentos (status: concluido, em_processo, cancelado)
 -- 14. orcamento_itens - Itens dos orçamentos
--- 15. produtos - Produtos cadastrados (com controle de estoque)
--- 16. servicos - Serviços cadastrados (para reutilização em vendas)
--- 17. contratos - Contratos de receitas fixas mensais
--- 18. contratos_receitas_geradas - Rastreamento de receitas geradas a partir de contratos
+-- 15. produtos - Produtos cadastrados (preco_custo, foto_url; grupo_produto_id)
+-- 16. servicos - Serviços cadastrados (foto_url; grupo_servico_id)
+-- 17. grupo_produtos - Grupos/pastas para organizar produtos (020)
+-- 18. grupo_servicos - Grupos/pastas para organizar serviços (020)
+-- 19. contratos - Contratos de receitas fixas mensais
+-- 20. contratos_receitas_geradas - Rastreamento de receitas geradas a partir de contratos
+-- 21. cartoes_empresa - Cartões de crédito da empresa (022)
+-- 22. compras_cartao_empresa - Compras no cartão; compra_id = vínculo com compras (022/023)
+-- 23. parcelas_cartao_empresa - Parcelas de compras parceladas no cartão
+-- 24. faturas_pagas_cartao_empresa - Faturas pagas por cartão/mês
 --
 -- FUNÇÕES:
 -- - update_updated_at_column() - Atualiza updated_at automaticamente (com search_path seguro)
@@ -1419,6 +1712,7 @@ USING (
 -- - atualizar_recebida_quando_aprovado_receber() - Atualiza recebida quando status for aprovado (contas a receber)
 -- - atualizar_recebida_quando_aprovado_venda() - Atualiza recebida quando status for aprovado (parcelas de vendas)
 -- - calcular_margem_lucro() - Calcula margem de lucro automaticamente para vendas de produtos
+-- - set_trial_ends_at_on_perfil_insert() - Define trial 24h e subscription_status ao inserir perfil (assinatura)
 --
 -- STORAGE BUCKETS NECESSÁRIOS (criar manualmente):
 -- - Logo (público: true) - Para logos de empresas e templates (nome exato com L maiúsculo)
@@ -1435,5 +1729,8 @@ USING (
 -- - Fluxo de caixa atualizado para incluir compras como origem
 -- - Tabela de produtos com controle de estoque e alertas de estoque mínimo
 -- - Tabela de contratos para receitas fixas mensais com geração automática
+-- - Cartões empresa (022/023): cartao_empresa_id em compras; compra_id em compras_cartao_empresa
+-- - Perfis (025): subscription_status 'free' para usuários isentos de pagamento
+-- - Vendas (026): orcamento_id para vincular venda ao orçamento concluído
 --
 -- =====================================================

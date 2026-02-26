@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import type { Session } from '@supabase/supabase-js'
+import { ThemeEmpresarialProvider } from './ThemeEmpresarialContext'
 
 interface AuthContextType {
   session: Session | null
@@ -34,9 +35,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ session, loading }}>
-      {children}
-    </AuthContext.Provider>
+    <ThemeEmpresarialProvider>
+      <AuthContext.Provider value={{ session, loading }}>
+        {children}
+      </AuthContext.Provider>
+    </ThemeEmpresarialProvider>
   )
 }
 

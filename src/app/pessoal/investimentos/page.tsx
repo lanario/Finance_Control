@@ -6,6 +6,7 @@ import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
 import { formatDate, formatarMoeda } from '@/lib/utils'
 import { FiPlus, FiEdit, FiTrash2, FiTrendingUp, FiX } from 'react-icons/fi'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Investimento {
   id: string
@@ -674,7 +675,7 @@ export default function InvestimentosPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white">Carregando...</div>
+          <div className="animate-pulse text-[#f0f0f0]">Carregando...</div>
         </div>
       </MainLayout>
     )
@@ -685,8 +686,8 @@ export default function InvestimentosPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Investimentos</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2 animate-nexus-reveal">Investimentos</h1>
+            <p className="text-[#bbbbbb]">
               Gerencie seus investimentos e acompanhe sua carteira
             </p>
           </div>
@@ -711,7 +712,7 @@ export default function InvestimentosPage() {
               })
               setShowModal(true)
             }}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+            className="bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center space-x-2"
           >
             <FiPlus className="w-5 h-5" />
             <span>Adicionar Investimento</span>
@@ -720,18 +721,18 @@ export default function InvestimentosPage() {
 
         {/* Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
-            <p className="text-gray-400 text-sm mb-2">Total Investido</p>
-            <p className="text-2xl font-bold text-white">R$ {formatarMoeda(totalInvestido)}</p>
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-6 border border-white/10">
+            <p className="text-[#bbbbbb] text-sm mb-2">Total Investido</p>
+            <p className="text-2xl font-bold text-[#f0f0f0]">R$ {formatarMoeda(totalInvestido)}</p>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
-            <p className="text-gray-400 text-sm mb-2">Valor Atual</p>
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-6 border border-white/10">
+            <p className="text-[#bbbbbb] text-sm mb-2">Valor Atual</p>
             <p className={`text-2xl font-bold ${totalAtual >= totalInvestido ? 'text-green-400' : 'text-red-400'}`}>
               R$ {formatarMoeda(totalAtual)}
             </p>
           </div>
-          <div className="bg-gray-800 rounded-lg shadow-md p-6 border border-gray-700">
-            <p className="text-gray-400 text-sm mb-2">Rentabilidade Média Anual</p>
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-6 border border-white/10">
+            <p className="text-[#bbbbbb] text-sm mb-2">Rentabilidade Média Anual</p>
             <p className={`text-2xl font-bold ${rentabilidadeTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {rentabilidadeTotal >= 0 ? '+' : ''}
               {isFinite(rentabilidadeTotal) && !isNaN(rentabilidadeTotal) 
@@ -744,27 +745,27 @@ export default function InvestimentosPage() {
             <p className={`text-sm mt-1 ${totalAtual >= totalInvestido ? 'text-green-400' : 'text-red-400'}`}>
               {totalAtual >= totalInvestido ? '+' : ''}R$ {formatarMoeda(totalAtual - totalInvestido)}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-[#666666] mt-1">
               Média ponderada por valor investido
             </p>
           </div>
         </div>
 
         {investimentos.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-12 text-center border border-white/10">
             <FiTrendingUp className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-2">
+            <p className="text-[#bbbbbb] text-lg mb-2">
               Nenhum investimento cadastrado
             </p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-[#666666] text-sm">
               Clique em "Adicionar Investimento" para começar
             </p>
           </div>
         ) : (
-          <div className="bg-gray-800 rounded-lg shadow-md border border-gray-700 overflow-hidden">
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md border border-white/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-primary text-white">
+                <thead className="bg-white text-black">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase">Nome</th>
                     <th className="px-6 py-3 text-left text-xs font-medium uppercase">Tipo</th>
@@ -812,8 +813,8 @@ export default function InvestimentosPage() {
                     }
                     
                     return (
-                      <tr key={investimento.id} className="hover:bg-gray-700/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                      <tr key={investimento.id} className="hover:bg-white/5/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                           {investimento.nome}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -821,7 +822,7 @@ export default function InvestimentosPage() {
                             {investimento.tipo}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-white">
+                        <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0]">
                           R$ {formatarMoeda(investimento.valor_investido)}
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap font-semibold ${
@@ -837,7 +838,7 @@ export default function InvestimentosPage() {
                               {rentabilidade >= 0 ? '+' : ''}{rentabilidade.toFixed(2)}%
                             </span>
                             {rentabilidadePeriodica && (
-                              <span className="text-xs text-gray-400 mt-1">
+                              <span className="text-xs text-[#bbbbbb] mt-1">
                                 {rentabilidadePeriodica.valor >= 0 ? '+' : ''}{rentabilidadePeriodica.valor.toFixed(2)}% {rentabilidadePeriodica.periodo === 'mensal' ? 'a.m.' : rentabilidadePeriodica.periodo === 'semestral' ? 'a.s.' : 'a.a.'}
                               </span>
                             )}
@@ -848,7 +849,7 @@ export default function InvestimentosPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                        <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                           {formatDate(investimento.data_aquisicao)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -879,9 +880,9 @@ export default function InvestimentosPage() {
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingInvestimento ? 'Editar Investimento' : 'Novo Investimento'}
                 </h2>
                 <button
@@ -889,7 +890,7 @@ export default function InvestimentosPage() {
                     setShowModal(false)
                     setEditingInvestimento(null)
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -897,7 +898,7 @@ export default function InvestimentosPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-[#dddddd] mb-2">
                       Nome
                     </label>
                     <input
@@ -905,12 +906,12 @@ export default function InvestimentosPage() {
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                       placeholder="Ex: Petrobras, CDB Banco X..."
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-[#dddddd] mb-2">
                       Tipo
                     </label>
                     <select
@@ -937,7 +938,7 @@ export default function InvestimentosPage() {
                         setFormData(novoFormData)
                       }}
                       required
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     >
                       <option value="">Selecione...</option>
                       {tiposInvestimento.map((tipo) => (
@@ -950,10 +951,10 @@ export default function InvestimentosPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-[#dddddd] mb-2">
                       Valor Investido (R$)
                       {tiposComCotacao.includes(formData.tipo) && !editingInvestimento && (
-                        <span className="text-xs text-gray-400 ml-2">(calculado automaticamente)</span>
+                        <span className="text-xs text-[#bbbbbb] ml-2">(calculado automaticamente)</span>
                       )}
                     </label>
                     <input
@@ -982,17 +983,17 @@ export default function InvestimentosPage() {
                       }}
                       required={!tiposComCotacao.includes(formData.tipo)}
                       disabled={tiposComCotacao.includes(formData.tipo) && !editingInvestimento}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder={tiposComCotacao.includes(formData.tipo) ? "Calculado automaticamente" : "0.00"}
                     />
                     {tiposComCotacao.includes(formData.tipo) && !editingInvestimento && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#666666] mt-1">
                         Calculado automaticamente: Quantidade × Cotação na Aquisição
                       </p>
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-[#dddddd] mb-2">
                       Valor Atual (R$)
                     </label>
                     <input
@@ -1000,7 +1001,7 @@ export default function InvestimentosPage() {
                       step="0.01"
                       value={formData.valor_atual}
                       onChange={(e) => setFormData({ ...formData, valor_atual: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder={tiposComCotacao.includes(formData.tipo) ? "Calculado automaticamente" : "0.00 (calculado automaticamente para rendimento fixo)"}
                       disabled={
                         (tiposComRendimentoFixo.includes(formData.tipo) && formData.taxa_juros && formData.periodicidade && formData.liquidar_em_receitas) ||
@@ -1008,55 +1009,49 @@ export default function InvestimentosPage() {
                       }
                     />
                     {tiposComCotacao.includes(formData.tipo) && !editingInvestimento && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#666666] mt-1">
                         Calculado automaticamente: Quantidade × Cotação Atual
                       </p>
                     )}
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Data de Aquisição
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data_aquisicao}
-                    onChange={(e) => {
-                      const novoFormData = { ...formData, data_aquisicao: e.target.value }
-                      // Recalcular data de próxima liquidação se houver periodicidade
-                      if (tiposComRendimentoFixo.includes(formData.tipo) && formData.periodicidade) {
-                        const proximaLiquidacao = calcularProximaLiquidacao(e.target.value, formData.periodicidade)
-                        novoFormData.data_proxima_liquidacao = proximaLiquidacao || ''
+                <DateInput
+                  label="Data de Aquisição"
+                  value={formData.data_aquisicao}
+                  onChange={(e) => {
+                    const novoFormData = { ...formData, data_aquisicao: e.target.value }
+                    // Recalcular data de próxima liquidação se houver periodicidade
+                    if (tiposComRendimentoFixo.includes(formData.tipo) && formData.periodicidade) {
+                      const proximaLiquidacao = calcularProximaLiquidacao(e.target.value, formData.periodicidade)
+                      novoFormData.data_proxima_liquidacao = proximaLiquidacao || ''
+                    }
+                    // Para investimentos com rendimento fixo e liquidação automática,
+                    // o valor_atual permanece igual ao valor_investido
+                    if (tiposComRendimentoFixo.includes(formData.tipo) && formData.taxa_juros && formData.periodicidade) {
+                      const valorInvestido = parseFloat(formData.valor_investido) || 0
+                      if (formData.liquidar_em_receitas) {
+                        novoFormData.valor_atual = valorInvestido.toString()
+                      } else {
+                        const valorAtual = calcularValorAtual(
+                          valorInvestido,
+                          parseFloat(formData.taxa_juros),
+                          formData.periodicidade,
+                          e.target.value
+                        )
+                        novoFormData.valor_atual = valorAtual.toString()
                       }
-                      // Para investimentos com rendimento fixo e liquidação automática,
-                      // o valor_atual permanece igual ao valor_investido
-                      if (tiposComRendimentoFixo.includes(formData.tipo) && formData.taxa_juros && formData.periodicidade) {
-                        const valorInvestido = parseFloat(formData.valor_investido) || 0
-                        if (formData.liquidar_em_receitas) {
-                          novoFormData.valor_atual = valorInvestido.toString()
-                        } else {
-                          const valorAtual = calcularValorAtual(
-                            valorInvestido,
-                            parseFloat(formData.taxa_juros),
-                            formData.periodicidade,
-                            e.target.value
-                          )
-                          novoFormData.valor_atual = valorAtual.toString()
-                        }
-                      }
-                      setFormData(novoFormData)
-                    }}
-                    required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+                    }
+                    setFormData(novoFormData)
+                  }}
+                  required
+                />
 
                 {/* Campos específicos para investimentos com cotação (Ações, FIIs, etc) */}
                 {tiposComCotacao.includes(formData.tipo) && (
                   <div className="space-y-4 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[#dddddd] mb-2">
                           Quantidade
                         </label>
                         <input
@@ -1088,12 +1083,12 @@ export default function InvestimentosPage() {
                             setFormData(novoFormData)
                           }}
                           required
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                           placeholder="1"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[#dddddd] mb-2">
                           Cotação na Aquisição (R$)
                         </label>
                         <input
@@ -1116,12 +1111,12 @@ export default function InvestimentosPage() {
                             setFormData(novoFormData)
                           }}
                           required
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                           placeholder="0.0000"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[#dddddd] mb-2">
                           Cotação Atual (R$)
                         </label>
                         <input
@@ -1144,24 +1139,24 @@ export default function InvestimentosPage() {
                             setFormData(novoFormData)
                           }}
                           required
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                           placeholder="0.0000"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Dividend Yield Anual (%) <span className="text-xs text-gray-400">(opcional)</span>
+                      <label className="block text-sm font-medium text-[#dddddd] mb-2">
+                        Dividend Yield Anual (%) <span className="text-xs text-[#bbbbbb]">(opcional)</span>
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         value={formData.dividend_yield}
                         onChange={(e) => setFormData({ ...formData, dividend_yield: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                         placeholder="Ex: 8.5 para 8.5% a.a. (rentabilidade esperada de dividendos)"
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[#666666] mt-1">
                         Informe a rentabilidade anual esperada de dividendos. Isso será usado no cálculo da rentabilidade média da carteira.
                       </p>
                     </div>
@@ -1173,7 +1168,7 @@ export default function InvestimentosPage() {
                   <div className="space-y-4 p-4 bg-green-900/20 border border-green-700/50 rounded-lg">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[#dddddd] mb-2">
                           Taxa de Juros Anual (%)
                         </label>
                         <input
@@ -1207,12 +1202,12 @@ export default function InvestimentosPage() {
                             setFormData(novoFormData)
                           }}
                           required
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                           placeholder="Ex: 12.5 para 12.5% ao ano"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                        <label className="block text-sm font-medium text-[#dddddd] mb-2">
                           Periodicidade de Liquidação
                         </label>
                         <select
@@ -1245,7 +1240,7 @@ export default function InvestimentosPage() {
                             setFormData(novoFormData)
                           }}
                           required
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                         >
                           <option value="">Selecione...</option>
                           <option value="mensal">Mensal</option>
@@ -1255,8 +1250,8 @@ export default function InvestimentosPage() {
                       </div>
                     </div>
                     {formData.taxa_juros && formData.periodicidade && formData.valor_investido && (
-                      <div className="p-3 bg-gray-700/50 rounded-lg">
-                        <p className="text-sm text-gray-300 mb-1">
+                      <div className="p-3 bg-white/5/50 rounded-lg">
+                        <p className="text-sm text-[#dddddd] mb-1">
                           <span className="font-medium">Rendimento por período:</span>{' '}
                           R$ {formatarMoeda(calcularRendimentoPeriodico(
                             parseFloat(formData.valor_investido),
@@ -1265,7 +1260,7 @@ export default function InvestimentosPage() {
                           ))}
                         </p>
                         {formData.data_proxima_liquidacao && (
-                          <p className="text-sm text-gray-300">
+                          <p className="text-sm text-[#dddddd]">
                             <span className="font-medium">Próxima liquidação:</span>{' '}
                             {formatDate(formData.data_proxima_liquidacao)}
                           </p>
@@ -1278,24 +1273,20 @@ export default function InvestimentosPage() {
                         id="liquidar_em_receitas"
                         checked={formData.liquidar_em_receitas}
                         onChange={(e) => setFormData({ ...formData, liquidar_em_receitas: e.target.checked })}
-                        className="w-4 h-4 text-primary bg-gray-700 border-gray-600 rounded focus:ring-primary"
+                        className="w-4 h-4 text-primary bg-white/5 border-white/10 rounded focus:border-white/30"
                       />
-                      <label htmlFor="liquidar_em_receitas" className="text-sm text-gray-300">
+                      <label htmlFor="liquidar_em_receitas" className="text-sm text-[#dddddd]">
                         Liquidar rendimento automaticamente nas receitas
                       </label>
                     </div>
                     {formData.data_proxima_liquidacao && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                          Data da Próxima Liquidação
-                        </label>
-                        <input
-                          type="date"
+                        <DateInput
+                          label="Data da Próxima Liquidação"
                           value={formData.data_proxima_liquidacao}
                           onChange={(e) => setFormData({ ...formData, data_proxima_liquidacao: e.target.value })}
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
                         />
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-[#666666] mt-1">
                           Data em que o próximo rendimento será liquidado (calculada automaticamente)
                         </p>
                       </div>
@@ -1303,14 +1294,14 @@ export default function InvestimentosPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Observações
                   </label>
                   <textarea
                     value={formData.observacoes}
                     onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                     rows={3}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="Observações adicionais..."
                   />
                 </div>
@@ -1321,13 +1312,13 @@ export default function InvestimentosPage() {
                       setShowModal(false)
                       setEditingInvestimento(null)
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
                   >
                     {editingInvestimento ? 'Atualizar' : 'Salvar'}
                   </button>

@@ -267,7 +267,7 @@ export default function ClientesPage() {
     return (
       <MainLayoutEmpresarial>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white text-xl">Carregando...</div>
+          <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
         </div>
       </MainLayoutEmpresarial>
     )
@@ -279,15 +279,16 @@ export default function ClientesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Clientes</h1>
-            <p className="text-gray-400">Gerencie todos os clientes da sua empresa</p>
+            <h1 className="text-3xl font-bold emp-text-primary mb-2">Clientes</h1>
+            <p className="emp-text-secondary">Gerencie todos os clientes da sua empresa</p>
           </div>
           <button
             onClick={() => {
               resetForm()
               setShowModal(true)
             }}
-            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+            style={{ backgroundColor: 'var(--emp-accent)' }}
           >
             <FiPlus className="w-5 h-5" />
             <span>Novo Cliente</span>
@@ -296,30 +297,30 @@ export default function ClientesPage() {
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-4 border emp-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total de Clientes</p>
-                <p className="text-2xl font-bold text-white mt-1">{clientes.length}</p>
+                <p className="emp-text-muted text-sm">Total de Clientes</p>
+                <p className="text-2xl font-bold emp-text-primary mt-1">{clientes.length}</p>
               </div>
-              <FiUsers className="w-8 h-8 text-purple-400" />
+              <FiUsers className="w-8 h-8 text-neon" />
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-green-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Ativos</p>
+                <p className="emp-text-muted text-sm">Ativos</p>
                 <p className="text-2xl font-bold text-green-400 mt-1">{clientesAtivos}</p>
               </div>
               <FiCheck className="w-8 h-8 text-green-400" />
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-red-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Inativos</p>
+                <p className="emp-text-muted text-sm">Inativos</p>
                 <p className="text-2xl font-bold text-red-400 mt-1">{clientesInativos}</p>
               </div>
               <FiXCircle className="w-8 h-8 text-red-400" />
@@ -328,35 +329,35 @@ export default function ClientesPage() {
         </div>
 
         {/* Filtros */}
-        <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div className="emp-bg-card rounded-lg p-4 border emp-border">
           <div className="flex items-center space-x-2 mb-4">
-            <FiFilter className="w-5 h-5 text-gray-400" />
-            <h2 className="text-lg font-semibold text-white">Filtros</h2>
+            <FiFilter className="w-5 h-5 emp-text-muted" />
+            <h2 className="text-lg font-semibold emp-text-primary">Filtros</h2>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Busca por texto */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Buscar</label>
+              <label className="block text-sm emp-text-muted mb-1">Buscar</label>
               <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 emp-text-muted w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Nome, Razão Social, CNPJ, CPF, email..."
                   value={buscaTexto}
                   onChange={(e) => setBuscaTexto(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                  className="w-full pl-10 pr-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                 />
               </div>
             </div>
 
             {/* Filtro por status */}
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Status</label>
+              <label className="block text-sm emp-text-muted mb-1">Status</label>
               <select
                 value={filtroAtivo}
                 onChange={(e) => setFiltroAtivo(e.target.value as any)}
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
               >
                 <option value="todos">Todos</option>
                 <option value="ativos">Ativos</option>
@@ -367,60 +368,60 @@ export default function ClientesPage() {
         </div>
 
         {/* Tabela de Clientes */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="emp-bg-card rounded-lg border emp-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/50">
+              <thead className="emp-input-bg">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Nome
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Razão Social
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     CNPJ/CPF
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Telefone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-[var(--emp-border)]">
                 {clientes.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
+                    <td colSpan={7} className="px-6 py-8 text-center emp-text-muted">
                       Nenhum cliente encontrado
                     </td>
                   </tr>
                 ) : (
                   clientes.map((cliente) => (
-                    <tr key={cliente.id} className="hover:bg-gray-700/30 transition-colors">
+                    <tr key={cliente.id} className="transition-colors hover:opacity-90">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">{cliente.nome}</div>
+                        <div className="text-sm font-medium emp-text-primary">{cliente.nome}</div>
                         {cliente.endereco && (
-                          <div className="text-xs text-gray-400 mt-1 flex items-center">
+                          <div className="text-xs emp-text-muted mt-1 flex items-center">
                             <FiMapPin className="w-3 h-3 mr-1" />
                             {cliente.endereco}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {cliente.razao_social || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {cliente.cnpj ? formatarCNPJ(cliente.cnpj) : cliente.cpf ? formatarCPF(cliente.cpf) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {cliente.email ? (
                           <div className="flex items-center">
                             <FiMail className="w-4 h-4 mr-2" />
@@ -430,7 +431,7 @@ export default function ClientesPage() {
                           '-'
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {cliente.telefone ? (
                           <div className="flex items-center">
                             <FiPhone className="w-4 h-4 mr-2" />
@@ -471,10 +472,10 @@ export default function ClientesPage() {
         {/* Modal de Adicionar/Editar */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="emp-modal-bg rounded-lg border emp-border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold emp-text-primary">
                     {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
                   </h2>
                   <button
@@ -482,7 +483,7 @@ export default function ClientesPage() {
                       setShowModal(false)
                       resetForm()
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="emp-text-muted hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -490,7 +491,7 @@ export default function ClientesPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">
+                    <label className="block text-sm emp-text-muted mb-1">
                       Nome / Nome Fantasia *
                     </label>
                     <input
@@ -498,25 +499,25 @@ export default function ClientesPage() {
                       required
                       value={formData.nome}
                       onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Nome do cliente"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Razão Social</label>
+                    <label className="block text-sm emp-text-muted mb-1">Razão Social</label>
                     <input
                       type="text"
                       value={formData.razao_social}
                       onChange={(e) => setFormData({ ...formData, razao_social: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Razão social (para empresas)"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">CNPJ</label>
+                      <label className="block text-sm emp-text-muted mb-1">CNPJ</label>
                       <input
                         type="text"
                         value={formData.cnpj}
@@ -526,17 +527,17 @@ export default function ClientesPage() {
                             setFormData({ ...formData, cnpj: valor, cpf: '' })
                           }
                         }}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="00.000.000/0000-00"
                         maxLength={18}
                       />
                       {formData.cnpj && (
-                        <p className="text-xs text-gray-500 mt-1">{formatarCNPJ(formData.cnpj)}</p>
+                        <p className="text-xs emp-text-muted mt-1">{formatarCNPJ(formData.cnpj)}</p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">CPF</label>
+                      <label className="block text-sm emp-text-muted mb-1">CPF</label>
                       <input
                         type="text"
                         value={formData.cpf}
@@ -546,30 +547,30 @@ export default function ClientesPage() {
                             setFormData({ ...formData, cpf: valor, cnpj: '' })
                           }
                         }}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="000.000.000-00"
                         maxLength={14}
                       />
                       {formData.cpf && (
-                        <p className="text-xs text-gray-500 mt-1">{formatarCPF(formData.cpf)}</p>
+                        <p className="text-xs emp-text-muted mt-1">{formatarCPF(formData.cpf)}</p>
                       )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Email</label>
+                      <label className="block text-sm emp-text-muted mb-1">Email</label>
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="email@exemplo.com"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Telefone</label>
+                      <label className="block text-sm emp-text-muted mb-1">Telefone</label>
                       <input
                         type="text"
                         value={formData.telefone}
@@ -579,34 +580,34 @@ export default function ClientesPage() {
                             setFormData({ ...formData, telefone: valor })
                           }
                         }}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="(00) 00000-0000"
                         maxLength={15}
                       />
                       {formData.telefone && (
-                        <p className="text-xs text-gray-500 mt-1">{formatarTelefone(formData.telefone)}</p>
+                        <p className="text-xs emp-text-muted mt-1">{formatarTelefone(formData.telefone)}</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Endereço</label>
+                    <label className="block text-sm emp-text-muted mb-1">Endereço</label>
                     <input
                       type="text"
                       value={formData.endereco}
                       onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Rua, número, bairro, cidade - UF"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">Observações</label>
+                    <label className="block text-sm emp-text-muted mb-1">Observações</label>
                     <textarea
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Observações adicionais sobre o cliente..."
                     />
                   </div>
@@ -617,9 +618,9 @@ export default function ClientesPage() {
                         type="checkbox"
                         checked={formData.ativo}
                         onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                        className="w-4 h-4 text-neon rounded focus:ring-2 focus:ring-neon emp-input-bg emp-border"
                       />
-                      <span className="text-white">Cliente ativo</span>
+                      <span className="emp-text-primary">Cliente ativo</span>
                     </label>
                   </div>
 
@@ -630,13 +631,14 @@ export default function ClientesPage() {
                         setShowModal(false)
                         resetForm()
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg border emp-border emp-text-primary rounded-lg hover:opacity-90 transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                      style={{ backgroundColor: 'var(--emp-accent)' }}
                     >
                       {editingCliente ? 'Salvar Alterações' : 'Criar Cliente'}
                     </button>

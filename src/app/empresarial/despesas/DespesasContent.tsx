@@ -14,6 +14,7 @@ import {
   FiSearch,
 } from 'react-icons/fi'
 import ActionButtons from '@/components/Empresarial/ActionButtons'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface ContaPagar {
   id: string
@@ -1000,7 +1001,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-white text-xl">Carregando...</div>
+        <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
       </div>
     )
   }
@@ -1011,10 +1012,10 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         <div className="flex items-center justify-between">
           <div>
             {hideMainTitle && sectionLabel ? (
-              <h2 className="text-xl font-semibold text-white mb-1">{sectionLabel}</h2>
+              <h2 className="text-xl font-semibold emp-text-primary mb-1">{sectionLabel}</h2>
             ) : (
               <>
-                <h1 className="text-3xl font-bold text-white mb-2">Compras/Despesas</h1>
+                <h1 className="text-3xl font-bold emp-text-primary mb-2">Compras/Despesas</h1>
                 <p className="text-gray-400">Gerencie compras e despesas (contas a pagar)</p>
               </>
             )}
@@ -1024,7 +1025,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
               resetForm()
               setShowModal(true)
             }}
-            className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-neon text-black font-medium hover:bg-neon-dim px-4 py-2 rounded-lg transition-colors"
           >
             <FiPlus className="w-5 h-5" />
             <span>Nova Despesa</span>
@@ -1032,14 +1033,14 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         </div>
 
         {/* Card de Saldo Atual */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg p-6 border border-purple-500/30">
+        <div className="bg-neon/10 rounded-lg p-6 border border-neon/30">
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-gray-400 text-sm">Saldo Atual</p>
                 <button
                   onClick={limparMovimentacoesOrfas}
-                  className="text-xs text-purple-400 hover:text-purple-300 underline"
+                  className="text-xs text-neon hover:text-neon-dim underline"
                   title="Limpar movimentações órfãs (de despesas excluídas)"
                 >
                   Limpar órfãs
@@ -1048,29 +1049,29 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
               <p className={`text-3xl font-bold mt-1 ${resumo.saldoAtual >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatarMoeda(resumo.saldoAtual)}
               </p>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs emp-text-muted mt-2">
                 {resumo.saldoAtual < 0 ? 'Saldo negativo - Receitas insuficientes' : 'Receitas - Despesas pagas'}
               </p>
             </div>
-            <div className="w-16 h-16 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <FiDollarSign className="w-8 h-8 text-purple-400" />
+            <div className="w-16 h-16 bg-neon/20 rounded-lg flex items-center justify-center">
+              <FiDollarSign className="w-8 h-8 text-neon" />
             </div>
           </div>
         </div>
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-4 border emp-border">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total a Pagar</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatarMoeda(resumo.totalAPagar)}</p>
+                <p className="text-2xl font-bold emp-text-primary mt-1">{formatarMoeda(resumo.totalAPagar)}</p>
               </div>
-              <FiDollarSign className="w-8 h-8 text-purple-400" />
+              <FiDollarSign className="w-8 h-8 text-neon" />
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-red-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Vencidas</p>
@@ -1080,7 +1081,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-yellow-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-yellow-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Pendentes</p>
@@ -1090,7 +1091,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-green-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Pagas</p>
@@ -1102,7 +1103,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         </div>
 
         {/* Filtros â€” compactos: busca, status, fornecedor, categoria, mÃªs (padrÃ£o atual); ordem mais recente primeiro */}
-        <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+        <div className="emp-bg-card rounded-lg p-3 border emp-border">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px] max-w-xs">
               <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1111,13 +1112,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                 placeholder="Buscar..."
                 value={buscaTexto}
                 onChange={(e) => setBuscaTexto(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full pl-8 pr-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon"
               />
             </div>
             <select
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value as 'todas' | 'pendentes' | 'pagas' | 'vencidas')}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
             >
               <option value="todas">Todas</option>
               <option value="pendentes">Pendentes</option>
@@ -1127,7 +1128,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
             <select
               value={filtroFornecedor}
               onChange={(e) => setFiltroFornecedor(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[140px]"
             >
               <option value="">Todos fornecedores</option>
               {fornecedores.map((f) => (
@@ -1137,7 +1138,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[140px]"
             >
               <option value="">Todas categorias</option>
               {categorias.map((c) => (
@@ -1149,7 +1150,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
-                className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[110px]"
+                className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[110px]"
               >
                 {getMonthOptions().map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1160,30 +1161,30 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         </div>
 
         {/* Tabela de Contas */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="emp-bg-card rounded-lg border emp-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/50">
+              <thead className="emp-input-bg/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Descrição
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Fornecedor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Categoria
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Valor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Vencimento
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -1197,25 +1198,25 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                   </tr>
                 ) : (
                   todasContas.map((conta) => (
-                    <tr key={conta.id} className="hover:bg-gray-700/30 transition-colors">
+                    <tr key={conta.id} className="hover:emp-input-bg/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-white">{conta.descricao}</div>
+                        <div className="text-sm emp-text-primary">{conta.descricao}</div>
                         {conta.parcelada && (
                           <div className="text-xs text-gray-400">
                             Parcela {conta.parcela_atual || 1}/{conta.total_parcelas}
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {conta.fornecedor_nome || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {conta.categoria_nome || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold emp-text-primary">
                         {formatarMoeda(Number(conta.valor))}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {formatarData(conta.data_vencimento)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1235,7 +1236,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                                   <select
                                     value={conta.status || 'pendente'}
                                     onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                    className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    className="px-2 py-1 text-xs rounded-full emp-input-bg border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-neon cursor-pointer"
                                     title="Status no banco: Pendente (mas está vencida)"
                                   >
                                     <option value="pendente">Pendente</option>
@@ -1251,7 +1252,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                               <select
                                 value={conta.status || 'pendente'}
                                 onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-neon cursor-pointer transition-all ${
                                   conta.status === 'cancelado'
                                     ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
                                     : conta.status === 'aprovado' || conta.paga
@@ -1308,10 +1309,10 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         {/* Modal de Adicionar/Editar */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold emp-text-primary">
                     {editingConta ? 'Editar Despesa' : 'Nova Despesa'}
                   </h2>
                   <button
@@ -1319,7 +1320,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       setShowModal(false)
                       resetForm()
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -1333,7 +1334,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         <select
                           value={formData.fornecedor_id}
                           onChange={(e) => setFormData({ ...formData, fornecedor_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         >
                           <option value="">Selecione um fornecedor</option>
                           {fornecedores.map((fornecedor) => (
@@ -1345,7 +1346,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         <button
                           type="button"
                           onClick={() => setShowModalFornecedor(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar novo fornecedor"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -1359,7 +1360,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         <select
                           value={formData.categoria_id}
                           onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         >
                           <option value="">Selecione uma categoria</option>
                           {categorias.map((categoria) => (
@@ -1371,7 +1372,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         <button
                           type="button"
                           onClick={() => setShowModalCategoria(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar nova categoria"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -1387,7 +1388,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       required
                       value={formData.descricao}
                       onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Ex: Pagamento de fornecedor"
                     />
                   </div>
@@ -1401,21 +1402,18 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         required
                         value={formData.valor}
                         onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="0.00"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de Vencimento *</label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.data_vencimento}
-                        onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
+                    <DateInput
+                      label="Data de Vencimento"
+                      labelClassName="text-gray-400 mb-1"
+                      value={formData.data_vencimento}
+                      onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                      required
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1424,14 +1422,14 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       <select
                         value={formData.status}
                         onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pendente' | 'aprovado' | 'cancelado' })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         required
                       >
                         <option value="pendente">Pendente</option>
                         <option value="aprovado">Aprovado</option>
                         <option value="cancelado">Cancelado</option>
                       </select>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs emp-text-muted mt-1">
                         {formData.status === 'aprovado' && 'Será marcado como paga automaticamente'}
                         {formData.status === 'cancelado' && 'Não entrará em nenhuma soma, apenas registro'}
                         {formData.status === 'pendente' && 'Entrará na soma de contas pendentes'}
@@ -1443,7 +1441,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       <select
                         value={formData.forma_pagamento}
                         onChange={(e) => setFormData({ ...formData, forma_pagamento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
@@ -1464,9 +1462,9 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                             type="checkbox"
                             checked={formData.parcelada}
                             onChange={(e) => setFormData({ ...formData, parcelada: e.target.checked })}
-                            className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            className="w-4 h-4 text-neon emp-input-bg border-gray-600 rounded focus:ring-neon"
                           />
-                          <span className="text-white">Sim</span>
+                          <span className="emp-text-primary">Sim</span>
                         </label>
                         {formData.parcelada && (
                           <input
@@ -1474,7 +1472,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                             min="1"
                             value={formData.total_parcelas}
                             onChange={(e) => setFormData({ ...formData, total_parcelas: e.target.value })}
-                            className="w-20 px-3 py-1 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                            className="w-20 px-3 py-1 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                             placeholder="Qtd"
                           />
                         )}
@@ -1487,7 +1485,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Observações adicionais..."
                     />
                   </div>
@@ -1499,13 +1497,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         setShowModal(false)
                         resetForm()
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       {editingConta ? 'Salvar Alterações' : 'Criar Despesa'}
                     </button>
@@ -1519,10 +1517,10 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         {/* Modal de Criar Fornecedor */}
         {showModalFornecedor && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-md max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Novo Fornecedor</h2>
+                  <h2 className="text-2xl font-bold emp-text-primary">Novo Fornecedor</h2>
                   <button
                     onClick={() => {
                       setShowModalFornecedor(false)
@@ -1536,7 +1534,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         observacoes: '',
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -1550,7 +1548,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       required
                       value={formDataFornecedor.nome}
                       onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Nome do fornecedor"
                     />
                   </div>
@@ -1562,7 +1560,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         type="text"
                         value={formDataFornecedor.cnpj}
                         onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, cnpj: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="00.000.000/0000-00"
                       />
                     </div>
@@ -1573,7 +1571,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         type="text"
                         value={formDataFornecedor.cpf}
                         onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, cpf: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="000.000.000-00"
                       />
                     </div>
@@ -1586,7 +1584,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         type="email"
                         value={formDataFornecedor.email}
                         onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, email: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="email@exemplo.com"
                       />
                     </div>
@@ -1597,7 +1595,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         type="text"
                         value={formDataFornecedor.telefone}
                         onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, telefone: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="(00) 00000-0000"
                       />
                     </div>
@@ -1609,7 +1607,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       type="text"
                       value={formDataFornecedor.endereco}
                       onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, endereco: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Endereço completo"
                     />
                   </div>
@@ -1620,7 +1618,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       value={formDataFornecedor.observacoes}
                       onChange={(e) => setFormDataFornecedor({ ...formDataFornecedor, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Observações adicionais..."
                     />
                   </div>
@@ -1640,13 +1638,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                           observacoes: '',
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       Criar Fornecedor
                     </button>
@@ -1660,10 +1658,10 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
         {/* Modal de Criar Categoria */}
         {showModalCategoria && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-md">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Nova Categoria de Despesa</h2>
+                  <h2 className="text-2xl font-bold emp-text-primary">Nova Categoria de Despesa</h2>
                   <button
                     onClick={() => {
                       setShowModalCategoria(false)
@@ -1673,7 +1671,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         cor: '#6366f1',
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -1687,7 +1685,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       required
                       value={formDataCategoria.nome}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Ex: Materiais, Serviços, Equipamentos"
                     />
                   </div>
@@ -1698,7 +1696,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
@@ -1710,13 +1708,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                         type="color"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="w-16 h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer"
+                        className="w-16 h-10 emp-input-bg border border-gray-600 rounded-lg cursor-pointer"
                       />
                       <input
                         type="text"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                         placeholder="#6366f1"
                       />
                     </div>
@@ -1733,13 +1731,13 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
                           cor: '#6366f1',
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       Criar Categoria
                     </button>

@@ -6,6 +6,7 @@ import { supabasePessoal as supabase } from '@/lib/supabase/pessoal'
 import { useAuth } from '@/app/pessoal/providers'
 import { formatDate, formatarMoeda } from '@/lib/utils'
 import { FiPlus, FiEdit, FiTrash2, FiShoppingCart, FiX, FiArrowUp, FiArrowDown } from 'react-icons/fi'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Compra {
   id: string
@@ -661,7 +662,7 @@ export default function ComprasPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white">Carregando...</div>
+          <div className="animate-pulse text-[#f0f0f0]">Carregando...</div>
         </div>
       </MainLayout>
     )
@@ -672,7 +673,7 @@ export default function ComprasPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Compras</h1>
+            <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2">Compras</h1>
             <p className="text-gray-400">
               Gerencie suas compras
             </p>
@@ -684,13 +685,13 @@ export default function ComprasPage() {
               {/* Filtro de mês/ano */}
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
-                  <label className="text-gray-300 text-sm">Mês:</label>
+                  <label className="text-[#dddddd] text-sm">Mês:</label>
                   <select
                     value={filtroMes}
                     onChange={(e) => {
                       setFiltroMes(e.target.value)
                     }}
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] text-sm focus:outline-none focus:ring-2 focus:border-white/30"
                   >
                     <option value="">Todos</option>
                     <option value="01">Janeiro</option>
@@ -708,7 +709,7 @@ export default function ComprasPage() {
                   </select>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <label className="text-gray-300 text-sm">Ano:</label>
+                  <label className="text-[#dddddd] text-sm">Ano:</label>
                   <input
                     type="number"
                     value={filtroAno}
@@ -716,7 +717,7 @@ export default function ComprasPage() {
                     placeholder="Ano"
                     min="2000"
                     max="2100"
-                    className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm w-24 focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] text-sm w-24 focus:outline-none focus:ring-2 focus:border-white/30"
                   />
                 </div>
               </div>
@@ -738,7 +739,7 @@ export default function ComprasPage() {
               })
                   setShowModal(true)
                 }}
-                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+                className="bg-primary text-[#f0f0f0] px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
               >
                 <FiPlus className="w-5 h-5" />
                 <span>Adicionar Compra</span>
@@ -759,7 +760,7 @@ export default function ComprasPage() {
               <div className="bg-gray-800 rounded-lg shadow-md border border-gray-700 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-primary text-white">
+                    <thead className="bg-primary text-[#f0f0f0]">
                       <tr>
                         <th 
                           className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
@@ -890,8 +891,8 @@ export default function ComprasPage() {
                           const isParcela = item.tipo === 'parcela'
                           
                           return (
-                            <tr key={item.id} className="hover:bg-gray-700/50 transition-colors">
-                              <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                            <tr key={item.id} className="hover:bg-white/5/50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                                 {item.descricao}
                                 {isParcela && item.numero_parcela && (
                                   <span className="text-xs text-gray-400 ml-2">
@@ -900,7 +901,7 @@ export default function ComprasPage() {
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-white font-semibold">
+                                <div className="text-[#f0f0f0] font-semibold">
                                   R$ {formatarMoeda(item.valor)}
                                 </div>
                                 {!isParcela && item.parcelada && item.total_parcelas && (
@@ -953,7 +954,7 @@ export default function ComprasPage() {
                                     {item.categoria}
                                   </span>
                                 ) : (
-                                  <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs">
+                                  <span className="px-3 py-1 bg-white/5 text-[#dddddd] rounded-full text-xs">
                                     {item.categoria}
                                   </span>
                                 )}
@@ -996,7 +997,7 @@ export default function ComprasPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingCompra ? 'Editar Compra' : 'Nova Compra'}
                 </h2>
                 <button
@@ -1004,14 +1005,14 @@ export default function ComprasPage() {
                     setShowModal(false)
                     setEditingCompra(null)
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Descrição
                   </label>
                   <select
@@ -1025,7 +1026,7 @@ export default function ComprasPage() {
                       })
                     }}
                     required={!formData.descricao}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-2"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 mb-2"
                   >
                     <option value="">Selecione uma opção...</option>
                     {sugestoesDescricoes.map((sugestao) => (
@@ -1042,13 +1043,13 @@ export default function ComprasPage() {
                         setFormData({ ...formData, descricao: e.target.value })
                       }
                       required={formData.descricaoSelecionada === 'PERSONALIZADO'}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                       placeholder="Digite a descrição personalizada..."
                     />
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor (R$)
                   </label>
                   <input
@@ -1059,26 +1060,20 @@ export default function ComprasPage() {
                       setFormData({ ...formData, valor: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="0.00"
                   />
                 </div>
+                <DateInput
+                  label="Data"
+                  value={formData.data}
+                  onChange={(e) =>
+                    setFormData({ ...formData, data: e.target.value })
+                  }
+                  required
+                />
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Data
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data}
-                    onChange={(e) =>
-                      setFormData({ ...formData, data: e.target.value })
-                    }
-                    required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Método de Pagamento
                   </label>
                   <select
@@ -1091,7 +1086,7 @@ export default function ComprasPage() {
                       })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary mb-3"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30 mb-3"
                   >
                     <option value="cartao">💳 Cartão de Crédito</option>
                     <option value="pix">💳 PIX</option>
@@ -1102,7 +1097,7 @@ export default function ComprasPage() {
                   {formData.metodo_pagamento === 'cartao' && (
                     <>
                       <div className="mb-3">
-                        <div className="w-full bg-gray-700 border border-gray-600 rounded-lg overflow-hidden">
+                        <div className="w-full bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                           {cartoes.map((cartao) => {
                             const corCartao = cartao.cor || '#3b82f6'
                             const isSelected = formData.cartao_id === cartao.id
@@ -1121,7 +1116,7 @@ export default function ComprasPage() {
                                 }}
                               >
                                 <span style={{ color: corCartao }}>💳</span>
-                                <span className="text-white">{cartao.nome}</span>
+                                <span className="text-[#f0f0f0]">{cartao.nome}</span>
                               </button>
                             )
                           })}
@@ -1143,13 +1138,13 @@ export default function ComprasPage() {
                                   total_parcelas: e.target.checked ? formData.total_parcelas : '1'
                                 })
                               }
-                              className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary"
+                              className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:border-white/30"
                             />
-                            <span className="text-sm text-gray-300">Compra parcelada</span>
+                            <span className="text-sm text-[#dddddd]">Compra parcelada</span>
                           </label>
                           {formData.parcelada && (
                             <div>
-                              <label className="block text-sm font-medium text-gray-300 mb-2">
+                              <label className="block text-sm font-medium text-[#dddddd] mb-2">
                                 Número de Parcelas
                               </label>
                               <input
@@ -1161,7 +1156,7 @@ export default function ComprasPage() {
                                   setFormData({ ...formData, total_parcelas: e.target.value })
                                 }
                                 required={formData.parcelada}
-                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                                 placeholder="Ex: 3, 6, 12..."
                               />
                               {formData.valor && formData.total_parcelas && parseInt(formData.total_parcelas) > 0 && (
@@ -1193,7 +1188,7 @@ export default function ComprasPage() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Tipo de Gasto
                   </label>
                   <select
@@ -1202,7 +1197,7 @@ export default function ComprasPage() {
                       setFormData({ ...formData, categoria: e.target.value })
                     }
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                   >
                     <option value="">Selecione um tipo de gasto...</option>
                     {tiposGastos.map((tipo) => (
@@ -1225,13 +1220,13 @@ export default function ComprasPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, compra_recorrente: e.target.checked })
                       }
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-primary focus:ring-primary"
+                      className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary focus:border-white/30"
                     />
-                    <span className="text-sm text-gray-300">Compra recorrente (mensal)</span>
+                    <span className="text-sm text-[#dddddd]">Compra recorrente (mensal)</span>
                   </label>
                   {formData.compra_recorrente && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                      <label className="block text-sm font-medium text-[#dddddd] mb-2">
                         Dia da compra (dia do mês)
                       </label>
                       <input
@@ -1243,7 +1238,7 @@ export default function ComprasPage() {
                           setFormData({ ...formData, dia_compra: e.target.value })
                         }
                         required={formData.compra_recorrente}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                         placeholder="Ex: 10, 15, 20..."
                       />
                       <p className="text-xs text-gray-500 mt-1">
@@ -1259,13 +1254,13 @@ export default function ComprasPage() {
                       setShowModal(false)
                       setEditingCompra(null)
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-primary text-[#f0f0f0] rounded-lg hover:bg-primary-dark transition-colors"
                   >
                     Salvar
                   </button>
@@ -1280,7 +1275,7 @@ export default function ComprasPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg p-8 w-full max-w-md border border-gray-700">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   Compra Recorrente Disponível
                 </h2>
                 <button
@@ -1289,7 +1284,7 @@ export default function ComprasPage() {
                     setCompraRecorrenteParaCriar(null)
                     setValorCompraRecorrente('')
                   }}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-400 hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -1300,7 +1295,7 @@ export default function ComprasPage() {
                   <p className="text-blue-400 text-sm font-medium mb-2">
                     Uma compra recorrente está disponível para ser adicionada este mês:
                   </p>
-                  <p className="text-white font-semibold text-lg">
+                  <p className="text-[#f0f0f0] font-semibold text-lg">
                     {compraRecorrenteParaCriar.descricao}
                   </p>
                   <p className="text-gray-400 text-sm mt-1">
@@ -1309,7 +1304,7 @@ export default function ComprasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor para este mês (R$)
                   </label>
                   <input
@@ -1317,7 +1312,7 @@ export default function ComprasPage() {
                     step="0.01"
                     value={valorCompraRecorrente}
                     onChange={(e) => setValorCompraRecorrente(e.target.value)}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder={compraRecorrenteParaCriar.valor.toString()}
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -1334,7 +1329,7 @@ export default function ComprasPage() {
                       setValorCompraRecorrente('')
                       verificarComprasRecorrentes() // Verificar próxima compra recorrente
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Pular
                   </button>
@@ -1348,7 +1343,7 @@ export default function ComprasPage() {
                       }
                       criarCompraRecorrenteMensal(compraRecorrenteParaCriar, valor)
                     }}
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-primary text-[#f0f0f0] rounded-lg hover:bg-primary-dark transition-colors"
                   >
                     Adicionar
                   </button>

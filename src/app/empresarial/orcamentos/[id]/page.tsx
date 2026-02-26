@@ -141,7 +141,7 @@ export default function VisualizarOrcamentoPage() {
       case 'concluido':
         return 'bg-green-500/20 text-green-400 border-green-500/30'
       case 'em_processo':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+        return 'bg-neon/20 text-neon border-neon/40'
       case 'cancelado':
         return 'bg-red-500/20 text-red-400 border-red-500/30'
       default:
@@ -175,7 +175,7 @@ export default function VisualizarOrcamentoPage() {
           <p className="text-gray-400 text-xl">Orçamento não encontrado</p>
           <button
             onClick={() => router.push('/empresarial/orcamentos')}
-            className="mt-4 px-4 py-2 bg-purple-800 hover:bg-purple-900 text-white rounded-lg"
+            className="mt-4 px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg"
           >
             Voltar
           </button>
@@ -203,7 +203,7 @@ export default function VisualizarOrcamentoPage() {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => router.push(`/empresarial/orcamentos/${orcamentoId}/editar`)}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
             >
               <FiEdit className="w-5 h-5" />
               <span>Editar</span>

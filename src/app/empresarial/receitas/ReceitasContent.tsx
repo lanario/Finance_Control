@@ -18,6 +18,7 @@ import {
   FiFileText,
 } from 'react-icons/fi'
 import ActionButtons from '@/components/Empresarial/ActionButtons'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface ContaReceber {
   id: string
@@ -1333,7 +1334,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-white text-xl">Carregando...</div>
+        <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
       </div>
     )
   }
@@ -1344,10 +1345,10 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         <div className="flex items-center justify-between">
           <div>
             {hideMainTitle && sectionLabel ? (
-              <h2 className="text-xl font-semibold text-white mb-1">{sectionLabel}</h2>
+              <h2 className="text-xl font-semibold emp-text-primary mb-1">{sectionLabel}</h2>
             ) : (
               <>
-                <h1 className="text-3xl font-bold text-white mb-2">Vendas/Receitas</h1>
+                <h1 className="text-3xl font-bold emp-text-primary mb-2">Vendas/Receitas</h1>
                 <p className="text-gray-400">Gerencie vendas e receitas (contas a receber)</p>
               </>
             )}
@@ -1372,7 +1373,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                 })
                 setShowModalContrato(true)
               }}
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center space-x-2 bg-neon text-black font-medium hover:bg-neon-dim px-4 py-2 rounded-lg transition-colors"
             >
               <FiPlus className="w-5 h-5" />
               <span>Novo Contrato</span>
@@ -1382,7 +1383,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                 resetForm()
                 setShowModal(true)
               }}
-              className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="flex items-center space-x-2 bg-neon text-black font-medium hover:bg-neon-dim px-4 py-2 rounded-lg transition-colors"
             >
               <FiPlus className="w-5 h-5" />
               <span>Nova Receita</span>
@@ -1391,7 +1392,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         </div>
 
         {/* Card de Saldo Atual */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg p-6 border border-purple-500/30">
+        <div className="bg-neon/10 rounded-lg p-6 border border-neon/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Saldo Atual</p>
@@ -1402,25 +1403,25 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                 {resumo.saldoAtual < 0 ? 'Saldo negativo - Receitas insuficientes' : 'Receitas - Despesas pagas'}
               </p>
             </div>
-            <div className="w-16 h-16 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <FiDollarSign className="w-8 h-8 text-purple-400" />
+            <div className="w-16 h-16 bg-neon/20 rounded-lg flex items-center justify-center">
+              <FiDollarSign className="w-8 h-8 text-neon" />
             </div>
           </div>
         </div>
 
         {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-4 border emp-border">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total a Receber</p>
-                <p className="text-2xl font-bold text-white mt-1">{formatarMoeda(resumo.totalAReceber)}</p>
+                <p className="text-2xl font-bold emp-text-primary mt-1">{formatarMoeda(resumo.totalAReceber)}</p>
               </div>
-              <FiDollarSign className="w-8 h-8 text-purple-400" />
+              <FiDollarSign className="w-8 h-8 text-neon" />
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-red-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Vencidas</p>
@@ -1430,7 +1431,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-yellow-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-yellow-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Pendentes</p>
@@ -1440,7 +1441,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
             </div>
           </div>
 
-          <div className="bg-gray-800 rounded-lg p-4 border border-green-500/30">
+          <div className="emp-bg-card rounded-lg p-4 border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Recebidas</p>
@@ -1453,17 +1454,17 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
 
         {/* Seção de Contratos */}
         {contratos.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+          <div className="emp-bg-card rounded-lg p-4 border emp-border">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Contratos Ativos</h2>
+              <h2 className="text-lg font-semibold emp-text-primary">Contratos Ativos</h2>
               <span className="text-sm text-gray-400">{contratos.filter(c => c.ativo).length} ativo(s)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {contratos.map((contrato) => (
-                <div key={contrato.id} className="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
+                <div key={contrato.id} className="emp-input-bg/50 rounded-lg p-4 border border-gray-600">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h3 className="text-white font-semibold">{contrato.nome_contrato}</h3>
+                      <h3 className="emp-text-primary font-semibold">{contrato.nome_contrato}</h3>
                       <p className="text-sm text-gray-400 mt-1">{contrato.cliente_nome || 'Sem cliente'}</p>
                     </div>
                     <span className={`px-2 py-1 text-xs rounded-full ${contrato.ativo ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
@@ -1473,16 +1474,16 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   <div className="mt-3 space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Valor Mensal:</span>
-                      <span className="text-white font-semibold">{formatarMoeda(contrato.valor_mensal)}</span>
+                      <span className="emp-text-primary font-semibold">{formatarMoeda(contrato.valor_mensal)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Vencimento:</span>
-                      <span className="text-white">Dia {contrato.dia_vencimento}</span>
+                      <span className="emp-text-primary">Dia {contrato.dia_vencimento}</span>
                     </div>
                     {contrato.data_fim && (
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Término:</span>
-                        <span className="text-white">{formatarData(contrato.data_fim)}</span>
+                        <span className="emp-text-primary">{formatarData(contrato.data_fim)}</span>
                       </div>
                     )}
                   </div>
@@ -1504,7 +1505,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         )}
 
         {/* Filtros â€” compactos: busca, status, cliente, categoria, mÃªs (padrÃ£o atual); ordem mais recente primeiro */}
-        <div className="bg-gray-800 rounded-lg p-3 border border-gray-700">
+        <div className="emp-bg-card rounded-lg p-3 border emp-border">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px] max-w-xs">
               <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1513,13 +1514,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                 placeholder="Buscar..."
                 value={buscaTexto}
                 onChange={(e) => setBuscaTexto(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full pl-8 pr-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon"
               />
             </div>
             <select
               value={filtroStatus}
               onChange={(e) => setFiltroStatus(e.target.value as 'todas' | 'pendentes' | 'recebidas' | 'vencidas')}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
             >
               <option value="todas">Todas</option>
               <option value="pendentes">Pendentes</option>
@@ -1529,7 +1530,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
             <select
               value={filtroCliente}
               onChange={(e) => setFiltroCliente(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[140px]"
             >
               <option value="">Todos clientes</option>
               {clientes.map((c) => (
@@ -1539,7 +1540,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
             <select
               value={filtroCategoria}
               onChange={(e) => setFiltroCategoria(e.target.value)}
-              className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[140px]"
+              className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[140px]"
             >
               <option value="">Todas categorias</option>
               {categorias.map((c) => (
@@ -1551,7 +1552,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
               <select
                 value={filtroMes}
                 onChange={(e) => setFiltroMes(e.target.value)}
-                className="px-3 py-2 text-sm bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-[110px]"
+                className="px-3 py-2 text-sm emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon min-w-[110px]"
               >
                 {getMonthOptions().map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1562,35 +1563,35 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         </div>
 
         {/* Tabela de Contas */}
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+        <div className="emp-bg-card rounded-lg border emp-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-700/50">
+              <thead className="emp-input-bg/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Descrição
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Cliente
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Categoria
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Valor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Vencimento
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-secondary uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-[var(--emp-border)]">
                 {todasContas.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
@@ -1599,12 +1600,12 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </tr>
                 ) : (
                   todasContas.map((conta) => (
-                    <tr key={conta.id} className="hover:bg-gray-700/30 transition-colors">
+                    <tr key={conta.id} className="hover:emp-input-bg/30 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
-                          <div className="text-sm text-white">{conta.descricao}</div>
+                          <div className="text-sm emp-text-primary">{conta.descricao}</div>
                           {conta.origem === 'orcamento' && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-neon/20 text-neon border border-neon/40">
                               Orçamento
                             </span>
                           )}
@@ -1615,16 +1616,16 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {conta.cliente_nome || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {conta.categoria_nome || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold emp-text-primary">
                         {formatarMoeda(Number(conta.valor))}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm emp-text-secondary">
                         {formatarData(conta.data_vencimento)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -1644,7 +1645,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                                   <select
                                     value={conta.status || 'pendente'}
                                     onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                    className="px-2 py-1 text-xs rounded-full bg-gray-700 border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
+                                    className="px-2 py-1 text-xs rounded-full emp-input-bg border border-gray-600 text-gray-400 focus:outline-none focus:ring-2 focus:ring-neon cursor-pointer"
                                     title="Status no banco: Pendente (mas está vencida)"
                                   >
                                     <option value="pendente">Pendente</option>
@@ -1660,7 +1661,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                               <select
                                 value={conta.status || 'pendente'}
                                 onChange={(e) => handleAlterarStatus(conta.id, e.target.value as 'pendente' | 'aprovado' | 'cancelado', false)}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-all ${
+                                className={`px-3 py-1.5 text-xs font-medium rounded-full border focus:outline-none focus:ring-2 focus:ring-neon cursor-pointer transition-all ${
                                   conta.status === 'cancelado'
                                     ? 'bg-gray-500/20 text-gray-400 border-gray-500/30'
                                     : conta.status === 'aprovado' || conta.recebida
@@ -1726,10 +1727,10 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         {/* Modal de Adicionar/Editar */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold emp-text-primary">
                     {editingConta ? 'Editar Receita' : 'Nova Receita'}
                   </h2>
                   <button
@@ -1737,7 +1738,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       setShowModal(false)
                       resetForm()
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -1751,7 +1752,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <select
                           value={formData.cliente_id}
                           onChange={(e) => setFormData({ ...formData, cliente_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         >
                           <option value="">Selecione um cliente</option>
                           {clientes.map((cliente) => (
@@ -1763,7 +1764,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <button
                           type="button"
                           onClick={() => setShowModalCliente(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar novo cliente"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -1777,7 +1778,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <select
                           value={formData.categoria_id}
                           onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         >
                           <option value="">Selecione uma categoria</option>
                           {categorias.map((categoria) => (
@@ -1789,7 +1790,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <button
                           type="button"
                           onClick={() => setShowModalCategoria(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar nova categoria"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -1805,7 +1806,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       required
                       value={formData.descricao}
                       onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Ex: Recebimento de cliente"
                     />
                   </div>
@@ -1819,21 +1820,18 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         required
                         value={formData.valor}
                         onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="0.00"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de Vencimento *</label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.data_vencimento}
-                        onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
+                    <DateInput
+                      label="Data de Vencimento"
+                      labelClassName="text-gray-400 mb-1"
+                      value={formData.data_vencimento}
+                      onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
+                      required
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1842,7 +1840,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       <select
                         value={formData.forma_recebimento}
                         onChange={(e) => setFormData({ ...formData, forma_recebimento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
@@ -1862,9 +1860,9 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                             type="checkbox"
                             checked={formData.parcelada}
                             onChange={(e) => setFormData({ ...formData, parcelada: e.target.checked })}
-                            className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                            className="w-4 h-4 text-neon emp-input-bg border-gray-600 rounded focus:ring-neon"
                           />
-                          <span className="text-white">Sim</span>
+                          <span className="emp-text-primary">Sim</span>
                         </label>
                         {formData.parcelada && (
                           <input
@@ -1872,7 +1870,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                             min="1"
                             value={formData.total_parcelas}
                             onChange={(e) => setFormData({ ...formData, total_parcelas: e.target.value })}
-                            className="w-20 px-3 py-1 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                            className="w-20 px-3 py-1 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                             placeholder="Qtd"
                           />
                         )}
@@ -1886,7 +1884,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formData.observacoes}
                       onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Observações adicionais..."
                     />
                   </div>
@@ -1898,13 +1896,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         setShowModal(false)
                         resetForm()
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       {editingConta ? 'Salvar Alterações' : 'Criar Receita'}
                     </button>
@@ -1918,10 +1916,10 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         {/* Modal de Criar Cliente */}
         {showModalCliente && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-md max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Novo Cliente</h2>
+                  <h2 className="text-2xl font-bold emp-text-primary">Novo Cliente</h2>
                   <button
                     onClick={() => {
                       setShowModalCliente(false)
@@ -1936,7 +1934,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         observacoes: '',
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -1950,7 +1948,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       required
                       value={formDataCliente.nome}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Nome do cliente"
                     />
                   </div>
@@ -1961,7 +1959,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       type="text"
                       value={formDataCliente.razao_social}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, razao_social: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Razão social (opcional)"
                     />
                   </div>
@@ -1973,7 +1971,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="text"
                         value={formDataCliente.cnpj}
                         onChange={(e) => setFormDataCliente({ ...formDataCliente, cnpj: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="00.000.000/0000-00"
                       />
                     </div>
@@ -1984,7 +1982,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="text"
                         value={formDataCliente.cpf}
                         onChange={(e) => setFormDataCliente({ ...formDataCliente, cpf: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="000.000.000-00"
                       />
                     </div>
@@ -1997,7 +1995,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="email"
                         value={formDataCliente.email}
                         onChange={(e) => setFormDataCliente({ ...formDataCliente, email: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="email@exemplo.com"
                       />
                     </div>
@@ -2008,7 +2006,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="text"
                         value={formDataCliente.telefone}
                         onChange={(e) => setFormDataCliente({ ...formDataCliente, telefone: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="(00) 00000-0000"
                       />
                     </div>
@@ -2020,7 +2018,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       type="text"
                       value={formDataCliente.endereco}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, endereco: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Endereço completo"
                     />
                   </div>
@@ -2031,7 +2029,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formDataCliente.observacoes}
                       onChange={(e) => setFormDataCliente({ ...formDataCliente, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Observações adicionais..."
                     />
                   </div>
@@ -2052,13 +2050,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                           observacoes: '',
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       Criar Cliente
                     </button>
@@ -2072,10 +2070,10 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         {/* Modal de Criar Categoria */}
         {showModalCategoria && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-md">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-md">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">Nova Categoria de Receita</h2>
+                  <h2 className="text-2xl font-bold emp-text-primary">Nova Categoria de Receita</h2>
                   <button
                     onClick={() => {
                       setShowModalCategoria(false)
@@ -2085,7 +2083,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         cor: '#6366f1',
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -2099,7 +2097,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       required
                       value={formDataCategoria.nome}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Ex: Vendas, Serviços, Produtos"
                     />
                   </div>
@@ -2110,7 +2108,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formDataCategoria.descricao}
                       onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descricao: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Descrição da categoria (opcional)"
                     />
                   </div>
@@ -2122,13 +2120,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="color"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="w-16 h-10 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer"
+                        className="w-16 h-10 emp-input-bg border border-gray-600 rounded-lg cursor-pointer"
                       />
                       <input
                         type="text"
                         value={formDataCategoria.cor}
                         onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
-                        className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="#6366f1"
                       />
                     </div>
@@ -2145,13 +2143,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                           cor: '#6366f1',
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       Criar Categoria
                     </button>
@@ -2165,10 +2163,10 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
         {/* Modal de Criar/Editar Contrato */}
         {showModalContrato && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="emp-bg-card rounded-lg border emp-border w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold emp-text-primary">
                     {editingContrato ? 'Editar Contrato' : 'Novo Contrato'}
                   </h2>
                   <button
@@ -2190,7 +2188,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         ativo: true,
                       })
                     }}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-gray-400 hover:emp-text-primary transition-colors"
                   >
                     <FiX className="w-6 h-6" />
                   </button>
@@ -2204,7 +2202,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       required
                       value={formDataContrato.nome_contrato}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, nome_contrato: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Ex: Contrato de Manutenção Mensal"
                     />
                   </div>
@@ -2216,7 +2214,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <select
                           value={formDataContrato.cliente_id}
                           onChange={(e) => setFormDataContrato({ ...formDataContrato, cliente_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         >
                           <option value="">Selecione um cliente</option>
                           {clientes.map((cliente) => (
@@ -2228,7 +2226,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <button
                           type="button"
                           onClick={() => setShowModalCliente(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar novo cliente"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -2242,7 +2240,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <select
                           value={formDataContrato.categoria_id}
                           onChange={(e) => setFormDataContrato({ ...formDataContrato, categoria_id: e.target.value })}
-                          className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                          className="flex-1 px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         >
                           <option value="">Selecione uma categoria</option>
                           {categorias.map((categoria) => (
@@ -2254,7 +2252,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         <button
                           type="button"
                           onClick={() => setShowModalCategoria(true)}
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                          className="px-3 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                           title="Adicionar nova categoria"
                         >
                           <FiPlus className="w-5 h-5" />
@@ -2269,7 +2267,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       type="text"
                       value={formDataContrato.descricao}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, descricao: e.target.value })}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Breve descrição do contrato"
                     />
                   </div>
@@ -2283,7 +2281,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         required
                         value={formDataContrato.valor_mensal}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, valor_mensal: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="0.00"
                       />
                     </div>
@@ -2297,7 +2295,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         required
                         value={formDataContrato.dia_vencimento}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, dia_vencimento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                         placeholder="1-31"
                       />
                       <p className="text-xs text-gray-500 mt-1">Dia do mês em que a receita vence</p>
@@ -2308,7 +2306,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       <select
                         value={formDataContrato.forma_recebimento}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, forma_recebimento: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                        className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       >
                         <option value="dinheiro">Dinheiro</option>
                         <option value="pix">PIX</option>
@@ -2322,24 +2320,20 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de Início *</label>
-                      <input
-                        type="date"
-                        required
-                        value={formDataContrato.data_inicio}
-                        onChange={(e) => setFormDataContrato({ ...formDataContrato, data_inicio: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
-                      />
-                    </div>
+                    <DateInput
+                      label="Data de Início"
+                      labelClassName="text-gray-400 mb-1"
+                      value={formDataContrato.data_inicio}
+                      onChange={(e) => setFormDataContrato({ ...formDataContrato, data_inicio: e.target.value })}
+                      required
+                    />
 
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">Data de Término</label>
-                      <input
-                        type="date"
+                      <DateInput
+                        label="Data de Término"
+                        labelClassName="text-gray-400 mb-1"
                         value={formDataContrato.data_fim}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, data_fim: e.target.value })}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
                       />
                       <p className="text-xs text-gray-500 mt-1">Deixe em branco para contrato sem término</p>
                     </div>
@@ -2351,7 +2345,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formDataContrato.detalhes_contrato}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, detalhes_contrato: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Detalhes adicionais do contrato, termos, condições, etc..."
                     />
                   </div>
@@ -2362,7 +2356,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                       value={formDataContrato.observacoes}
                       onChange={(e) => setFormDataContrato({ ...formDataContrato, observacoes: e.target.value })}
                       rows={3}
-                      className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-purple-500"
+                      className="w-full px-4 py-2 emp-input-bg border border-gray-600 rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                       placeholder="Observações adicionais..."
                     />
                   </div>
@@ -2373,9 +2367,9 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                         type="checkbox"
                         checked={formDataContrato.ativo}
                         onChange={(e) => setFormDataContrato({ ...formDataContrato, ativo: e.target.checked })}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500"
+                        className="w-4 h-4 text-neon emp-input-bg border-gray-600 rounded focus:ring-neon"
                       />
-                      <span className="text-white">Contrato Ativo (gerará receitas automaticamente)</span>
+                      <span className="emp-text-primary">Contrato Ativo (gerará receitas automaticamente)</span>
                     </label>
                   </div>
 
@@ -2400,13 +2394,13 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
                           ativo: true,
                         })
                       }}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg transition-colors"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                      className="px-4 py-2 bg-neon text-black font-medium hover:bg-neon-dim rounded-lg transition-colors"
                     >
                       {editingContrato ? 'Salvar Alterações' : 'Criar Contrato'}
                     </button>

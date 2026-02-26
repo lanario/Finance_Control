@@ -246,7 +246,7 @@ export default function PerfilPage() {
     return (
       <MainLayoutEmpresarial>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white text-xl">Carregando...</div>
+          <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
         </div>
       </MainLayoutEmpresarial>
     )
@@ -257,106 +257,106 @@ export default function PerfilPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Perfil</h1>
-            <p className="text-gray-400">Gerencie seus dados pessoais e da empresa</p>
+            <h1 className="text-3xl font-bold emp-text-primary mb-2">Perfil</h1>
+            <p className="emp-text-secondary">Gerencie seus dados pessoais e da empresa</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Dados do usuário (snapshot) */}
-          <div className="bg-blue-900/20 rounded-lg border border-blue-700/50 p-6">
+          <div className="emp-bg-card rounded-lg border emp-border p-6">
             <div className="flex items-center space-x-3 mb-4">
-              <FiFileText className="w-5 h-5 text-blue-400" />
-              <h2 className="text-xl font-semibold text-white">Dados do usuário (snapshot)</h2>
+              <FiFileText className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--emp-accent)' }} />
+              <h2 className="text-xl font-semibold emp-text-primary">Dados do usuário (snapshot)</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-400">Nome: </span>
-                <span className="text-white">{nome || '-'}</span>
+                <span className="emp-text-muted">Nome: </span>
+                <span className="emp-text-primary">{nome || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400">CPF/CNPJ: </span>
-                <span className="text-white">{empresaCnpj || '-'}</span>
+                <span className="emp-text-muted">CPF/CNPJ: </span>
+                <span className="emp-text-primary">{empresaCnpj || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400">Fixo: </span>
-                <span className="text-white">{telefone || '-'}</span>
+                <span className="emp-text-muted">Fixo: </span>
+                <span className="emp-text-primary">{telefone || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400">Endereço: </span>
-                <span className="text-white">{endereco || '-'}</span>
+                <span className="emp-text-muted">Endereço: </span>
+                <span className="emp-text-primary">{endereco || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400">Email: </span>
-                <span className="text-white">{email || '-'}</span>
+                <span className="emp-text-muted">Email: </span>
+                <span className="emp-text-primary">{email || '-'}</span>
               </div>
               <div>
-                <span className="text-gray-400">Celular: </span>
-                <span className="text-white">{celular || '-'}</span>
+                <span className="emp-text-muted">Celular: </span>
+                <span className="emp-text-primary">{celular || '-'}</span>
               </div>
             </div>
           </div>
 
           {/* Dados Pessoais */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Dados Pessoais</h2>
+          <div className="emp-bg-card rounded-lg border emp-border p-6">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">Dados Pessoais</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Nome
                 </label>
                 <input
                   type="text"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Seu nome completo"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={email}
                   disabled
-                  className="w-full px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-muted cursor-not-allowed opacity-80"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Telefone Fixo
                 </label>
                 <input
                   type="text"
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="(00) 0000-0000"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Celular
                 </label>
                 <input
                   type="text"
                   value={celular}
                   onChange={(e) => setCelular(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="(00) 00000-0000"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Endereço
                 </label>
                 <input
                   type="text"
                   value={endereco}
                   onChange={(e) => setEndereco(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Rua, número, bairro, cidade - Estado"
                 />
               </div>
@@ -364,35 +364,35 @@ export default function PerfilPage() {
           </div>
 
           {/* Dados da Empresa */}
-          <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Dados da Empresa</h2>
+          <div className="emp-bg-card rounded-lg border emp-border p-6">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">Dados da Empresa</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Nome da Empresa
                 </label>
                 <input
                   type="text"
                   value={empresaNome}
                   onChange={(e) => setEmpresaNome(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Nome da sua empresa"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   CPF/CNPJ
                 </label>
                 <input
                   type="text"
                   value={empresaCnpj}
                   onChange={(e) => setEmpresaCnpj(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="00.000.000/0000-00"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium emp-text-secondary mb-2">
                   Logo da Empresa
                 </label>
                 <div className="flex items-center space-x-4">
@@ -404,7 +404,7 @@ export default function PerfilPage() {
                         alt="Logo da empresa"
                         width={120}
                         height={120}
-                        className="object-contain rounded-lg border border-gray-600 bg-white p-2"
+                        className="object-contain rounded-lg border emp-border p-2 emp-bg-card"
                         unoptimized
                         onLoad={() => {
                           console.log('✅ Logo carregada com sucesso:', previewUrl || logoUrl)
@@ -465,13 +465,13 @@ export default function PerfilPage() {
                       disabled={uploadingLogo}
                       className="hidden"
                     />
-                    <span className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                    <span className="inline-flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90" style={{ backgroundColor: 'var(--emp-accent)' }}>
                       <FiImage className="w-5 h-5" />
                       <span>{uploadingLogo ? 'Enviando...' : logoUrl ? 'Alterar Logo' : 'Adicionar Logo'}</span>
                     </span>
                   </label>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs emp-text-muted mt-2">
                   A logo será usada nos orçamentos e documentos da empresa
                 </p>
               </div>
@@ -483,7 +483,8 @@ export default function PerfilPage() {
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center space-x-2 px-6 py-3 bg-purple-800 hover:bg-purple-900 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed emp-text-primary hover:opacity-90"
+              style={{ backgroundColor: 'var(--emp-accent)' }}
             >
               <FiSave className="w-5 h-5" />
               <span>{saving ? 'Salvando...' : 'Salvar Perfil'}</span>

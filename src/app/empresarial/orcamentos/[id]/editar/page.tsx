@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
-import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiChevronDown, FiChevronUp, FiImage, FiX } from 'react-icons/fi'
+import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiChevronDown, FiChevronUp, FiImage, FiX, FiSearch, FiPackage, FiTool } from 'react-icons/fi'
 import Image from 'next/image'
+import { DateInput } from '@/components/ui/DateInput'
 
 interface Cliente {
   id: string
@@ -26,6 +27,20 @@ interface ItemOrcamento {
   desconto: number
   valor_total: number
   observacoes: string
+}
+
+interface ProdutoCatalogo {
+  id: string
+  nome: string
+  valor_unitario: number
+  unidade: string
+}
+
+interface ServicoCatalogo {
+  id: string
+  nome: string
+  valor_unitario: number
+  unidade: string
 }
 
 export default function EditarOrcamentoPage() {
@@ -81,13 +96,13 @@ export default function EditarOrcamentoPage() {
   const [fonteTituloSecao, setFonteTituloSecao] = useState(12)
   const [fonteFamilia, setFonteFamilia] = useState('Arial')
 
-  // Estilo - Marca d'água
-  const [marcaDaguaOpacidade, setMarcaDaguaOpacidade] = useState(100)
-  const [marcaDaguaRotacao, setMarcaDaguaRotacao] = useState(0)
-  const [marcaDaguaPosicaoPersonalizada, setMarcaDaguaPosicaoPersonalizada] = useState(true)
+  // Estilo - Marca d'água (padrão: centralizada, transparente, grande como no exemplo)
+  const [marcaDaguaOpacidade, setMarcaDaguaOpacidade] = useState(25)
+  const [marcaDaguaRotacao, setMarcaDaguaRotacao] = useState(-45)
+  const [marcaDaguaPosicaoPersonalizada, setMarcaDaguaPosicaoPersonalizada] = useState(false)
   const [marcaDaguaPosicaoX, setMarcaDaguaPosicaoX] = useState(10)
   const [marcaDaguaPosicaoY, setMarcaDaguaPosicaoY] = useState(10)
-  const [marcaDaguaTamanho, setMarcaDaguaTamanho] = useState(120)
+  const [marcaDaguaTamanho, setMarcaDaguaTamanho] = useState(200)
   const [marcaDaguaFormato, setMarcaDaguaFormato] = useState('quadrado')
   const [marcaDaguaUrl, setMarcaDaguaUrl] = useState<string | null>(null)
 
@@ -95,6 +110,12 @@ export default function EditarOrcamentoPage() {
   const [paddingPagina, setPaddingPagina] = useState(28)
   const [paddingHeader, setPaddingHeader] = useState(14)
   const [espacamentoSecoes, setEspacamentoSecoes] = useState(14)
+
+  /** Busca de produto/serviço no item do orçamento */
+  const [buscaItemIndex, setBuscaItemIndex] = useState<number | null>(null)
+  const [buscaTermo, setBuscaTermo] = useState('')
+  const [produtos, setProdutos] = useState<ProdutoCatalogo[]>([])
+  const [servicos, setServicos] = useState<ServicoCatalogo[]>([])
 
   // Upload de logo
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -135,6 +156,16 @@ export default function EditarOrcamentoPage() {
 
       if (orcamentoError) throw orcamentoError
 
+      // Carregar produtos e serviços para busca nos itens
+      if (userId) {
+        const [resProdutos, resServicos] = await Promise.all([
+          supabase.from('produtos').select('id, nome, valor_unitario, unidade').eq('user_id', userId).eq('ativo', true).order('nome'),
+          supabase.from('servicos').select('id, nome, valor_unitario, unidade').eq('user_id', userId).eq('ativo', true).order('nome'),
+        ])
+        setProdutos((resProdutos.data as ProdutoCatalogo[]) || [])
+        setServicos((resServicos.data as ServicoCatalogo[]) || [])
+      }
+
       if (orcamento) {
         setNumero(orcamento.numero)
         setDataEmissao(orcamento.data_emissao)
@@ -165,12 +196,12 @@ export default function EditarOrcamentoPage() {
             setFonteTituloHeader(template.fonteTituloHeader || 18)
             setFonteTituloSecao(template.fonteTituloSecao || 12)
             setFonteFamilia(template.fonteFamilia || 'Arial')
-            setMarcaDaguaOpacidade(template.marcaDaguaOpacidade || 100)
-            setMarcaDaguaRotacao(template.marcaDaguaRotacao || 0)
-            setMarcaDaguaPosicaoPersonalizada(template.marcaDaguaPosicaoPersonalizada !== undefined ? template.marcaDaguaPosicaoPersonalizada : true)
-            setMarcaDaguaPosicaoX(template.marcaDaguaPosicaoX || 10)
-            setMarcaDaguaPosicaoY(template.marcaDaguaPosicaoY || 10)
-            setMarcaDaguaTamanho(template.marcaDaguaTamanho || 120)
+            setMarcaDaguaOpacidade(template.marcaDaguaOpacidade ?? 25)
+            setMarcaDaguaRotacao(template.marcaDaguaRotacao ?? -45)
+            setMarcaDaguaPosicaoPersonalizada(template.marcaDaguaPosicaoPersonalizada ?? false)
+            setMarcaDaguaPosicaoX(template.marcaDaguaPosicaoX ?? 10)
+            setMarcaDaguaPosicaoY(template.marcaDaguaPosicaoY ?? 10)
+            setMarcaDaguaTamanho(template.marcaDaguaTamanho ?? 200)
             setMarcaDaguaFormato(template.marcaDaguaFormato || 'quadrado')
             setMarcaDaguaUrl(template.marcaDaguaUrl || null)
             setPaddingPagina(template.paddingPagina || 28)
@@ -231,6 +262,22 @@ export default function EditarOrcamentoPage() {
     setClienteId(clienteIdValue)
     const cliente = clientes.find(c => c.id === clienteIdValue)
     setClienteSelecionado(cliente || null)
+  }
+
+  /** Aplica produto ou serviço ao item na posição index e fecha a busca */
+  const handleSelecionarProdutoServico = (index: number, tipo: 'produto' | 'servico', item: ProdutoCatalogo | ServicoCatalogo) => {
+    const novosItens = [...itens]
+    const qtd = novosItens[index].quantidade
+    novosItens[index] = {
+      ...novosItens[index],
+      descricao: item.nome,
+      valor_unitario: item.valor_unitario,
+      unidade: item.unidade || 'un',
+      valor_total: (qtd * item.valor_unitario) - (novosItens[index].desconto || 0),
+    }
+    setItens(novosItens)
+    setBuscaItemIndex(null)
+    setBuscaTermo('')
   }
 
   const handleAddItem = () => {
@@ -358,6 +405,36 @@ export default function EditarOrcamentoPage() {
 
       if (itensError) throw itensError
 
+      // Ao marcar orçamento como concluído, criar venda pendente na aba de vendas (uma vez por orçamento)
+      if (status === 'concluido' && userId) {
+        const { data: vendaExistente } = await supabase
+          .from('vendas')
+          .select('id')
+          .eq('orcamento_id', orcamentoId)
+          .eq('user_id', userId)
+          .maybeSingle()
+
+        if (!vendaExistente) {
+          await supabase.from('vendas').insert({
+            user_id: userId,
+            orcamento_id: orcamentoId,
+            cliente_id: clienteId || null,
+            categoria_id: null,
+            descricao: `Orçamento #${numero}`,
+            valor_total: valorTotal,
+            valor_desconto: descontoGeral,
+            valor_final: valorFinal,
+            data_venda: dataEmissao,
+            forma_pagamento: null,
+            status: 'pendente',
+            parcelada: false,
+            total_parcelas: 1,
+            observacoes: observacoes || null,
+            tipo_venda: 'servico',
+          })
+        }
+      }
+
       router.push('/empresarial/orcamentos')
     } catch (error) {
       console.error('Erro ao salvar orçamento:', error)
@@ -471,29 +548,17 @@ export default function EditarOrcamentoPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Data de Emissão
-                </label>
-                <input
-                  type="date"
-                  value={dataEmissao}
-                  onChange={(e) => setDataEmissao(e.target.value)}
-                  required
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Data de Validade
-                </label>
-                <input
-                  type="date"
-                  value={dataValidade}
-                  onChange={(e) => setDataValidade(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-800"
-                />
-              </div>
+              <DateInput
+                label="Data de Emissão"
+                value={dataEmissao}
+                onChange={(e) => setDataEmissao(e.target.value)}
+                required
+              />
+              <DateInput
+                label="Data de Validade"
+                value={dataValidade}
+                onChange={(e) => setDataValidade(e.target.value)}
+              />
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Status
@@ -549,14 +614,79 @@ export default function EditarOrcamentoPage() {
                       <tr key={index} className="hover:bg-gray-700/30">
                         <td className="px-4 py-3 text-gray-300">{item.item_numero}</td>
                         <td className="px-4 py-3">
-                          <input
-                            type="text"
-                            value={item.descricao}
-                            onChange={(e) => handleItemChange(index, 'descricao', e.target.value)}
-                            required
-                            className="w-full px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-800"
-                            placeholder="Descrição do item"
-                          />
+                          <div className="flex items-center gap-1 relative">
+                            <input
+                              type="text"
+                              value={item.descricao}
+                              onChange={(e) => handleItemChange(index, 'descricao', e.target.value)}
+                              required
+                              className="flex-1 min-w-0 px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-800"
+                              placeholder="Digite ou busque produto/serviço"
+                            />
+                            <div className="relative shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setBuscaItemIndex(buscaItemIndex === index ? null : index)}
+                                className="p-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+                                title="Buscar produto ou serviço cadastrado"
+                              >
+                                <FiSearch className="w-4 h-4" />
+                              </button>
+                              {buscaItemIndex === index && (
+                                <div className="absolute left-0 top-full mt-1 z-20 w-80 max-h-64 bg-gray-700 border border-gray-600 rounded-lg shadow-xl overflow-hidden flex flex-col">
+                                  <div className="p-2 border-b border-gray-600">
+                                    <input
+                                      type="text"
+                                      value={buscaTermo}
+                                      onChange={(e) => setBuscaTermo(e.target.value)}
+                                      placeholder="Buscar por nome..."
+                                      className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-purple-800"
+                                      autoFocus
+                                    />
+                                  </div>
+                                  <div className="overflow-y-auto flex-1 p-1">
+                                    {(() => {
+                                      const termo = buscaTermo.trim().toLowerCase()
+                                      const prods = termo ? produtos.filter(p => p.nome.toLowerCase().includes(termo)) : produtos
+                                      const servs = termo ? servicos.filter(s => s.nome.toLowerCase().includes(termo)) : servicos
+                                      const total = prods.length + servs.length
+                                      if (total === 0) {
+                                        return <p className="text-gray-400 text-sm p-2">Nenhum produto ou serviço encontrado. Preencha manualmente.</p>
+                                      }
+                                      return (
+                                        <>
+                                          {prods.map((p) => (
+                                            <button
+                                              key={`p-${p.id}`}
+                                              type="button"
+                                              onClick={() => handleSelecionarProdutoServico(index, 'produto', p)}
+                                              className="w-full text-left px-3 py-2 rounded hover:bg-gray-600 text-white text-sm flex items-center space-x-2"
+                                            >
+                                              <FiPackage className="w-4 h-4 text-blue-400 shrink-0" />
+                                              <span className="flex-1 truncate">{p.nome}</span>
+                                              <span className="text-gray-400 shrink-0">R$ {Number(p.valor_unitario).toFixed(2)}</span>
+                                            </button>
+                                          ))}
+                                          {servs.map((s) => (
+                                            <button
+                                              key={`s-${s.id}`}
+                                              type="button"
+                                              onClick={() => handleSelecionarProdutoServico(index, 'servico', s)}
+                                              className="w-full text-left px-3 py-2 rounded hover:bg-gray-600 text-white text-sm flex items-center space-x-2"
+                                            >
+                                              <FiTool className="w-4 h-4 text-green-400 shrink-0" />
+                                              <span className="flex-1 truncate">{s.nome}</span>
+                                              <span className="text-gray-400 shrink-0">R$ {Number(s.valor_unitario).toFixed(2)}</span>
+                                            </button>
+                                          ))}
+                                        </>
+                                      )
+                                    })()}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <input
@@ -1240,7 +1370,7 @@ export default function EditarOrcamentoPage() {
                 </div>
               )}
               
-              <div className="bg-white rounded-lg shadow-lg p-8" style={{ fontFamily: fonteFamilia }}>
+              <div className="bg-white rounded-lg shadow-lg p-8 relative" style={{ fontFamily: fonteFamilia }}>
                 {/* Header */}
                 <div
                   style={{
@@ -1428,18 +1558,23 @@ export default function EditarOrcamentoPage() {
                   </div>
                 )}
 
-                {/* Marca d'água */}
+                {/* Marca d'água (centralizada ou posição personalizada, como no formato de exemplo) */}
                 {marcaDaguaUrl && (
                   <div
                     style={{
-                      position: 'relative',
+                      position: 'absolute',
                       opacity: marcaDaguaOpacidade / 100,
-                      transform: `rotate(${marcaDaguaRotacao}deg)`,
                       left: marcaDaguaPosicaoPersonalizada ? `${marcaDaguaPosicaoX}px` : '50%',
                       top: marcaDaguaPosicaoPersonalizada ? `${marcaDaguaPosicaoY}px` : '50%',
                       width: `${marcaDaguaTamanho}px`,
                       height: `${marcaDaguaTamanho}px`,
+                      marginLeft: marcaDaguaPosicaoPersonalizada ? 0 : `-${marcaDaguaTamanho / 2}px`,
+                      marginTop: marcaDaguaPosicaoPersonalizada ? 0 : `-${marcaDaguaTamanho / 2}px`,
+                      transform: `rotate(${marcaDaguaRotacao}deg)`,
+                      transformOrigin: 'center',
                       borderRadius: marcaDaguaFormato === 'circular' ? '50%' : '0',
+                      pointerEvents: 'none',
+                      zIndex: 1,
                     }}
                   >
                     <img
@@ -1459,25 +1594,27 @@ export default function EditarOrcamentoPage() {
           </div>
         )}
 
-        {/* Botão Salvar (sempre visível) */}
-        <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-700">
-          <button
-            type="button"
-            onClick={() => router.push('/empresarial/orcamentos')}
-            className="px-6 py-3 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSubmit()}
-            disabled={saving || itens.length === 0}
-            className="flex items-center space-x-2 px-6 py-3 bg-purple-800 hover:bg-purple-900 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FiSave className="w-5 h-5" />
-            <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
-          </button>
-        </div>
+        {/* Botões Cancelar/Salvar apenas na aba Estilo (na aba Dados já existem dentro do form) */}
+        {abaAtiva === 'estilo' && (
+          <div className="flex items-center justify-end space-x-4 pt-4 border-t border-gray-700">
+            <button
+              type="button"
+              onClick={() => router.push('/empresarial/orcamentos')}
+              className="px-6 py-3 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={saving || itens.length === 0}
+              className="flex items-center space-x-2 px-6 py-3 bg-purple-800 hover:bg-purple-900 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FiSave className="w-5 h-5" />
+              <span>{saving ? 'Salvando...' : 'Salvar Alterações'}</span>
+            </button>
+          </div>
+        )}
       </div>
     </MainLayoutEmpresarial>
   )

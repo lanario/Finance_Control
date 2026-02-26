@@ -537,7 +537,7 @@ export default function ProdutosServicosPage() {
     return (
       <MainLayoutEmpresarial>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white text-xl">Carregando...</div>
+          <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
         </div>
       </MainLayoutEmpresarial>
     )
@@ -548,8 +548,8 @@ export default function ProdutosServicosPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Produtos e Serviços</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-bold emp-text-primary mb-2">Produtos e Serviços</h1>
+            <p className="emp-text-muted">
               Cadastre produtos e serviços com foto, categoria e preços para uso em vendas e orçamentos
             </p>
           </div>
@@ -559,7 +559,7 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => openNewGrupo('produto')}
-                  className="flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors border border-gray-600"
+                  className="flex items-center justify-center space-x-2 emp-input-bg hover:opacity-90 emp-text-primary px-4 py-2 rounded-lg transition-colors border emp-border"
                 >
                   <FiFolderPlus className="w-5 h-5" />
                   <span>Novo Grupo de Produto</span>
@@ -567,7 +567,7 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => openNewGrupo('servico')}
-                  className="flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors border border-gray-600"
+                  className="flex items-center justify-center space-x-2 emp-input-bg hover:opacity-90 emp-text-primary px-4 py-2 rounded-lg transition-colors border emp-border"
                 >
                   <FiFolderPlus className="w-5 h-5" />
                   <span>Novo Grupo de Serviço</span>
@@ -578,14 +578,14 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => openNewGrupo()}
-                  className="flex items-center justify-center space-x-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors border border-gray-600"
+                  className="flex items-center justify-center space-x-2 emp-input-bg hover:opacity-90 emp-text-primary px-4 py-2 rounded-lg transition-colors border emp-border"
                 >
                   <FiFolderPlus className="w-5 h-5" />
                   <span>Novo Grupo de {abaAtiva === 'produtos' ? 'Produto' : 'Serviço'}</span>
                 </button>
                 <button
                   onClick={openNew}
-                  className="flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  className="flex items-center justify-center space-x-2 hover:opacity-90 emp-text-primary px-4 py-2 rounded-lg transition-colors"
                 >
                   <FiPlus className="w-5 h-5" />
                   <span>Novo {abaAtiva === 'produtos' ? 'Produto' : 'Serviço'}</span>
@@ -596,13 +596,14 @@ export default function ProdutosServicosPage() {
         </div>
 
         {/* Abas */}
-        <div className="flex gap-2 border-b border-gray-700 pb-2">
+        <div className="flex gap-2 border-b emp-border pb-2">
           <button
             type="button"
             onClick={() => setAbaAtiva('produtos')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              abaAtiva === 'produtos' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              abaAtiva === 'produtos' ? 'emp-text-primary' : 'emp-bg-card emp-text-muted hover:emp-input-bg'
             }`}
+            style={abaAtiva === 'produtos' ? { backgroundColor: 'var(--emp-accent)' } : undefined}
           >
             <FiPackage className="w-5 h-5" />
             Produtos
@@ -611,8 +612,9 @@ export default function ProdutosServicosPage() {
             type="button"
             onClick={() => setAbaAtiva('servicos')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              abaAtiva === 'servicos' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              abaAtiva === 'servicos' ? 'emp-text-primary' : 'emp-bg-card emp-text-muted hover:emp-input-bg'
             }`}
+            style={abaAtiva === 'servicos' ? { backgroundColor: 'var(--emp-accent)' } : undefined}
           >
             <FiLayers className="w-5 h-5" />
             Serviços
@@ -621,8 +623,9 @@ export default function ProdutosServicosPage() {
             type="button"
             onClick={() => setAbaAtiva('grupos')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              abaAtiva === 'grupos' ? 'bg-purple-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+              abaAtiva === 'grupos' ? 'emp-text-primary' : 'emp-bg-card emp-text-muted hover:emp-input-bg'
             }`}
+            style={abaAtiva === 'grupos' ? { backgroundColor: 'var(--emp-accent)' } : undefined}
           >
             <FiFolder className="w-5 h-5" />
             Grupos
@@ -632,26 +635,26 @@ export default function ProdutosServicosPage() {
         {/* Aba Grupos: gerenciar grupos de produtos e serviços */}
         {abaAtiva === 'grupos' && (
           <div className="space-y-8">
-            <div className="bg-[#2d323c] rounded-xl border border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FiPackage className="w-5 h-5 text-blue-400" />
+            <div className="emp-bg-card rounded-xl border emp-border p-6">
+              <h2 className="text-lg font-semibold emp-text-primary mb-4 flex items-center gap-2">
+                <FiPackage className="w-5 h-5 emp-text-muted" />
                 Grupos de Produtos
               </h2>
               {gruposProdutos.length === 0 ? (
-                <p className="text-gray-400">Nenhum grupo de produtos. Crie um acima.</p>
+                <p className="emp-text-muted">Nenhum grupo de produtos. Crie um acima.</p>
               ) : (
                 <ul className="space-y-2">
                   {gruposProdutos.map((g) => (
                     <li
                       key={g.id}
-                      className="flex items-center justify-between gap-4 py-3 px-4 bg-gray-800 rounded-lg border border-gray-700"
+                      className="flex items-center justify-between gap-4 py-3 px-4 emp-bg-card rounded-lg border emp-border"
                     >
-                      <span className="font-medium text-white">{g.nome}</span>
+                      <span className="font-medium emp-text-primary">{g.nome}</span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => openEditarGrupo('produto', g.id, g.nome)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                          className="p-2 rounded-lg emp-text-muted hover:emp-text-primary hover:emp-input-bg transition-colors"
                           title="Editar"
                         >
                           <FiEdit2 className="w-5 h-5" />
@@ -670,26 +673,26 @@ export default function ProdutosServicosPage() {
                 </ul>
               )}
             </div>
-            <div className="bg-[#2d323c] rounded-xl border border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <FiLayers className="w-5 h-5 text-purple-400" />
+            <div className="emp-bg-card rounded-xl border emp-border p-6">
+              <h2 className="text-lg font-semibold emp-text-primary mb-4 flex items-center gap-2">
+                <FiLayers className="w-5 h-5 emp-text-muted" />
                 Grupos de Serviços
               </h2>
               {gruposServicos.length === 0 ? (
-                <p className="text-gray-400">Nenhum grupo de serviços. Crie um acima.</p>
+                <p className="emp-text-muted">Nenhum grupo de serviços. Crie um acima.</p>
               ) : (
                 <ul className="space-y-2">
                   {gruposServicos.map((g) => (
                     <li
                       key={g.id}
-                      className="flex items-center justify-between gap-4 py-3 px-4 bg-gray-800 rounded-lg border border-gray-700"
+                      className="flex items-center justify-between gap-4 py-3 px-4 emp-bg-card rounded-lg border emp-border"
                     >
-                      <span className="font-medium text-white">{g.nome}</span>
+                      <span className="font-medium emp-text-primary">{g.nome}</span>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => openEditarGrupo('servico', g.id, g.nome)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                          className="p-2 rounded-lg emp-text-muted hover:emp-text-primary hover:emp-input-bg transition-colors"
                           title="Editar"
                         >
                           <FiEdit2 className="w-5 h-5" />
@@ -715,7 +718,7 @@ export default function ProdutosServicosPage() {
         {abaAtiva !== 'grupos' && (
         <>
         {listaAgrupada.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 bg-gray-800 rounded-xl border border-gray-700">
+          <div className="text-center py-12 emp-text-muted emp-bg-card rounded-xl border emp-border">
             Nenhum {abaAtiva === 'produtos' ? 'produto' : 'serviço'} cadastrado. Clique em &quot;Novo {abaAtiva === 'produtos' ? 'Produto' : 'Serviço'}&quot;.
           </div>
         ) : (
@@ -723,20 +726,20 @@ export default function ProdutosServicosPage() {
             {listaAgrupada.map((grupo) => {
               const expanded = expandedGrupos[grupo.key] !== false
               return (
-                <div key={grupo.key} className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden">
+                <div key={grupo.key} className="emp-bg-card/50 rounded-xl border emp-border overflow-hidden">
                   <button
                     type="button"
                     onClick={() => toggleGrupo(grupo.key)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700/50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:emp-input-bg/50 transition-colors"
                   >
                     {expanded ? (
-                      <FiChevronDown className="w-5 h-5 text-gray-400 shrink-0" />
+                      <FiChevronDown className="w-5 h-5 emp-text-muted shrink-0" />
                     ) : (
-                      <FiChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
+                      <FiChevronRight className="w-5 h-5 emp-text-muted shrink-0" />
                     )}
-                    <FiFolder className="w-5 h-5 text-purple-400 shrink-0" />
-                    <span className="font-medium text-white">{grupo.nome}</span>
-                    <span className="text-sm text-gray-400">({grupo.items.length})</span>
+                    <FiFolder className="w-5 h-5 emp-text-muted shrink-0" />
+                    <span className="font-medium emp-text-primary">{grupo.nome}</span>
+                    <span className="text-sm emp-text-muted">({grupo.items.length})</span>
                   </button>
                   {expanded && (
                     <div className="px-4 pb-4 pt-1">
@@ -748,10 +751,10 @@ export default function ProdutosServicosPage() {
                           return (
                             <div
                               key={item.id}
-                              className="bg-[#2d323c] rounded-xl border border-gray-700 p-5 flex flex-col transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:border-purple-500/50"
+                              className="emp-bg-card rounded-xl border emp-border p-5 flex flex-col transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:opacity-95"
                             >
                               <div className="flex items-start gap-3 mb-3">
-                                <div className="w-14 h-14 rounded-full bg-[#4a5078] flex items-center justify-center overflow-hidden shrink-0">
+                                <div className="w-14 h-14 rounded-full emp-input-bg flex items-center justify-center overflow-hidden shrink-0 border emp-border">
                                   {item.foto_url ? (
                                     <Image
                                       src={item.foto_url}
@@ -762,16 +765,16 @@ export default function ProdutosServicosPage() {
                                       unoptimized
                                     />
                                   ) : (
-                                    <FiPackage className="w-7 h-7 text-white/70" />
+                                    <FiPackage className="w-7 h-7 emp-text-primary/70" />
                                   )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-white truncate">{item.nome}</p>
+                                  <p className="font-bold emp-text-primary truncate">{item.nome}</p>
                                   <div className="flex flex-wrap items-center gap-1 mt-1">
                                     {catNome && (
                                       <span
-                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                                        style={{ backgroundColor: catCor || '#4a5078' }}
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium emp-text-primary"
+                                        style={{ backgroundColor: catCor || 'var(--emp-accent)' }}
                                       >
                                         {catNome}
                                       </span>
@@ -779,13 +782,13 @@ export default function ProdutosServicosPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="space-y-1 text-sm text-gray-300 mb-4">
+                              <div className="space-y-1 text-sm emp-text-secondary mb-4">
                                 <p className="flex items-center gap-1">
                                   <FiDollarSign className="w-4 h-4 text-green-400" />
                                   Venda: R$ {Number(item.valor_unitario).toFixed(2)}
                                 </p>
                                 {isProduto && (item as Produto).preco_custo != null && (
-                                  <p className="flex items-center gap-1 text-gray-400">
+                                  <p className="flex items-center gap-1 emp-text-muted">
                                     Custo: R$ {Number((item as Produto).preco_custo).toFixed(2)}
                                   </p>
                                 )}
@@ -794,8 +797,8 @@ export default function ProdutosServicosPage() {
                                 <button
                                   type="button"
                                   onClick={() => openEdit(item)}
-                                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-white transition-colors font-medium"
-                                  style={{ backgroundColor: '#6b4ee6' }}
+                                  className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg emp-text-primary transition-colors font-medium hover:opacity-90"
+                                  style={{ backgroundColor: 'var(--emp-accent)' }}
                                 >
                                   <FiEye className="w-4 h-4" />
                                   Ver Detalhes
@@ -827,15 +830,15 @@ export default function ProdutosServicosPage() {
       {/* Modal Novo/Editar */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-md shadow-xl my-8">
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">
+          <div className="emp-bg-card rounded-xl border emp-border w-full max-w-md shadow-xl my-8">
+            <div className="flex items-center justify-between p-6 border-b emp-border">
+              <h2 className="text-xl font-bold emp-text-primary">
                 {editingItem ? 'Editar' : 'Novo'} {abaAtiva === 'produtos' ? 'Produto' : 'Serviço'}
               </h2>
               <button
                 type="button"
                 onClick={() => { setShowModal(false); setEditingItem(null) }}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+                className="p-2 emp-text-muted hover:emp-text-primary rounded-lg hover:emp-input-bg"
               >
                 <FiX className="w-5 h-5" />
               </button>
@@ -844,13 +847,13 @@ export default function ProdutosServicosPage() {
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {/* Foto */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Foto</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-2">Foto</label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 rounded-full bg-[#4a5078] flex items-center justify-center overflow-hidden shrink-0">
+                  <div className="w-20 h-20 rounded-full emp-input-bg flex items-center justify-center overflow-hidden shrink-0 border emp-border">
                     {fotoPreview ? (
                       <Image src={fotoPreview} alt="Preview" width={80} height={80} className="object-cover w-full h-full" unoptimized />
                     ) : (
-                      <FiImage className="w-10 h-10 text-white/50" />
+                      <FiImage className="w-10 h-10 emp-text-primary/50" />
                     )}
                   </div>
                   <label className="cursor-pointer">
@@ -861,7 +864,7 @@ export default function ProdutosServicosPage() {
                       onChange={handlePhotoChange}
                       disabled={uploadingPhoto}
                     />
-                    <span className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm inline-block">
+                    <span className="px-3 py-2 emp-input-bg hover:opacity-90 emp-text-primary rounded-lg text-sm inline-block">
                       {uploadingPhoto ? 'Enviando...' : 'Alterar'}
                     </span>
                   </label>
@@ -869,7 +872,7 @@ export default function ProdutosServicosPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Nome *</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Nome *</label>
                 <input
                   type="text"
                   required
@@ -879,13 +882,13 @@ export default function ProdutosServicosPage() {
                       ? setFormProduto((f) => ({ ...f, nome: e.target.value }))
                       : setFormServico((f) => ({ ...f, nome: e.target.value }))
                   }
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Nome do item"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Categoria</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Categoria</label>
                 <select
                   value={abaAtiva === 'produtos' ? formProduto.categoria_id : formServico.categoria_id}
                   onChange={(e) =>
@@ -893,7 +896,7 @@ export default function ProdutosServicosPage() {
                       ? setFormProduto((f) => ({ ...f, categoria_id: e.target.value }))
                       : setFormServico((f) => ({ ...f, categoria_id: e.target.value }))
                   }
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                 >
                   <option value="">Sem categoria</option>
                   {categorias.map((c) => (
@@ -903,7 +906,7 @@ export default function ProdutosServicosPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Grupo (pasta)</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Grupo (pasta)</label>
                 <select
                   value={abaAtiva === 'produtos' ? formProduto.grupo_produto_id : formServico.grupo_servico_id}
                   onChange={(e) =>
@@ -911,7 +914,7 @@ export default function ProdutosServicosPage() {
                       ? setFormProduto((f) => ({ ...f, grupo_produto_id: e.target.value }))
                       : setFormServico((f) => ({ ...f, grupo_servico_id: e.target.value }))
                   }
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                 >
                   <option value="">Nenhum grupo</option>
                   {abaAtiva === 'produtos'
@@ -925,7 +928,7 @@ export default function ProdutosServicosPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Preço de venda (R$) *</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Preço de venda (R$) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -937,28 +940,28 @@ export default function ProdutosServicosPage() {
                       ? setFormProduto((f) => ({ ...f, valor_unitario: e.target.value }))
                       : setFormServico((f) => ({ ...f, valor_unitario: e.target.value }))
                   }
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="0,00"
                 />
               </div>
 
               {abaAtiva === 'produtos' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">Preço de custo (R$) - apenas produtos</label>
+                  <label className="block text-sm font-medium emp-text-secondary mb-1">Preço de custo (R$) - apenas produtos</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formProduto.preco_custo}
                     onChange={(e) => setFormProduto((f) => ({ ...f, preco_custo: e.target.value }))}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                     placeholder="0,00"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Descrição (opcional)</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Descrição (opcional)</label>
                 <input
                   type="text"
                   value={abaAtiva === 'produtos' ? formProduto.descricao : formServico.descricao}
@@ -967,7 +970,7 @@ export default function ProdutosServicosPage() {
                       ? setFormProduto((f) => ({ ...f, descricao: e.target.value }))
                       : setFormServico((f) => ({ ...f, descricao: e.target.value }))
                   }
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Breve descrição"
                 />
               </div>
@@ -976,14 +979,14 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => { setShowModal(false); setEditingItem(null) }}
-                  className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700"
+                  className="flex-1 px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:emp-input-bg"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={uploadingPhoto}
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg disabled:opacity-50"
+                  className="flex-1 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg disabled:opacity-50"
                 >
                   {editingItem ? 'Salvar' : 'Criar'}
                 </button>
@@ -996,28 +999,28 @@ export default function ProdutosServicosPage() {
       {/* Modal Novo Grupo */}
       {showModalGrupo && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">
+          <div className="emp-bg-card rounded-xl border emp-border w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b emp-border">
+              <h2 className="text-xl font-bold emp-text-primary">
                 Novo Grupo de {abaAtiva === 'grupos' ? (tipoGrupoCriar === 'produto' ? 'Produto' : 'Serviço') : (abaAtiva === 'produtos' ? 'Produto' : 'Serviço')}
               </h2>
               <button
                 type="button"
                 onClick={() => { setShowModalGrupo(false); setFormGrupoNome('') }}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+                className="p-2 emp-text-muted hover:emp-text-primary rounded-lg hover:emp-input-bg"
               >
                 <FiX className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleCriarGrupo} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Nome do grupo</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Nome do grupo</label>
                 <input
                   type="text"
                   required
                   value={formGrupoNome}
                   onChange={(e) => setFormGrupoNome(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Ex: Eletrônicos, Consultoria..."
                 />
               </div>
@@ -1025,13 +1028,13 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => { setShowModalGrupo(false); setFormGrupoNome('') }}
-                  className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700"
+                  className="flex-1 px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:emp-input-bg"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                  className="flex-1 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg"
                 >
                   Criar grupo
                 </button>
@@ -1044,28 +1047,28 @@ export default function ProdutosServicosPage() {
       {/* Modal Editar Grupo */}
       {showModalEditarGrupo && editingGrupo && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">
+          <div className="emp-bg-card rounded-xl border emp-border w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b emp-border">
+              <h2 className="text-xl font-bold emp-text-primary">
                 Editar Grupo de {editingGrupo.tipo === 'produto' ? 'Produto' : 'Serviço'}
               </h2>
               <button
                 type="button"
                 onClick={() => { setShowModalEditarGrupo(false); setEditingGrupo(null); setFormGrupoNome('') }}
-                className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
+                className="p-2 emp-text-muted hover:emp-text-primary rounded-lg hover:emp-input-bg"
               >
                 <FiX className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleSalvarEdicaoGrupo} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Nome do grupo</label>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Nome do grupo</label>
                 <input
                   type="text"
                   required
                   value={formGrupoNome}
                   onChange={(e) => setFormGrupoNome(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
                   placeholder="Ex: Eletrônicos, Consultoria..."
                 />
               </div>
@@ -1073,13 +1076,13 @@ export default function ProdutosServicosPage() {
                 <button
                   type="button"
                   onClick={() => { setShowModalEditarGrupo(false); setEditingGrupo(null); setFormGrupoNome('') }}
-                  className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700"
+                  className="flex-1 px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:emp-input-bg"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                  className="flex-1 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg"
                 >
                   Salvar
                 </button>

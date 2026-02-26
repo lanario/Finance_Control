@@ -376,7 +376,7 @@ export default function SonhosPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-400">Carregando...</div>
+          <div className="text-[#bbbbbb]">Carregando...</div>
         </div>
       </MainLayout>
     )
@@ -387,8 +387,8 @@ export default function SonhosPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Sonhos Infinity</h1>
-            <p className="text-gray-400">
+            <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2 animate-nexus-reveal">Sonhos Infinity</h1>
+            <p className="text-[#bbbbbb]">
               Defina suas metas futuras e acompanhe seu progresso
             </p>
           </div>
@@ -403,7 +403,7 @@ export default function SonhosPage() {
               })
               setShowModal(true)
             }}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center space-x-2"
+            className="bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center space-x-2"
           >
             <FiPlus className="w-5 h-5" />
             <span>Adicionar Sonho</span>
@@ -411,10 +411,10 @@ export default function SonhosPage() {
         </div>
 
         {/* Saldo Disponível */}
-        <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700">
+        <div className="bg-[#0d0d0d] rounded-lg shadow-lg p-6 border border-white/10">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-gray-400 text-sm mb-1">Saldo Disponível Este Mês</p>
+              <p className="text-[#bbbbbb] text-sm mb-1">Saldo Disponível Este Mês</p>
               <p className={`text-3xl font-bold ${saldoDisponivel >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 R$ {formatarMoeda(saldoDisponivel)}
               </p>
@@ -423,12 +423,12 @@ export default function SonhosPage() {
         </div>
 
         {sonhos.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-12 text-center border border-white/10">
             <FiTarget className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-2">
+            <p className="text-[#bbbbbb] text-lg mb-2">
               Nenhum sonho cadastrado
             </p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-[#666666] text-sm">
               Clique em "Adicionar Sonho" para começar a planejar seus objetivos
             </p>
           </div>
@@ -443,25 +443,25 @@ export default function SonhosPage() {
               return (
                 <div
                   key={sonho.id}
-                  className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-primary/50 transition-colors"
+                  className="bg-[#0d0d0d] rounded-lg shadow-lg p-6 border border-white/10 hover:border-primary/50 transition-colors"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">{sonho.nome}</h3>
+                      <h3 className="text-xl font-bold text-[#f0f0f0] mb-1">{sonho.nome}</h3>
                       {sonho.descricao && (
-                        <p className="text-gray-400 text-sm">{sonho.descricao}</p>
+                        <p className="text-[#bbbbbb] text-sm">{sonho.descricao}</p>
                       )}
                     </div>
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEdit(sonho)}
-                        className="text-gray-400 hover:text-primary transition-colors"
+                        className="text-[#bbbbbb] hover:text-primary transition-colors"
                       >
                         <FiEdit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(sonho.id)}
-                        className="text-gray-400 hover:text-red-400 transition-colors"
+                        className="text-[#bbbbbb] hover:text-red-400 transition-colors"
                       >
                         <FiTrash2 className="w-5 h-5" />
                       </button>
@@ -470,10 +470,10 @@ export default function SonhosPage() {
 
                   <div className="mb-4">
                     <div className="flex justify-between text-sm mb-2">
-                      <span className="text-gray-400">Progresso</span>
-                      <span className="text-white font-semibold">{percentual.toFixed(1)}%</span>
+                      <span className="text-[#bbbbbb]">Progresso</span>
+                      <span className="text-[#f0f0f0] font-semibold">{percentual.toFixed(1)}%</span>
                     </div>
-                    <div className="w-full bg-gray-700 rounded-full h-3">
+                    <div className="w-full bg-white/5 rounded-full h-3">
                       <div
                         className="bg-primary h-3 rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(percentual, 100)}%` }}
@@ -483,26 +483,26 @@ export default function SonhosPage() {
 
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Valor Atual</span>
+                      <span className="text-[#bbbbbb]">Valor Atual</span>
                       <span className="text-green-400 font-semibold">
                         R$ {formatarMoeda(sonho.valor_atual)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Valor Objetivo</span>
-                      <span className="text-white font-semibold">
+                      <span className="text-[#bbbbbb]">Valor Objetivo</span>
+                      <span className="text-[#f0f0f0] font-semibold">
                         R$ {formatarMoeda(sonho.valor_objetivo)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Restante</span>
+                      <span className="text-[#bbbbbb]">Restante</span>
                       <span className="text-yellow-400 font-semibold">
                         R$ {formatarMoeda(valorRestante)}
                       </span>
                     </div>
                     {sonho.valor_mensal && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Valor Mensal (estimado)</span>
+                        <span className="text-[#bbbbbb]">Valor Mensal (estimado)</span>
                         <span className="text-blue-400 font-semibold">
                           R$ {formatarMoeda(sonho.valor_mensal || 0)}
                         </span>
@@ -510,15 +510,15 @@ export default function SonhosPage() {
                     )}
                     {dataObjetivoCalculada && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Data Objetivo (estimada)</span>
-                        <span className="text-white font-semibold">
+                        <span className="text-[#bbbbbb]">Data Objetivo (estimada)</span>
+                        <span className="text-[#f0f0f0] font-semibold">
                           {formatDate(dataObjetivoCalculada)}
                         </span>
                       </div>
                     )}
                     {mesesAteObjetivo !== null && mesesAteObjetivo > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-400">Tempo Restante (estimado)</span>
+                        <span className="text-[#bbbbbb]">Tempo Restante (estimado)</span>
                         <span className="text-purple-400 font-semibold">
                           {mesesAteObjetivo} {mesesAteObjetivo === 1 ? 'mês' : 'meses'}
                         </span>
@@ -538,7 +538,7 @@ export default function SonhosPage() {
                         }
                       }
                     }}
-                    className="w-full bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors flex items-center justify-center space-x-2"
+                    className="w-full bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center justify-center space-x-2"
                   >
                     <FiDollarSign className="w-5 h-5" />
                     <span>Depositar</span>
@@ -552,14 +552,14 @@ export default function SonhosPage() {
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-lg p-8 w-full max-w-2xl border border-gray-700 max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingSonho ? 'Editar Sonho' : 'Novo Sonho'}
                 </h2>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-[#bbbbbb] hover:text-[#f0f0f0] transition-colors"
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -567,7 +567,7 @@ export default function SonhosPage() {
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Nome do Sonho *
                   </label>
                   <input
@@ -575,26 +575,26 @@ export default function SonhosPage() {
                     value={formData.nome}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="Ex: Casa própria, Carro novo, Viagem..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Descrição (opcional)
                   </label>
                   <textarea
                     value={formData.descricao}
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     rows={3}
                     placeholder="Descrição do seu sonho..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor Objetivo (R$) *
                   </label>
                   <input
@@ -603,13 +603,13 @@ export default function SonhosPage() {
                     value={formData.valor_objetivo}
                     onChange={(e) => setFormData({ ...formData, valor_objetivo: e.target.value })}
                     required
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="0.00"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Valor Mensal Estimado (R$) - Opcional
                   </label>
                   <input
@@ -617,10 +617,10 @@ export default function SonhosPage() {
                     step="0.01"
                     value={formData.valor_mensal}
                     onChange={(e) => setFormData({ ...formData, valor_mensal: e.target.value })}
-                    className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] focus:outline-none focus:ring-2 focus:border-white/30"
                     placeholder="0.00"
                   />
-                  <p className="text-sm text-gray-400 mt-2">
+                  <p className="text-sm text-[#bbbbbb] mt-2">
                     Valor estimado que você pretende depositar mensalmente. A data objetivo será calculada automaticamente.
                   </p>
                   {formData.valor_mensal && formData.valor_objetivo && (
@@ -638,13 +638,13 @@ export default function SonhosPage() {
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
                   >
                     {editingSonho ? 'Atualizar' : 'Criar'} Sonho
                   </button>

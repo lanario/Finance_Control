@@ -201,7 +201,7 @@ export default function GastosPorCategoriaPage() {
     return (
       <MainLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white">Carregando...</div>
+          <div className="animate-pulse text-[#f0f0f0]">Carregando...</div>
         </div>
       </MainLayout>
     )
@@ -217,32 +217,32 @@ export default function GastosPorCategoriaPage() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.back()}
-              className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-white hover:bg-gray-700 transition-colors"
+              className="p-2 rounded-lg bg-[#0d0d0d] border border-white/10 text-[#f0f0f0] hover:bg-white/5 transition-colors"
             >
               <FiArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-3xl font-bold text-[#f0f0f0] mb-2">
                 Despesas: {categoriaNome}
               </h1>
               <div className="flex items-center space-x-4">
-                <p className="text-gray-400">
+                <p className="text-[#bbbbbb]">
                   Total: <span className="text-red-400 font-semibold">R$ {formatarMoeda(totalCategoria)}</span>
                 </p>
-                <div className="flex items-center space-x-2 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1">
+                <div className="flex items-center space-x-2 bg-[#0d0d0d] border border-white/10 rounded-lg px-3 py-1">
                   <button
                     onClick={irParaMesAnterior}
-                    className="p-1 rounded hover:bg-gray-700 transition-colors text-white"
+                    className="p-1 rounded hover:bg-white/5 transition-colors text-[#f0f0f0]"
                     title="Mês anterior"
                   >
                     <FiChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-white font-medium min-w-[140px] text-center">
+                  <span className="text-[#f0f0f0] font-medium min-w-[140px] text-center">
                     {nomeMes} {anoSelecionado}
                   </span>
                   <button
                     onClick={irParaProximoMes}
-                    className="p-1 rounded hover:bg-gray-700 transition-colors text-white"
+                    className="p-1 rounded hover:bg-white/5 transition-colors text-[#f0f0f0]"
                     title="Próximo mês"
                   >
                     <FiChevronRight className="w-4 h-4" />
@@ -254,9 +254,9 @@ export default function GastosPorCategoriaPage() {
         </div>
 
         {compras.length === 0 && parcelas.length === 0 ? (
-          <div className="bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-700">
+          <div className="bg-[#0d0d0d] rounded-lg shadow-md p-12 text-center border border-white/10">
             <FiShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 text-lg mb-2">
+            <p className="text-[#bbbbbb] text-lg mb-2">
               Nenhuma despesa registrada nesta categoria
             </p>
             <p className="text-gray-500 text-sm">
@@ -267,16 +267,16 @@ export default function GastosPorCategoriaPage() {
           <div className="space-y-6">
             {/* Compras */}
             {compras.length > 0 && (
-              <div className="bg-gray-800 rounded-lg shadow-md border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700">
-                  <h2 className="text-lg font-semibold text-white">Compras</h2>
+              <div className="bg-[#0d0d0d] rounded-lg shadow-md border border-white/10 overflow-hidden">
+                <div className="p-4 border-b border-white/10">
+                  <h2 className="text-lg font-semibold text-[#f0f0f0]">Compras</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-primary text-white">
+                    <thead className="bg-white/10 text-[#f0f0f0]">
                       <tr>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10-dark transition-colors"
                           onClick={() => setOrdenacaoCompras(prev => ({ campo: 'descricao', direcao: prev.campo === 'descricao' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
                         >
                           <div className="flex items-center space-x-1">
@@ -285,7 +285,7 @@ export default function GastosPorCategoriaPage() {
                           </div>
                         </th>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10-dark transition-colors"
                           onClick={() => setOrdenacaoCompras(prev => ({ campo: 'valor', direcao: prev.campo === 'valor' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
                         >
                           <div className="flex items-center space-x-1">
@@ -294,7 +294,7 @@ export default function GastosPorCategoriaPage() {
                           </div>
                         </th>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10-dark transition-colors"
                           onClick={() => setOrdenacaoCompras(prev => ({ campo: 'data', direcao: prev.campo === 'data' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
                         >
                           <div className="flex items-center space-x-1">
@@ -303,7 +303,7 @@ export default function GastosPorCategoriaPage() {
                           </div>
                         </th>
                         <th 
-                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-primary-dark transition-colors"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase cursor-pointer hover:bg-white/10-dark transition-colors"
                           onClick={() => setOrdenacaoCompras(prev => ({ campo: 'metodo_pagamento', direcao: prev.campo === 'metodo_pagamento' && prev.direcao === 'asc' ? 'desc' : 'asc' }))}
                         >
                           <div className="flex items-center space-x-1">
@@ -340,15 +340,15 @@ export default function GastosPorCategoriaPage() {
                         return (
                           <tr
                             key={compra.id}
-                            className="hover:bg-gray-700/50 transition-colors"
+                            className="hover:bg-white/5/50 transition-colors"
                           >
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                               {compra.descricao}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-semibold">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-semibold">
                               R$ {formatarMoeda(compra.valor)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                               {formatDate(compra.data)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -395,13 +395,13 @@ export default function GastosPorCategoriaPage() {
 
             {/* Parcelas */}
             {parcelas.length > 0 && (
-              <div className="bg-gray-800 rounded-lg shadow-md border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700">
-                  <h2 className="text-lg font-semibold text-white">Parcelas</h2>
+              <div className="bg-[#0d0d0d] rounded-lg shadow-md border border-white/10 overflow-hidden">
+                <div className="p-4 border-b border-white/10">
+                  <h2 className="text-lg font-semibold text-[#f0f0f0]">Parcelas</h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-primary text-white">
+                    <thead className="bg-white/10 text-[#f0f0f0]">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium uppercase">
                           Descrição
@@ -428,18 +428,18 @@ export default function GastosPorCategoriaPage() {
                         return (
                           <tr
                             key={parcela.id}
-                            className={`hover:bg-gray-700/50 transition-colors ${parcela.paga ? 'opacity-60' : ''}`}
+                            className={`hover:bg-white/5/50 transition-colors ${parcela.paga ? 'opacity-60' : ''}`}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap text-white font-medium">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#f0f0f0] font-medium">
                               {parcela.descricao}
                             </td>
-                            <td className={`px-6 py-4 whitespace-nowrap font-semibold ${parcela.paga ? 'text-green-400' : 'text-white'}`}>
+                            <td className={`px-6 py-4 whitespace-nowrap font-semibold ${parcela.paga ? 'text-green-400' : 'text-[#f0f0f0]'}`}>
                               R$ {formatarMoeda(parcela.valor)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                               {formatDate(parcela.data_vencimento)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-400">
+                            <td className="px-6 py-4 whitespace-nowrap text-[#bbbbbb]">
                               {parcela.numero_parcela}/{parcela.total_parcelas}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">

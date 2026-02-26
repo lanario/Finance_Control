@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState, useMemo, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import MainLayoutEmpresarial from '@/components/Layout/MainLayoutEmpresarial'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
@@ -45,6 +45,7 @@ interface DespesasPorCategoria {
   valor: number
   porcentagem: number
   cor: string
+  categoria_id: string | null
 }
 
 interface VendasPorCategoria {
@@ -52,6 +53,7 @@ interface VendasPorCategoria {
   valor: number
   porcentagem: number
   cor: string
+  categoria_id: string | null
 }
 
 /** Cor usada para "Sem categoria" nos gráficos quando não há categoria associada */
@@ -95,9 +97,16 @@ const MESES_NOMES = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
 ]
 
-export default function DashboardEmpresarialPage() {
+/** Cores fixas dos gráficos (tema único preto/cinza/neon) */
+const CHART_BG = '#1a1a1a'
+const CHART_BORDER = '#374151'
+const CHART_TEXT = '#e2e8f0'
+
+function DashboardEmpresarialContent() {
   const { session } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false)
   const now = useMemo(() => new Date(), [])
   const [mesSelecionado, setMesSelecionado] = useState({ ano: now.getFullYear(), mes: now.getMonth() + 1 })
   const [stats, setStats] = useState<DashboardStats>({
@@ -151,7 +160,7 @@ export default function DashboardEmpresarialPage() {
       const startHistoricoStr = startHistorico.toISOString().split('T')[0]
       const endOfLastMonthStr = endOfLastMonth.toISOString().split('T')[0]
 
-      // Paralelizar queries do mês atual + vendas pendentes + histórico para saldo em caixa (+ compras finalizadas)
+      // Paralelizar queries do mês atual + vendas pendentes + histórico + dados para gráficos por categoria (evita N+1)
       const [
         contasPagarMesResult,
         parcelasPagarMesResult,
@@ -161,6 +170,8 @@ export default function DashboardEmpresarialPage() {
         vendasMesResult,
         parcelasVendasMesResult,
         vendasPendentesResult,
+        vendasPorCategoriaMesResult,
+        parcelasVendasPorCategoriaMesResult,
         histContasReceber,
         histParcelasReceber,
         histVendas,
@@ -171,14 +182,14 @@ export default function DashboardEmpresarialPage() {
       ] = await Promise.all([
         supabase
           .from('contas_a_pagar')
-          .select('valor')
+          .select('valor, categoria_id')
           .eq('user_id', userId)
           .gte('data_vencimento', startOfMonthStr)
           .lte('data_vencimento', endOfMonthStr)
           .eq('parcelada', false),
         supabase
           .from('parcelas_contas_pagar')
-          .select('valor, data_vencimento')
+          .select('valor, data_vencimento, categoria_id')
           .eq('user_id', userId)
           .gte('data_vencimento', startOfMonthStr)
           .lte('data_vencimento', endOfMonthStr),
@@ -222,6 +233,21 @@ export default function DashboardEmpresarialPage() {
           .select('id, valor_final')
           .eq('user_id', userId)
           .eq('status', 'pendente'),
+        supabase
+          .from('vendas')
+          .select('valor_final, categoria_id')
+          .eq('user_id', userId)
+          .gte('data_venda', startOfMonthStr)
+          .lte('data_venda', endOfMonthStr)
+          .eq('parcelada', false)
+          .in('status', ['pendente', 'aprovado']),
+        supabase
+          .from('parcelas_vendas')
+          .select('valor, categoria_id')
+          .eq('user_id', userId)
+          .gte('data_vencimento', startOfMonthStr)
+          .lte('data_vencimento', endOfMonthStr)
+          .in('status', ['pendente', 'aprovado']),
         supabase
           .from('contas_a_receber')
           .select('valor, data_vencimento')
@@ -292,9 +318,29 @@ export default function DashboardEmpresarialPage() {
       const despesasMes = totalContasPagar
       const saldoResultanteMes = receitasMes - despesasMes
 
-      // Pedidos pendentes: soma do valor e quantidade de vendas com status pendente
+      // Pedidos pendentes: valor realmente pendente = valor_final da venda − valor já recebido nas parcelas
       const pedidosPendentes = (vendasPendentesResult.data || []) as Array<{ id: string; valor_final: number }>
-      const pedidosPendentesValor = pedidosPendentes.reduce((sum, v) => sum + Number(v.valor_final || 0), 0)
+      let pedidosPendentesValor: number
+      if (pedidosPendentes.length === 0) {
+        pedidosPendentesValor = 0
+      } else {
+        const idsPendentes = pedidosPendentes.map((v) => v.id)
+        const { data: parcelasRecebidasPendentes } = await supabase
+          .from('parcelas_vendas')
+          .select('venda_id, valor')
+          .eq('user_id', userId)
+          .in('venda_id', idsPendentes)
+          .eq('recebida', true)
+        const recebidoPorVenda: Record<string, number> = {}
+        ;(parcelasRecebidasPendentes || []).forEach((p: { venda_id: string; valor: number }) => {
+          recebidoPorVenda[p.venda_id] = (recebidoPorVenda[p.venda_id] || 0) + Number(p.valor || 0)
+        })
+        pedidosPendentesValor = pedidosPendentes.reduce((sum, v) => {
+          const valorFinal = Number(v.valor_final || 0)
+          const jaRecebido = recebidoPorVenda[v.id] || 0
+          return sum + Math.max(0, valorFinal - jaRecebido)
+        }, 0)
+      }
       const pedidosPendentesQtd = pedidosPendentes.length
 
       // Saldo em Caixa: acumulado dos saldos resultantes de todos os meses anteriores ao atual
@@ -466,7 +512,7 @@ export default function DashboardEmpresarialPage() {
       setLucroMensal(lucroData)
       setDespesasMensais(despesasMensaisData)
 
-      // Carregar despesas e vendas por categoria (paralelizado) — incluir cor para refletir cores da aba Categorias
+      // Carregar categorias (despesa e receita) para montar gráficos por categoria
       const [categoriasDespesasResult, categoriasReceitasResult] = await Promise.all([
         supabase
           .from('categorias')
@@ -482,46 +528,23 @@ export default function DashboardEmpresarialPage() {
           .eq('ativo', true),
       ])
 
-      // Buscar despesas por categoria em paralelo
+      // Despesas por categoria: agregar em memória a partir dos dados já carregados (evita N+1)
       if (categoriasDespesasResult.data && categoriasDespesasResult.data.length > 0) {
-        const categoriaQueries = categoriasDespesasResult.data.flatMap(categoria => [
-          supabase
-            .from('contas_a_pagar')
-            .select('valor')
-            .eq('user_id', userId)
-            .eq('categoria_id', categoria.id)
-            .gte('data_vencimento', startOfMonthStr)
-            .lte('data_vencimento', endOfMonthStr)
-            .eq('parcelada', false),
-          supabase
-            .from('parcelas_contas_pagar')
-            .select('valor')
-            .eq('user_id', userId)
-            .eq('categoria_id', categoria.id)
-            .gte('data_vencimento', startOfMonthStr)
-            .lte('data_vencimento', endOfMonthStr)
-        ])
+        const despesasPorCategoriaId: Record<string, number> = {}
+        const addValor = (categoriaId: string | null, valor: number) => {
+          const key = categoriaId ?? '__sem_categoria__'
+          despesasPorCategoriaId[key] = (despesasPorCategoriaId[key] ?? 0) + Number(valor || 0)
+        }
+        ;(contasPagarMesResult.data || []).forEach((c: { valor: number; categoria_id: string | null }) => addValor(c.categoria_id, c.valor))
+        ;(parcelasPagarMesResult.data || []).forEach((p: { valor: number; categoria_id: string | null }) => addValor(p.categoria_id, p.valor))
+        ;(comprasFinalizadasMesResult.data || []).forEach((c: { valor_final: number; categoria_id: string | null }) => addValor(c.categoria_id, c.valor_final))
 
-        const categoriaResults = await Promise.all(categoriaQueries)
-
-        const despesasPorCategoriaMap: { [key: string]: number } = {}
-        categoriasDespesasResult.data.forEach((categoria, index) => {
-          const baseIndex = index * 2
-          const contasNaoParceladas = (categoriaResults[baseIndex]?.data || []) as Array<{ valor: number }>
-          const parcelas = (categoriaResults[baseIndex + 1]?.data || []) as Array<{ valor: number }>
-          
-          const valor = 
-            contasNaoParceladas.reduce((sum, c) => sum + Number(c.valor || 0), 0) +
-            parcelas.reduce((sum, p) => sum + Number(p.valor || 0), 0)
-          
-          if (valor > 0) {
-            despesasPorCategoriaMap[categoria.nome] = valor
-          }
-        })
         const categoriasIdToNome = new Map(categoriasDespesasResult.data.map((c) => [c.id, c.nome]))
-        ;(comprasFinalizadasMesResult.data || []).forEach((c: { valor_final: number; categoria_id: string | null }) => {
-          const nome = (c.categoria_id && categoriasIdToNome.get(c.categoria_id)) || 'Sem categoria'
-          despesasPorCategoriaMap[nome] = (despesasPorCategoriaMap[nome] || 0) + Number(c.valor_final || 0)
+        const despesasPorCategoriaMap: { [key: string]: number } = {}
+        Object.entries(despesasPorCategoriaId).forEach(([id, valor]) => {
+          if (valor <= 0) return
+          const nome = id === '__sem_categoria__' ? 'Sem categoria' : (categoriasIdToNome.get(id) ?? 'Sem categoria')
+          despesasPorCategoriaMap[nome] = (despesasPorCategoriaMap[nome] ?? 0) + valor
         })
 
         const mapaCorDespesa = new Map(
@@ -529,6 +552,9 @@ export default function DashboardEmpresarialPage() {
             c.nome,
             c.cor && c.cor.trim() ? c.cor : '#6366f1',
           ])
+        )
+        const mapaIdDespesa = new Map(
+          (categoriasDespesasResult.data as Array<{ id: string; nome: string }>).map((c) => [c.nome, c.id])
         )
         const despesasPorCategoriaData: DespesasPorCategoria[] = Object.entries(despesasPorCategoriaMap)
           .map(([categoria, valor]) => ({
@@ -538,6 +564,7 @@ export default function DashboardEmpresarialPage() {
               ? Number(((valor / totalContasPagar) * 100).toFixed(1))
               : 0,
             cor: mapaCorDespesa.get(categoria) ?? COR_SEM_CATEGORIA,
+            categoria_id: mapaIdDespesa.get(categoria) ?? null,
           }))
           .sort((a, b) => b.valor - a.valor)
 
@@ -546,76 +573,23 @@ export default function DashboardEmpresarialPage() {
         setDespesasPorCategoria([])
       }
 
-      // Buscar vendas por categoria (inclui pendente e aprovado para refletir todas as vendas do mês)
+      // Vendas por categoria: agregar em memória a partir dos dados já carregados (evita N+1)
       if (categoriasReceitasResult.data && categoriasReceitasResult.data.length > 0) {
-        const categoriaQueries = categoriasReceitasResult.data.flatMap(categoria => [
-          supabase
-            .from('vendas')
-            .select('valor_final')
-            .eq('user_id', userId)
-            .eq('categoria_id', categoria.id)
-            .gte('data_venda', startOfMonthStr)
-            .lte('data_venda', endOfMonthStr)
-            .eq('parcelada', false)
-            .in('status', ['pendente', 'aprovado']),
-          supabase
-            .from('parcelas_vendas')
-            .select('valor')
-            .eq('user_id', userId)
-            .eq('categoria_id', categoria.id)
-            .gte('data_vencimento', startOfMonthStr)
-            .lte('data_vencimento', endOfMonthStr)
-            .in('status', ['pendente', 'aprovado'])
-        ])
-
-        // Incluir vendas sem categoria (categoria_id null)
-        const queriesSemCategoria = [
-          supabase
-            .from('vendas')
-            .select('valor_final')
-            .eq('user_id', userId)
-            .is('categoria_id', null)
-            .gte('data_venda', startOfMonthStr)
-            .lte('data_venda', endOfMonthStr)
-            .eq('parcelada', false)
-            .in('status', ['pendente', 'aprovado']),
-          supabase
-            .from('parcelas_vendas')
-            .select('valor')
-            .eq('user_id', userId)
-            .is('categoria_id', null)
-            .gte('data_vencimento', startOfMonthStr)
-            .lte('data_vencimento', endOfMonthStr)
-            .in('status', ['pendente', 'aprovado'])
-        ]
-
-        const [categoriaResults, semCatVendas, semCatParcelas] = await Promise.all([
-          Promise.all(categoriaQueries),
-          queriesSemCategoria[0],
-          queriesSemCategoria[1],
-        ])
-
-        const vendasPorCategoriaMap: { [key: string]: number } = {}
-        categoriasReceitasResult.data.forEach((categoria, index) => {
-          const baseIndex = index * 2
-          const vendasNaoParceladas = (categoriaResults[baseIndex]?.data || []) as Array<{ valor_final: number }>
-          const parcelas = (categoriaResults[baseIndex + 1]?.data || []) as Array<{ valor: number }>
-          
-          const valor = 
-            vendasNaoParceladas.reduce((sum, v) => sum + Number(v.valor_final || 0), 0) +
-            parcelas.reduce((sum, p) => sum + Number(p.valor || 0), 0)
-          
-          if (valor > 0) {
-            vendasPorCategoriaMap[categoria.nome] = valor
-          }
-        })
-
-        const totalSemCat =
-          ((semCatVendas.data || []) as Array<{ valor_final: number }>).reduce((s, v) => s + Number(v.valor_final || 0), 0) +
-          ((semCatParcelas.data || []) as Array<{ valor: number }>).reduce((s, p) => s + Number(p.valor || 0), 0)
-        if (totalSemCat > 0) {
-          vendasPorCategoriaMap['Sem categoria'] = totalSemCat
+        const vendasPorCategoriaId: Record<string, number> = {}
+        const addVenda = (categoriaId: string | null, valor: number) => {
+          const key = categoriaId ?? '__sem_categoria__'
+          vendasPorCategoriaId[key] = (vendasPorCategoriaId[key] ?? 0) + Number(valor || 0)
         }
+        ;(vendasPorCategoriaMesResult.data || []).forEach((v: { valor_final: number; categoria_id: string | null }) => addVenda(v.categoria_id, v.valor_final))
+        ;(parcelasVendasPorCategoriaMesResult.data || []).forEach((p: { valor: number; categoria_id: string | null }) => addVenda(p.categoria_id, p.valor))
+
+        const categoriasReceitaIdToNome = new Map(categoriasReceitasResult.data.map((c) => [c.id, c.nome]))
+        const vendasPorCategoriaMap: { [key: string]: number } = {}
+        Object.entries(vendasPorCategoriaId).forEach(([id, valor]) => {
+          if (valor <= 0) return
+          const nome = id === '__sem_categoria__' ? 'Sem categoria' : (categoriasReceitaIdToNome.get(id) ?? 'Sem categoria')
+          vendasPorCategoriaMap[nome] = (vendasPorCategoriaMap[nome] ?? 0) + valor
+        })
 
         const totalVendasChart = Object.values(vendasPorCategoriaMap).reduce((s, v) => s + v, 0)
         const mapaCorReceita = new Map(
@@ -623,6 +597,9 @@ export default function DashboardEmpresarialPage() {
             c.nome,
             c.cor && c.cor.trim() ? c.cor : '#10b981',
           ])
+        )
+        const mapaIdReceita = new Map(
+          (categoriasReceitasResult.data as Array<{ id: string; nome: string }>).map((c) => [c.nome, c.id])
         )
         const vendasPorCategoriaData: VendasPorCategoria[] = Object.entries(vendasPorCategoriaMap)
           .map(([categoria, valor]) => ({
@@ -632,6 +609,7 @@ export default function DashboardEmpresarialPage() {
               ? Number(((valor / totalVendasChart) * 100).toFixed(1))
               : 0,
             cor: mapaCorReceita.get(categoria) ?? COR_SEM_CATEGORIA,
+            categoria_id: mapaIdReceita.get(categoria) ?? null,
           }))
           .sort((a, b) => b.valor - a.valor)
 
@@ -664,6 +642,7 @@ export default function DashboardEmpresarialPage() {
             valor: Number(totalGeral.toFixed(2)),
             porcentagem: 100,
             cor: COR_SEM_CATEGORIA,
+            categoria_id: null,
           }])
         } else {
           setVendasPorCategoria([])
@@ -831,6 +810,15 @@ export default function DashboardEmpresarialPage() {
     }
   }, [session?.user?.id, loadDashboardData])
 
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      setShowCheckoutSuccess(true)
+      router.replace('/empresarial/dashboard', { scroll: false })
+      const t = setTimeout(() => setShowCheckoutSuccess(false), 5000)
+      return () => clearTimeout(t)
+    }
+  }, [searchParams, router])
+
   interface StatCard {
     title: string
     value: string
@@ -902,7 +890,7 @@ export default function DashboardEmpresarialPage() {
     return (
       <MainLayoutEmpresarial>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-pulse text-white text-xl">Carregando...</div>
+          <div className="animate-pulse emp-text-primary text-xl">Carregando...</div>
         </div>
       </MainLayoutEmpresarial>
     )
@@ -934,20 +922,28 @@ export default function DashboardEmpresarialPage() {
   return (
     <MainLayoutEmpresarial>
       <div className="space-y-8">
+        {showCheckoutSuccess && (
+          <div className="rounded-xl bg-green-500/20 border border-green-500/50 text-green-300 px-4 py-3 text-center">
+            Pagamento confirmado. Sua assinatura está ativa.
+          </div>
+        )}
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold emp-text-primary mb-2">Dashboard</h1>
+          <p className="emp-text-secondary">
             Visão geral das suas finanças empresariais
           </p>
         </div>
 
         {/* Seletor de mês: setas + dropdown */}
         <div className="flex justify-center">
-          <div className="inline-flex items-center gap-4 px-6 py-3 bg-gray-800 rounded-full border border-gray-700">
+          <div className="inline-flex items-center gap-4 px-6 py-3 emp-bg-card rounded-full border emp-border">
             <button
               type="button"
               onClick={mesAnterior}
-              className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              className="p-1.5 rounded-full emp-text-muted hover:emp-text-primary transition-colors"
+              style={{ backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--emp-bg-card-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
               aria-label="Mês anterior"
             >
               <FiChevronLeft className="w-6 h-6" />
@@ -955,12 +951,11 @@ export default function DashboardEmpresarialPage() {
             <select
               value={valorMesSelect}
               onChange={(e) => onChangeMesSelect(e.target.value)}
-              className="text-lg font-medium text-white min-w-[140px] text-center bg-transparent border-none cursor-pointer focus:ring-0 focus:outline-none appearance-none py-1 pr-8 bg-[length:1.25rem] bg-[right_0.25rem_center] bg-no-repeat"
-              style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")" }}
+              className="text-lg font-medium emp-text-primary min-w-[140px] text-center bg-transparent border-none cursor-pointer focus:ring-0 focus:outline-none appearance-none py-1 px-2"
               aria-label="Selecionar mês e ano"
             >
               {opcoesMesDropdown.map((opt) => (
-                <option key={opt.value} value={opt.value} className="bg-gray-800 text-white">
+                <option key={opt.value} value={opt.value} className="emp-bg-card emp-text-primary">
                   {opt.label}
                 </option>
               ))}
@@ -968,7 +963,10 @@ export default function DashboardEmpresarialPage() {
             <button
               type="button"
               onClick={mesProximo}
-              className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              className="p-1.5 rounded-full emp-text-muted hover:emp-text-primary transition-colors"
+              style={{ backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--emp-bg-card-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
               aria-label="Próximo mês"
             >
               <FiChevronRight className="w-6 h-6" />
@@ -982,16 +980,16 @@ export default function DashboardEmpresarialPage() {
             return (
               <div
                 key={index}
-                className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
+                className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-gray-400 text-sm mb-1">{card.title}</p>
+                    <p className="emp-text-muted text-sm mb-1">{card.title}</p>
                     <p className={`text-2xl font-bold ${card.color}`}>
                       {card.value}
                     </p>
                     {card.subtitle && (
-                      <p className="text-gray-500 text-sm mt-1">{card.subtitle}</p>
+                      <p className="emp-text-muted text-sm mt-1">{card.subtitle}</p>
                     )}
                   </div>
                   <div className={`${card.bgColor} p-3 rounded-full`}>
@@ -1004,12 +1002,12 @@ export default function DashboardEmpresarialPage() {
         </div>
 
         {/* Últimas Movimentações */}
-        <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-            <h2 className="text-xl font-semibold text-white">Últimas Movimentações</h2>
+        <div className="emp-bg-card rounded-lg shadow-lg border emp-border overflow-hidden">
+          <div className="flex items-center justify-between px-6 py-4 border-b emp-border-b">
+            <h2 className="text-xl font-semibold emp-text-primary">Últimas Movimentações</h2>
             <Link
               href="/empresarial/vendas-receitas"
-              className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              className="text-sm font-medium text-neon hover:text-neon-dim transition-colors"
             >
               Ver tudo
             </Link>
@@ -1017,25 +1015,25 @@ export default function DashboardEmpresarialPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <tr className="border-b emp-border-b">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-muted uppercase tracking-wider">
                     Descrição
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-muted uppercase tracking-wider">
                     Categoria
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium emp-text-muted uppercase tracking-wider">
                     Data
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium emp-text-muted uppercase tracking-wider">
                     Valor
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-[var(--emp-border)]">
                 {ultimasMovimentacoes.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-400">
+                    <td colSpan={4} className="px-6 py-8 text-center emp-text-muted">
                       Nenhuma movimentação recente
                     </td>
                   </tr>
@@ -1063,12 +1061,12 @@ export default function DashboardEmpresarialPage() {
                       currency: 'BRL',
                     }).format(mov.valor)
                     return (
-                      <tr key={mov.id} className="hover:bg-gray-700/30 transition-colors">
+                      <tr key={mov.id} className="transition-colors hover:opacity-90" style={{ backgroundColor: 'var(--emp-bg-main)' }}>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div
                               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                                isEntrada ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                isEntrada ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
                               }`}
                             >
                               {isEntrada ? (
@@ -1077,15 +1075,15 @@ export default function DashboardEmpresarialPage() {
                                 <FiMinus className="w-4 h-4" />
                               )}
                             </div>
-                            <span className="text-white text-sm">{mov.descricao}</span>
+                            <span className="emp-text-primary text-sm">{mov.descricao}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-300">{categoriaLabel}</td>
-                        <td className="px-6 py-4 text-sm text-gray-300">{dataFormatada}</td>
+                        <td className="px-6 py-4 text-sm emp-text-secondary">{categoriaLabel}</td>
+                        <td className="px-6 py-4 text-sm emp-text-secondary">{dataFormatada}</td>
                         <td className="px-6 py-4 text-right">
                           <span
                             className={`text-sm font-medium ${
-                              isEntrada ? 'text-green-400' : 'text-red-400'
+                              isEntrada ? 'text-green-500' : 'text-red-500'
                             }`}
                           >
                             {isEntrada ? `+ ${valorFormatado}` : `- ${valorFormatado}`}
@@ -1102,8 +1100,8 @@ export default function DashboardEmpresarialPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Gráfico de Despesas por Categoria */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">
               Despesas do Mês por Categoria
             </h2>
             {despesasPorCategoria.length > 0 ? (
@@ -1129,43 +1127,65 @@ export default function DashboardEmpresarialPage() {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: '#1f2937', 
-                        border: '1px solid #374151',
+                        backgroundColor: CHART_BG, 
+                        border: `1px solid ${CHART_BORDER}`,
                         borderRadius: '8px',
-                        color: '#fff'
+                        color: CHART_TEXT
                       }}
                       formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
-                  {despesasPorCategoria.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: item.cor }}
-                        />
-                        <span className="text-gray-300">{item.categoria}</span>
+                  {despesasPorCategoria.map((item) => {
+                    const href = item.categoria_id
+                      ? `/empresarial/compras-despesas?categoria_id=${encodeURIComponent(item.categoria_id)}`
+                      : null
+                    const content = (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: item.cor }}
+                          />
+                          <span className="emp-text-secondary">{item.categoria}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="emp-text-primary font-semibold">R$ {item.valor.toFixed(2)}</span>
+                          <span className="emp-text-muted ml-2">({item.porcentagem}%)</span>
+                        </div>
+                      </>
+                    )
+                    return (
+                      <div key={item.categoria} className="flex items-center justify-between text-sm">
+                        {href ? (
+                          <Link
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-1 items-center justify-between rounded-lg px-2 py-1.5 -mx-2 transition-colors cursor-pointer hover:opacity-90"
+                            title={`Ver compras/despesas da categoria ${item.categoria}`}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          content
+                        )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-white font-semibold">R$ {item.valor.toFixed(2)}</span>
-                        <span className="text-gray-400 ml-2">({item.porcentagem}%)</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
+              <div className="flex items-center justify-center h-[300px] emp-text-muted">
                 <p>Nenhuma despesa registrada neste mês</p>
               </div>
             )}
           </div>
 
           {/* Gráfico de Vendas por Categoria */}
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">
               Vendas do Mês por Categoria
             </h2>
             {vendasPorCategoria.length > 0 ? (
@@ -1191,35 +1211,57 @@ export default function DashboardEmpresarialPage() {
                     </Pie>
                     <Tooltip 
                       contentStyle={{ 
-                        backgroundColor: '#1f2937', 
-                        border: '1px solid #374151',
+                        backgroundColor: CHART_BG, 
+                        border: `1px solid ${CHART_BORDER}`,
                         borderRadius: '8px',
-                        color: '#fff'
+                        color: CHART_TEXT
                       }}
                       formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
                     />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
-                  {vendasPorCategoria.map((item) => (
-                    <div key={item.categoria} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: item.cor }}
-                        />
-                        <span className="text-gray-300">{item.categoria}</span>
+                  {vendasPorCategoria.map((item) => {
+                    const href = item.categoria_id
+                      ? `/empresarial/vendas-receitas?categoria_id=${encodeURIComponent(item.categoria_id)}`
+                      : null
+                    const content = (
+                      <>
+                        <div className="flex items-center space-x-2">
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: item.cor }}
+                          />
+                          <span className="emp-text-secondary">{item.categoria}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="emp-text-primary font-semibold">R$ {item.valor.toFixed(2)}</span>
+                          <span className="emp-text-muted ml-2">({item.porcentagem}%)</span>
+                        </div>
+                      </>
+                    )
+                    return (
+                      <div key={item.categoria} className="flex items-center justify-between text-sm">
+                        {href ? (
+                          <Link
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-1 items-center justify-between rounded-lg px-2 py-1.5 -mx-2 transition-colors cursor-pointer hover:opacity-90"
+                            title={`Ver vendas da categoria ${item.categoria}`}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          content
+                        )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-white font-semibold">R$ {item.valor.toFixed(2)}</span>
-                        <span className="text-gray-400 ml-2">({item.porcentagem}%)</span>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-400">
+              <div className="flex items-center justify-center h-[300px] emp-text-muted">
                 <p>Nenhuma venda registrada neste mês</p>
               </div>
             )}
@@ -1228,32 +1270,32 @@ export default function DashboardEmpresarialPage() {
 
         {/* Gráficos de Despesas, Lucro e Faturamento Mensal */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-red-500/50 transition-all">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">
               Despesas/Gastos da Empresa (Últimos 6 meses)
             </h2>
             <ResponsiveContainer width="100%" height={300} minHeight={300}>
               <BarChart data={despesasMensais} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_BORDER} opacity={0.3} />
                 <XAxis 
                   dataKey="mes" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                 />
                 <YAxis 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                   domain={[0, 'auto']}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: '#1f2937', 
-                    border: '1px solid #374151',
+                    backgroundColor: CHART_BG, 
+                    border: `1px solid ${CHART_BORDER}`,
                     borderRadius: '8px',
-                    color: '#fff'
+                    color: CHART_TEXT
                   }}
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Despesas']}
                 />
@@ -1269,32 +1311,32 @@ export default function DashboardEmpresarialPage() {
             </ResponsiveContainer>
           </div>
 
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">
               Lucro Total Mensal (Últimos 6 meses)
             </h2>
             <ResponsiveContainer width="100%" height={300} minHeight={300}>
               <BarChart data={lucroMensal} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_BORDER} opacity={0.3} />
                 <XAxis 
                   dataKey="mes" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                 />
                 <YAxis 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                   domain={['auto', 'auto']}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: '#1f2937', 
-                    border: '1px solid #374151',
+                    backgroundColor: CHART_BG, 
+                    border: `1px solid ${CHART_BORDER}`,
                     borderRadius: '8px',
-                    color: '#fff'
+                    color: CHART_TEXT
                   }}
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Lucro']}
                 />
@@ -1312,32 +1354,32 @@ export default function DashboardEmpresarialPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
-          <div className="bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-700 hover:border-purple-500/50 transition-all">
-            <h2 className="text-xl font-semibold text-white mb-4">
+          <div className="emp-bg-card rounded-lg shadow-lg p-6 border emp-border transition-all">
+            <h2 className="text-xl font-semibold emp-text-primary mb-4">
               Faturamento Mensal (Últimos 6 meses)
             </h2>
             <ResponsiveContainer width="100%" height={300} minHeight={300}>
               <BarChart data={faturamentoMensal} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_BORDER} opacity={0.3} />
                 <XAxis 
                   dataKey="mes" 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                 />
                 <YAxis 
-                  stroke="#9ca3af" 
-                  tick={{ fill: '#9ca3af', fontSize: 12 }}
-                  axisLine={{ stroke: '#4b5563' }}
+                  stroke={CHART_BORDER} 
+                  tick={{ fill: CHART_TEXT, fontSize: 12 }}
+                  axisLine={{ stroke: CHART_BORDER }}
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(1)}k`}
                   domain={[0, 'auto']}
                 />
                 <Tooltip 
                   contentStyle={{ 
-                    backgroundColor: '#1f2937', 
-                    border: '1px solid #374151',
+                    backgroundColor: CHART_BG, 
+                    border: `1px solid ${CHART_BORDER}`,
                     borderRadius: '8px',
-                    color: '#fff'
+                    color: CHART_TEXT
                   }}
                   formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Faturamento']}
                 />
@@ -1355,5 +1397,13 @@ export default function DashboardEmpresarialPage() {
         </div>
       </div>
     </MainLayoutEmpresarial>
+  )
+}
+
+export default function DashboardEmpresarialPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[200px]">Carregando...</div>}>
+      <DashboardEmpresarialContent />
+    </Suspense>
   )
 }

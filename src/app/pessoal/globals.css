@@ -173,6 +173,16 @@ svg .recharts-bar-rectangle:hover,
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 255, 255, 255;
   --background-end-rgb: 255, 255, 255;
+  /* Nexus-style theme (pessoal) */
+  --nexus-bg: #000000;
+  --nexus-bg-elevated: #080808;
+  --nexus-bg-card: #0d0d0d;
+  --nexus-border: rgba(255, 255, 255, 0.08);
+  --nexus-text: #f0f0f0;
+  --nexus-text-muted: #bbbbbb;
+  --nexus-text-dim: #666666;
+  --nexus-accent: #ffffff;
+  --nexus-glow: rgba(255, 255, 255, 0.06);
 }
 
 * {
@@ -242,4 +252,317 @@ body {
 .transition-smooth {
   transition-duration: 200ms;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---- Nexus-style: fundo escuro + light streaks ---- */
+.bg-nexus {
+  background: var(--nexus-bg);
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.bg-nexus::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% -20%, var(--nexus-glow), transparent 50%),
+    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.02) 50%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Raios de luz sutis animados (light streaks) */
+.nexus-streaks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.nexus-streaks span {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  animation: nexus-streak 18s ease-in-out infinite;
+}
+
+.nexus-streaks span:nth-child(1) { left: -20%; top: 15%; width: 40%; animation-delay: 0s; }
+.nexus-streaks span:nth-child(2) { left: 10%; top: 35%; width: 35%; animation-delay: -4s; }
+.nexus-streaks span:nth-child(3) { left: 60%; top: 55%; width: 30%; animation-delay: -8s; }
+.nexus-streaks span:nth-child(4) { left: -10%; top: 70%; width: 45%; animation-delay: -2s; }
+.nexus-streaks span:nth-child(5) { left: 40%; top: 25%; width: 38%; animation-delay: -6s; }
+.nexus-streaks span:nth-child(6) { left: 70%; top: 80%; width: 28%; animation-delay: -10s; }
+.nexus-streaks span:nth-child(7) { left: 20%; top: 90%; width: 50%; animation-delay: -3s; }
+.nexus-streaks span:nth-child(8) { left: 50%; top: 10%; width: 33%; animation-delay: -12s; }
+
+@keyframes nexus-streak {
+  0%, 100% { opacity: 0; transform: translateX(-30px); }
+  15% { opacity: 0.6; transform: translateX(0); }
+  85% { opacity: 0.6; transform: translateX(30px); }
+  100% { opacity: 0; transform: translateX(60px); }
+}
+
+/* Efeito cursor/typing (linha pulsante) */
+.nexus-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--nexus-accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: nexus-cursor-blink 1s ease-in-out infinite;
+}
+
+@keyframes nexus-cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.2; }
+}
+
+/* Botão estilo Nexus: fundo branco ou outline com hover suave */
+.btn-nexus-primary {
+  background: #ffffff;
+  color: #000000;
+  border-radius: 0.5rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+}
+
+.btn-nexus-primary:hover {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-nexus-secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-nexus-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 24px var(--nexus-glow);
+}
+
+/* Cards e superfícies com transição suave */
+.nexus-card {
+  background: var(--nexus-bg-card);
+  border: 1px solid var(--nexus-border);
+  border-radius: 0.75rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.nexus-card:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.04);
+  transform: translateY(-2px);
+}
+
+/* Revelação suave de texto (fade-in up) */
+@keyframes nexus-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-nexus-reveal {
+  animation: nexus-reveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ---- Login: fundo com reação ao mouse (grid estático + brilho que segue o cursor) ---- */
+
+/* Grid de pontos: estático (sem breath); animação de fundo é por movimento do mouse */
+.login-dot,
+.login-dot-static {
+  opacity: 0.4;
+}
+
+@keyframes login-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Entrada em sequência dos elementos do card */
+.login-item-1 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards; opacity: 0; }
+.login-item-2 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; opacity: 0; }
+.login-item-3 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards; opacity: 0; }
+.login-item-4 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.4s forwards; opacity: 0; }
+.login-item-5 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards; opacity: 0; }
+.login-item-6 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.6s forwards; opacity: 0; }
+.login-item-7 { animation: login-item-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards; opacity: 0; }
+
+@keyframes login-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Entrada do card (fade + subida) + brilho sutil contínuo na borda (estilo Aura) */
+.login-card-enter {
+  opacity: 0;
+  animation: login-card-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards, login-card-glow 4s ease-in-out infinite 0.7s;
+}
+
+@keyframes login-card-glow {
+  0%, 100% { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.08); }
+  50% { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.12), 0 0 40px -10px rgba(255,255,255,0.03); }
+}
+
+/* Transição ao alternar Entrar / Cadastrar: conteúdo desliza e surge com suavidade */
+.login-mode-transition {
+  animation: login-mode-enter 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes login-mode-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pill deslizante no toggle Entrar / Cadastrar */
+.login-toggle-track {
+  position: relative;
+}
+.login-toggle-pill {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: white;
+  border-radius: 0.375rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.login-toggle-pill--signup {
+  transform: translateX(100%);
+}
+
+/* Border beam: sombra/brilho que gira em volta do botão (botão fixo, só o efeito gira) */
+@keyframes login-border-beam-rotate {
+  to { transform: rotate(360deg); }
+}
+
+.login-border-beam {
+  position: relative;
+  width: 100%;
+  padding: 1px;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.login-border-beam-glow {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    transparent 0deg,
+    transparent 340deg,
+    rgba(255, 255, 255, 0.85) 350deg,
+    rgba(255, 255, 255, 1) 360deg
+  );
+  animation: login-border-beam-rotate 1.5s linear infinite;
+  animation-play-state: paused;
+  z-index: 0;
+}
+
+.login-border-beam:hover .login-border-beam-glow {
+  animation-play-state: running;
+}
+
+.login-border-beam-inner {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  border-radius: calc(0.5rem - 1px);
+  background: #ffffff;
+  font-weight: 600;
+  color: #000000;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.login-border-beam-inner:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.login-border-beam-inner:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Brutalist: botão Entrar (alto contraste, borda grossa, lift/press – estilo Aura slides) */
+.login-btn-brutalist {
+  position: relative;
+  width: 100%;
+  border: 3px solid #000000;
+  border-bottom-width: 5px;
+  border-radius: 0.5rem;
+  background: transparent;
+  box-shadow: 4px 4px 0 0 #000000;
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, border-bottom-width 0.12s ease-out;
+}
+
+.login-btn-brutalist:hover:not([data-disabled="true"]) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 #000000;
+  border-bottom-width: 6px;
+}
+
+.login-btn-brutalist:active:not([data-disabled="true"]) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 #000000;
+  border-bottom-width: 3px;
+}
+
+.login-btn-brutalist-inner {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: calc(0.5rem - 2px);
+  background: #ffffff;
+  font-weight: 800;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  color: #000000;
+  text-align: center;
+  transition: background-color 0.15s ease-out;
+}
+
+.login-btn-brutalist-inner:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.login-btn-brutalist-inner:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
