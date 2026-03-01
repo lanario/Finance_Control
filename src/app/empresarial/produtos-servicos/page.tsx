@@ -508,9 +508,8 @@ export default function ProdutosServicosPage() {
       })
   }
 
-  const lista = abaAtiva === 'produtos' ? produtos : abaAtiva === 'servicos' ? servicos : []
-
   const listaAgrupada = useMemo(() => {
+    const lista = abaAtiva === 'produtos' ? produtos : abaAtiva === 'servicos' ? servicos : []
     const isProduto = abaAtiva === 'produtos'
     const map = new Map<string, { key: string; nome: string; items: (Produto | Servico)[] }>()
     lista.forEach((item) => {
@@ -527,7 +526,7 @@ export default function ProdutosServicosPage() {
       return a.nome.localeCompare(b.nome)
     })
     return arr
-  }, [lista, abaAtiva])
+  }, [abaAtiva, produtos, servicos])
 
   function toggleGrupo(key: string) {
     setExpandedGrupos((prev) => ({ ...prev, [key]: prev[key] === false }))

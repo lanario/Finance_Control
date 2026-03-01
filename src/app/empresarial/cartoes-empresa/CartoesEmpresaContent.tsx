@@ -88,6 +88,7 @@ export function CartoesEmpresaContent() {
       loadCartoes()
       loadCategoriasDespesa()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadCategoriasDespesa = async () => {
@@ -168,12 +169,14 @@ export function CartoesEmpresaContent() {
       loadComprasPorCartao()
       loadComprasRecorrentes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when cartoes or session change
   }, [cartoes, session])
 
   useEffect(() => {
     if (cartoes.length > 0 && (Object.keys(parcelasPorCartao).length > 0 || Object.keys(comprasPorCartao).length > 0)) {
       calcularFaturas()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when data for faturas change
   }, [parcelasPorCartao, comprasPorCartao, faturasPagas, cartoes, comprasRecorrentesMap])
 
   const loadCartoes = async () => {

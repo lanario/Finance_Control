@@ -43,6 +43,7 @@ export default function OrcamentosPage() {
     if (session) {
       loadOrcamentos()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadOrcamentos = async () => {

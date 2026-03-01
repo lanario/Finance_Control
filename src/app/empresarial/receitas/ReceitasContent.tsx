@@ -195,6 +195,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
     if (session) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadData = async () => {
@@ -622,6 +623,7 @@ export function ReceitasContent({ sectionLabel, hideMainTitle }: ReceitasContent
     if (session) {
       loadContas()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters or session change
   }, [filtroStatus, filtroCliente, filtroCategoria, filtroMes, buscaTexto, session])
 
   const handleSubmit = async (e: React.FormEvent) => {

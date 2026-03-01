@@ -144,6 +144,7 @@ export default function OrcamentoEstiloPage() {
     }
 
     loadConfig()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

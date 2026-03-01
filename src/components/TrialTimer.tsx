@@ -55,6 +55,7 @@ export function TrialTimer({ perfil, assinaturaHref, variant = 'pessoal' }: Tria
     tick()
     const interval = setInterval(tick, 1000)
     return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when trial state or end time changes
   }, [isTrialing, trialEndsAt?.getTime()])
 
   if (!isTrialing || !trialEndsAt || remaining === null) {

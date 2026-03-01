@@ -79,6 +79,7 @@ export default function Sidebar() {
       // Carregar notificações depois
       loadNotificationsData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run on session change; loaders are stable
   }, [session])
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export default function Sidebar() {
       }, 60000) // 1 minuto
       return () => clearInterval(interval)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run on session change only
   }, [session])
 
   const loadProfile = async () => {

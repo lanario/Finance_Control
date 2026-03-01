@@ -79,6 +79,7 @@ export default function MainLayout({
     }
     run()
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session ids or loading change
   }, [session?.user?.id, session?.access_token, loading])
 
   // Redirecionar para assinatura se trial expirado e sem assinatura ativa

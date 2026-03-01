@@ -24,6 +24,7 @@ export default function LoginDotGridBackground() {
     if (rafRef.current === null) {
       rafRef.current = requestAnimationFrame(updatePosition)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- updatePosition is stable, no deps needed
   }, [])
 
   function updatePosition() {

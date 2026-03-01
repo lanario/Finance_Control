@@ -142,6 +142,7 @@ export default function ComprasPage() {
       loadTiposGastos()
       verificarComprasRecorrentes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadCartoes = async () => {

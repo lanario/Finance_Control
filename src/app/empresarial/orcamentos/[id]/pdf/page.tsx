@@ -5,18 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import jsPDF, { GState } from 'jspdf'
-
-type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
-
-const CAMPOS_CLIENTE_PADRAO_PDF: Record<CampoClienteOrcamento, boolean> = {
-  nome: true,
-  razao_social: true,
-  cpf: true,
-  cnpj: true,
-  email: true,
-  telefone: true,
-  endereco: true,
-}
+import { CampoClienteOrcamento, CAMPOS_CLIENTE_PADRAO } from '../../camposClienteOrcamento'
 
 interface Orcamento {
   id: string
@@ -326,7 +315,7 @@ class PDFGenerator {
   async drawPrestadorClienteSection(
     orcamento: Orcamento,
     perfilData: any,
-    camposVisiveis: Record<CampoClienteOrcamento, boolean> = CAMPOS_CLIENTE_PADRAO_PDF
+    camposVisiveis: Record<CampoClienteOrcamento, boolean> = CAMPOS_CLIENTE_PADRAO
   ) {
     await this.checkNewPage(50)
 
@@ -871,6 +860,7 @@ export default function GerarPDFOrcamentoPage() {
     if (session && orcamentoId) {
       gerarPDF()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or orcamentoId changes
   }, [session, orcamentoId])
 
   const gerarPDF = async () => {
@@ -952,7 +942,7 @@ export default function GerarPDFOrcamentoPage() {
       await pdf.drawWatermarkAsync()
       
       const camposClienteVisiveis: Record<CampoClienteOrcamento, boolean> = {
-        ...CAMPOS_CLIENTE_PADRAO_PDF,
+        ...CAMPOS_CLIENTE_PADRAO,
         ...(templateConfig?.camposClienteVisiveis || {}),
       }
       await pdf.drawPrestadorClienteSection(orcamento, perfilData, camposClienteVisiveis)

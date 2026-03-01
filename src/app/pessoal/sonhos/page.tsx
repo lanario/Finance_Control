@@ -40,6 +40,7 @@ export default function SonhosPage() {
       loadSonhos()
       calcularSaldoDisponivel()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   // Calcular saldo disponível (receitas - despesas do mês atual)

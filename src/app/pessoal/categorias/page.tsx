@@ -53,6 +53,7 @@ export default function CategoriasPage() {
     if (session) {
       loadTiposGastos()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   function loadTiposGastos() {

@@ -66,6 +66,7 @@ export default function MainLayoutEmpresarial({
     }
     run()
     return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session ids or loading change
   }, [session?.user?.id, session?.access_token, loading])
 
   useEffect(() => {

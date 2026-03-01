@@ -58,12 +58,14 @@ export default function FornecedoresPage() {
     if (session) {
       loadFornecedores()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   useEffect(() => {
     if (session) {
       loadFornecedores()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters or session change
   }, [buscaTexto, filtroAtivo, session])
 
   const loadFornecedores = async () => {

@@ -71,6 +71,7 @@ export default function GastosMensaisPage() {
     if (session && ano && mes) {
       loadDados()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or route params change
   }, [session, ano, mes])
 
   const loadDados = async () => {

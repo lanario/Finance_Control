@@ -28,6 +28,7 @@ export default function PerfilPage() {
     if (session) {
       loadPerfil()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadPerfil = async () => {

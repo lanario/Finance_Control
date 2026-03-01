@@ -60,6 +60,7 @@ export default function ReceitasPage() {
     if (session) {
       loadReceitas()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadReceitas = async () => {

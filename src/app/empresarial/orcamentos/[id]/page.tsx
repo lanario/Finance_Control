@@ -7,18 +7,7 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import { FiArrowLeft, FiEdit, FiDownload } from 'react-icons/fi'
 import Image from 'next/image'
-
-type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
-
-const CAMPOS_CLIENTE_PADRAO: Record<CampoClienteOrcamento, boolean> = {
-  nome: true,
-  razao_social: true,
-  cpf: true,
-  cnpj: true,
-  email: true,
-  telefone: true,
-  endereco: true,
-}
+import { CampoClienteOrcamento, CAMPOS_CLIENTE_PADRAO } from '../camposClienteOrcamento'
 
 interface Orcamento {
   id: string
@@ -80,6 +69,7 @@ export default function VisualizarOrcamentoPage() {
     if (session && orcamentoId) {
       loadOrcamento()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or orcamentoId changes
   }, [session, orcamentoId])
 
   const loadOrcamento = async () => {

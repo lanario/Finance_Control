@@ -150,6 +150,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
     if (session) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadData = async () => {
@@ -412,6 +413,7 @@ export function DespesasContent({ sectionLabel, hideMainTitle }: DespesasContent
     if (session) {
       loadContas()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters or session change
   }, [filtroStatus, filtroFornecedor, filtroCategoria, filtroMes, buscaTexto, session])
 
   const handleSubmit = async (e: React.FormEvent) => {

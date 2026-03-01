@@ -103,6 +103,7 @@ function DashboardContent() {
     if (session) {
       loadDashboardData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or period change
   }, [session, mesSelecionado, anoSelecionado])
 
   const loadDashboardData = async () => {

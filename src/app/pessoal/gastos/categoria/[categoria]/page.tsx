@@ -75,6 +75,7 @@ export default function GastosPorCategoriaPage() {
     if (session && categoriaNome) {
       loadDados()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or filters change
   }, [session, categoriaNome, mesSelecionado, anoSelecionado])
 
   const loadDados = async () => {

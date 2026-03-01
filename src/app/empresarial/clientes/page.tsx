@@ -60,12 +60,14 @@ export default function ClientesPage() {
     if (session) {
       loadClientes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   useEffect(() => {
     if (session) {
       loadClientes()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters or session change
   }, [buscaTexto, filtroAtivo, session])
 
   function loadClientes() {

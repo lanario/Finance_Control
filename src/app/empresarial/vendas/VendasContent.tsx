@@ -207,6 +207,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     if (session) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   // Aplicar filtro de categoria vindo da URL (ex.: link do dashboard por categoria)
@@ -447,6 +448,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     if (session) {
       loadVendas()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters, aba or session change
   }, [filtroStatus, filtroCliente, filtroCategoria, filtroMes, buscaTexto, abaAtiva, session])
 
   const calcularValorFinal = () => {
@@ -458,6 +460,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
   useEffect(() => {
     calcularValorFinal()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when valor_total or valor_desconto change
   }, [formData.valor_total, formData.valor_desconto])
 
   const calcularMargemLucro = () => {

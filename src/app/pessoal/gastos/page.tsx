@@ -156,6 +156,7 @@ export default function GastosPage() {
         loadComprasRecorrentes()
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or tab change
   }, [session, activeTab])
 
   const loadMesesPagos = async () => {

@@ -8,19 +8,7 @@ import { useAuth } from '@/app/empresarial/providers'
 import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiChevronDown, FiChevronUp, FiImage, FiX, FiSearch, FiPackage, FiTool } from 'react-icons/fi'
 import Image from 'next/image'
 import { DateInput } from '@/components/ui/DateInput'
-
-/** Chaves dos campos do cliente exibidos no orçamento */
-export type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
-
-export const CAMPOS_CLIENTE_PADRAO: Record<CampoClienteOrcamento, boolean> = {
-  nome: true,
-  razao_social: true,
-  cpf: true,
-  cnpj: true,
-  email: true,
-  telefone: true,
-  endereco: true,
-}
+import { CampoClienteOrcamento, CAMPOS_CLIENTE_PADRAO } from '../../camposClienteOrcamento'
 
 interface Cliente {
   id: string
@@ -150,6 +138,7 @@ export default function EditarOrcamentoPage() {
     if (session && orcamentoId) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session or orcamentoId changes
   }, [session, orcamentoId])
 
   const loadData = async () => {

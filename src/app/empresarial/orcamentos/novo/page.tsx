@@ -85,6 +85,7 @@ export default function NovoOrcamentoPage() {
       loadPerfilUsuario()
       loadProdutosServicos()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   const loadProdutosServicos = async () => {

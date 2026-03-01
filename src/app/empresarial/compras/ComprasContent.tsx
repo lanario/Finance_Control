@@ -183,6 +183,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
     if (session) {
       loadData()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
   // Aplicar filtro de categoria vindo da URL (ex.: link do dashboard por categoria)
@@ -197,6 +198,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
     if (session) {
       loadCompras()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run when filters or session change
   }, [filtroStatus, filtroFornecedor, filtroCategoria, filtroMes, buscaTexto, session])
 
   const loadData = async () => {
