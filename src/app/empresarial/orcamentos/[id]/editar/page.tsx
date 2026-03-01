@@ -9,9 +9,25 @@ import { FiArrowLeft, FiPlus, FiTrash2, FiSave, FiChevronDown, FiChevronUp, FiIm
 import Image from 'next/image'
 import { DateInput } from '@/components/ui/DateInput'
 
+/** Chaves dos campos do cliente exibidos no orçamento */
+export type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
+
+export const CAMPOS_CLIENTE_PADRAO: Record<CampoClienteOrcamento, boolean> = {
+  nome: true,
+  razao_social: true,
+  cpf: true,
+  cnpj: true,
+  email: true,
+  telefone: true,
+  endereco: true,
+}
+
 interface Cliente {
   id: string
   nome: string
+  razao_social: string | null
+  cnpj: string | null
+  cpf: string | null
   email: string | null
   telefone: string | null
   endereco: string | null
@@ -111,6 +127,9 @@ export default function EditarOrcamentoPage() {
   const [paddingHeader, setPaddingHeader] = useState(14)
   const [espacamentoSecoes, setEspacamentoSecoes] = useState(14)
 
+  /** Quais campos do cliente exibir no orçamento (editável pelo usuário) */
+  const [camposClienteVisiveis, setCamposClienteVisiveis] = useState<Record<CampoClienteOrcamento, boolean>>(CAMPOS_CLIENTE_PADRAO)
+
   /** Busca de produto/serviço no item do orçamento */
   const [buscaItemIndex, setBuscaItemIndex] = useState<number | null>(null)
   const [buscaTermo, setBuscaTermo] = useState('')
@@ -140,7 +159,7 @@ export default function EditarOrcamentoPage() {
       // Carregar clientes
       const { data: clientesData } = await supabase
         .from('clientes')
-        .select('id, nome, email, telefone, endereco')
+        .select('id, nome, razao_social, cnpj, cpf, email, telefone, endereco')
         .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome', { ascending: true })
@@ -207,6 +226,9 @@ export default function EditarOrcamentoPage() {
             setPaddingPagina(template.paddingPagina || 28)
             setPaddingHeader(template.paddingHeader || 14)
             setEspacamentoSecoes(template.espacamentoSecoes || 14)
+            if (template.camposClienteVisiveis && typeof template.camposClienteVisiveis === 'object') {
+              setCamposClienteVisiveis(prev => ({ ...CAMPOS_CLIENTE_PADRAO, ...template.camposClienteVisiveis }))
+            }
             // Carregar logo do template se existir
             if (template.logoUrl) {
               setLogoUrl(template.logoUrl)
@@ -367,6 +389,9 @@ export default function EditarOrcamentoPage() {
         cabecalho_personalizado: cabecalhoPersonalizado || null,
         rodape_personalizado: rodapePersonalizado || null,
         cliente_nome: clienteSelecionado?.nome || null,
+        cliente_razao_social: clienteSelecionado?.razao_social || null,
+        cliente_cpf: clienteSelecionado?.cpf || null,
+        cliente_cnpj: clienteSelecionado?.cnpj || null,
         cliente_email: clienteSelecionado?.email || null,
         cliente_telefone: clienteSelecionado?.telefone || null,
         cliente_endereco: clienteSelecionado?.endereco || null,
@@ -873,6 +898,7 @@ export default function EditarOrcamentoPage() {
                       paddingHeader,
                       espacamentoSecoes,
                       logoUrl,
+                      camposClienteVisiveis,
                     }
                     localStorage.setItem(`orcamento_template_${session.user.id}`, JSON.stringify(templateConfig))
                     alert('Template padrão salvo com sucesso!')
@@ -1351,6 +1377,33 @@ export default function EditarOrcamentoPage() {
                         className="w-full"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm text-gray-400 mb-2">
+                        Campos do cliente no orçamento
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">Marque os campos que devem aparecer no orçamento.</p>
+                      <div className="space-y-2">
+                        {(['nome', 'razao_social', 'cpf', 'cnpj', 'email', 'telefone', 'endereco'] as CampoClienteOrcamento[]).map((campo) => (
+                          <label key={campo} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={camposClienteVisiveis[campo]}
+                              onChange={(e) => setCamposClienteVisiveis(prev => ({ ...prev, [campo]: e.target.checked }))}
+                              className="rounded border-gray-500 bg-gray-700 text-purple-500 focus:ring-purple-500"
+                            />
+                            <span>
+                              {campo === 'nome' && 'Nome'}
+                              {campo === 'razao_social' && 'Razão Social'}
+                              {campo === 'cpf' && 'CPF'}
+                              {campo === 'cnpj' && 'CNPJ'}
+                              {campo === 'email' && 'E-mail'}
+                              {campo === 'telefone' && 'Telefone'}
+                              {campo === 'endereco' && 'Endereço'}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1459,12 +1512,26 @@ export default function EditarOrcamentoPage() {
                     </h3>
                     {clienteSelecionado ? (
                       <>
-                        <p style={{ color: corTexto, fontSize: '12px' }}>{clienteSelecionado.nome}</p>
-                        {clienteSelecionado.email && (
-                          <p style={{ color: corTexto, fontSize: '12px' }}>{clienteSelecionado.email}</p>
+                        {camposClienteVisiveis.nome && clienteSelecionado.nome && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>NOME: {clienteSelecionado.nome}</p>
                         )}
-                        {clienteSelecionado.endereco && (
-                          <p style={{ color: corTexto, fontSize: '12px' }}>{clienteSelecionado.endereco}</p>
+                        {camposClienteVisiveis.razao_social && clienteSelecionado.razao_social && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>RAZÃO SOCIAL: {clienteSelecionado.razao_social}</p>
+                        )}
+                        {camposClienteVisiveis.cpf && clienteSelecionado.cpf && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>CPF: {clienteSelecionado.cpf}</p>
+                        )}
+                        {camposClienteVisiveis.cnpj && clienteSelecionado.cnpj && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>CNPJ: {clienteSelecionado.cnpj}</p>
+                        )}
+                        {camposClienteVisiveis.email && clienteSelecionado.email && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>EMAIL: {clienteSelecionado.email}</p>
+                        )}
+                        {camposClienteVisiveis.telefone && clienteSelecionado.telefone && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>TELEFONE: {clienteSelecionado.telefone}</p>
+                        )}
+                        {camposClienteVisiveis.endereco && clienteSelecionado.endereco && (
+                          <p style={{ color: corTexto, fontSize: '12px' }}>ENDEREÇO: {clienteSelecionado.endereco}</p>
                         )}
                       </>
                     ) : (

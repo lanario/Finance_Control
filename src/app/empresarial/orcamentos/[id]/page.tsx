@@ -8,8 +8,21 @@ import { useAuth } from '@/app/empresarial/providers'
 import { FiArrowLeft, FiEdit, FiDownload } from 'react-icons/fi'
 import Image from 'next/image'
 
+type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
+
+const CAMPOS_CLIENTE_PADRAO: Record<CampoClienteOrcamento, boolean> = {
+  nome: true,
+  razao_social: true,
+  cpf: true,
+  cnpj: true,
+  email: true,
+  telefone: true,
+  endereco: true,
+}
+
 interface Orcamento {
   id: string
+  cliente_id: string | null
   numero: string
   data_emissao: string
   data_validade: string | null
@@ -21,6 +34,9 @@ interface Orcamento {
   condicoes_pagamento: string | null
   prazo_entrega: string | null
   cliente_nome: string | null
+  cliente_razao_social: string | null
+  cliente_cpf: string | null
+  cliente_cnpj: string | null
   cliente_email: string | null
   cliente_telefone: string | null
   cliente_endereco: string | null
@@ -55,6 +71,7 @@ export default function VisualizarOrcamentoPage() {
   
   // Dados do template e perfil
   const [templateConfig, setTemplateConfig] = useState<any>(null)
+  const [camposClienteVisiveis, setCamposClienteVisiveis] = useState<Record<CampoClienteOrcamento, boolean>>(CAMPOS_CLIENTE_PADRAO)
   const [perfilData, setPerfilData] = useState<any>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [empresaNome, setEmpresaNome] = useState<string>('')
@@ -75,7 +92,14 @@ export default function VisualizarOrcamentoPage() {
         const estiloSalvo = localStorage.getItem(`orcamento_template_${userId}`)
         if (estiloSalvo) {
           try {
-            setTemplateConfig(JSON.parse(estiloSalvo))
+            const parsed = JSON.parse(estiloSalvo)
+            setTemplateConfig(parsed)
+            if (parsed?.camposClienteVisiveis && typeof parsed.camposClienteVisiveis === 'object') {
+              setCamposClienteVisiveis({
+                ...CAMPOS_CLIENTE_PADRAO,
+                ...parsed.camposClienteVisiveis,
+              })
+            }
           } catch (e) {
             console.error('Erro ao carregar template:', e)
           }
@@ -104,7 +128,30 @@ export default function VisualizarOrcamentoPage() {
         .single()
 
       if (orcamentoError) throw orcamentoError
-      setOrcamento(orcamentoData)
+
+      // Preencher dados do cliente a partir do cadastro quando o snapshot do orçamento estiver vazio (ex.: CPF)
+      let orcamentoParaExibir = orcamentoData as Orcamento
+      if (orcamentoData.cliente_id) {
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('nome, razao_social, cnpj, cpf, email, telefone, endereco')
+          .eq('id', orcamentoData.cliente_id)
+          .eq('user_id', userId)
+          .single()
+        if (cliente) {
+          orcamentoParaExibir = {
+            ...orcamentoData,
+            cliente_nome: orcamentoData.cliente_nome || cliente.nome || null,
+            cliente_razao_social: orcamentoData.cliente_razao_social ?? cliente.razao_social ?? null,
+            cliente_cnpj: orcamentoData.cliente_cnpj ?? cliente.cnpj ?? null,
+            cliente_cpf: orcamentoData.cliente_cpf ?? cliente.cpf ?? null,
+            cliente_email: orcamentoData.cliente_email ?? cliente.email ?? null,
+            cliente_telefone: orcamentoData.cliente_telefone ?? cliente.telefone ?? null,
+            cliente_endereco: orcamentoData.cliente_endereco ?? cliente.endereco ?? null,
+          } as Orcamento
+        }
+      }
+      setOrcamento(orcamentoParaExibir)
 
       // Carregar itens
       const { data: itensData, error: itensError } = await supabase
@@ -366,25 +413,26 @@ export default function VisualizarOrcamentoPage() {
                     >
                       CLIENTE
                     </h3>
-                    {orcamento.cliente_nome && (
-                      <p style={{ color: corTexto, fontSize: '12px' }}>
-                        NOME: {orcamento.cliente_nome}
-                      </p>
+                    {camposClienteVisiveis.nome && orcamento.cliente_nome && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>NOME: {orcamento.cliente_nome}</p>
                     )}
-                    {orcamento.cliente_email && (
-                      <p style={{ color: corTexto, fontSize: '12px' }}>
-                        EMAIL: {orcamento.cliente_email}
-                      </p>
+                    {camposClienteVisiveis.razao_social && orcamento.cliente_razao_social && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>RAZÃO SOCIAL: {orcamento.cliente_razao_social}</p>
                     )}
-                    {orcamento.cliente_telefone && (
-                      <p style={{ color: corTexto, fontSize: '12px' }}>
-                        TELEFONE: {orcamento.cliente_telefone}
-                      </p>
+                    {camposClienteVisiveis.cpf && orcamento.cliente_cpf && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>CPF: {orcamento.cliente_cpf}</p>
                     )}
-                    {orcamento.cliente_endereco && (
-                      <p style={{ color: corTexto, fontSize: '12px' }}>
-                        ENDEREÇO: {orcamento.cliente_endereco}
-                      </p>
+                    {camposClienteVisiveis.cnpj && orcamento.cliente_cnpj && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>CNPJ: {orcamento.cliente_cnpj}</p>
+                    )}
+                    {camposClienteVisiveis.email && orcamento.cliente_email && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>EMAIL: {orcamento.cliente_email}</p>
+                    )}
+                    {camposClienteVisiveis.telefone && orcamento.cliente_telefone && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>TELEFONE: {orcamento.cliente_telefone}</p>
+                    )}
+                    {camposClienteVisiveis.endereco && orcamento.cliente_endereco && (
+                      <p style={{ color: corTexto, fontSize: '12px' }}>ENDEREÇO: {orcamento.cliente_endereco}</p>
                     )}
                   </div>
                 </div>

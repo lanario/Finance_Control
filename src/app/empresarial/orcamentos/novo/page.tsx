@@ -11,6 +11,9 @@ import { DateInput } from '@/components/ui/DateInput'
 interface Cliente {
   id: string
   nome: string
+  razao_social: string | null
+  cnpj: string | null
+  cpf: string | null
   email: string | null
   telefone: string | null
   endereco: string | null
@@ -133,7 +136,7 @@ export default function NovoOrcamentoPage() {
       const userId = session?.user?.id
       const { data, error } = await supabase
         .from('clientes')
-        .select('id, nome, email, telefone, endereco')
+        .select('id, nome, razao_social, cnpj, cpf, email, telefone, endereco')
         .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome', { ascending: true })
@@ -299,6 +302,9 @@ export default function NovoOrcamentoPage() {
         condicoes_pagamento: condicoesPagamento?.trim() || null,
         prazo_entrega: prazoEntrega?.trim() || null,
         cliente_nome: clienteSelecionado?.nome || null,
+        cliente_razao_social: clienteSelecionado?.razao_social || null,
+        cliente_cpf: clienteSelecionado?.cpf || null,
+        cliente_cnpj: clienteSelecionado?.cnpj || null,
         cliente_email: clienteSelecionado?.email || null,
         cliente_telefone: clienteSelecionado?.telefone || null,
         cliente_endereco: clienteSelecionado?.endereco || null,

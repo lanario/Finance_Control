@@ -6,8 +6,21 @@ import { supabaseEmpresarial as supabase } from '@/lib/supabase/empresarial'
 import { useAuth } from '@/app/empresarial/providers'
 import jsPDF, { GState } from 'jspdf'
 
+type CampoClienteOrcamento = 'nome' | 'razao_social' | 'cpf' | 'cnpj' | 'email' | 'telefone' | 'endereco'
+
+const CAMPOS_CLIENTE_PADRAO_PDF: Record<CampoClienteOrcamento, boolean> = {
+  nome: true,
+  razao_social: true,
+  cpf: true,
+  cnpj: true,
+  email: true,
+  telefone: true,
+  endereco: true,
+}
+
 interface Orcamento {
   id: string
+  cliente_id: string | null
   numero: string
   data_emissao: string
   data_validade: string | null
@@ -19,6 +32,9 @@ interface Orcamento {
   condicoes_pagamento: string | null
   prazo_entrega: string | null
   cliente_nome: string | null
+  cliente_razao_social: string | null
+  cliente_cpf: string | null
+  cliente_cnpj: string | null
   cliente_email: string | null
   cliente_telefone: string | null
   cliente_endereco: string | null
@@ -64,6 +80,7 @@ interface TemplateConfig {
   marcaDaguaPosicaoY?: number
   marcaDaguaTamanho?: number
   marcaDaguaFormato?: string
+  camposClienteVisiveis?: Partial<Record<CampoClienteOrcamento, boolean>>
 }
 
 interface PDFConfig {
@@ -303,15 +320,20 @@ class PDFGenerator {
   }
 
   /**
-   * Desenha seções de PRESTADOR e CLIENTE lado a lado
+   * Desenha seções de PRESTADOR e CLIENTE lado a lado.
+   * @param camposVisiveis - Quais campos do cliente exibir (usa padrão todos se não informado)
    */
-  async drawPrestadorClienteSection(orcamento: Orcamento, perfilData: any) {
+  async drawPrestadorClienteSection(
+    orcamento: Orcamento,
+    perfilData: any,
+    camposVisiveis: Record<CampoClienteOrcamento, boolean> = CAMPOS_CLIENTE_PADRAO_PDF
+  ) {
     await this.checkNewPage(50)
 
     const sectionTop = this.yPos
     const sectionWidth = (this.pageWidth - (this.margin * 2) - this.config.spacing.sectionSpacing) / 2
     const padding = 3
-    const sectionHeight = 50
+    const sectionHeight = 72
 
     // Caixa geral
     this.doc.setFillColor(...this.config.colors.background)
@@ -377,19 +399,31 @@ class PDFGenerator {
     this.doc.setFont('helvetica', 'normal')
 
     let clienteY = sectionTop + 12
-    if (orcamento.cliente_nome) {
+    if (camposVisiveis.nome && orcamento.cliente_nome) {
       this.doc.text(`NOME: ${orcamento.cliente_nome}`, clienteX, clienteY)
       clienteY += 5
     }
-    if (orcamento.cliente_email) {
+    if (camposVisiveis.razao_social && orcamento.cliente_razao_social) {
+      this.doc.text(`RAZÃO SOCIAL: ${orcamento.cliente_razao_social}`, clienteX, clienteY)
+      clienteY += 5
+    }
+    if (camposVisiveis.cpf && orcamento.cliente_cpf) {
+      this.doc.text(`CPF: ${orcamento.cliente_cpf}`, clienteX, clienteY)
+      clienteY += 5
+    }
+    if (camposVisiveis.cnpj && orcamento.cliente_cnpj) {
+      this.doc.text(`CNPJ: ${orcamento.cliente_cnpj}`, clienteX, clienteY)
+      clienteY += 5
+    }
+    if (camposVisiveis.email && orcamento.cliente_email) {
       this.doc.text(`EMAIL: ${orcamento.cliente_email}`, clienteX, clienteY)
       clienteY += 5
     }
-    if (orcamento.cliente_telefone) {
+    if (camposVisiveis.telefone && orcamento.cliente_telefone) {
       this.doc.text(`TELEFONE: ${orcamento.cliente_telefone}`, clienteX, clienteY)
       clienteY += 5
     }
-    if (orcamento.cliente_endereco) {
+    if (camposVisiveis.endereco && orcamento.cliente_endereco) {
       const enderecoLines = this.doc.splitTextToSize(
         `ENDEREÇO: ${orcamento.cliente_endereco}`,
         sectionWidth - (padding * 2)
@@ -853,7 +887,7 @@ export default function GerarPDFOrcamentoPage() {
         perfilData.email = session.user.email
       }
 
-      const { data: orcamento, error: orcamentoError } = await supabase
+      const { data: orcamentoRaw, error: orcamentoError } = await supabase
         .from('orcamentos')
         .select('*')
         .eq('id', orcamentoId)
@@ -861,6 +895,30 @@ export default function GerarPDFOrcamentoPage() {
         .single()
 
       if (orcamentoError) throw orcamentoError
+
+      // Se o orçamento tem cliente_id, buscar dados atuais do cliente para preencher campos vazios no PDF
+      // (orçamentos antigos podem não ter o snapshot completo)
+      let orcamento = orcamentoRaw as Orcamento
+      if (orcamento.cliente_id) {
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('nome, razao_social, cnpj, cpf, email, telefone, endereco')
+          .eq('id', orcamento.cliente_id)
+          .eq('user_id', userId)
+          .single()
+        if (cliente) {
+          orcamento = {
+            ...orcamento,
+            cliente_nome: orcamento.cliente_nome || cliente.nome || null,
+            cliente_razao_social: orcamento.cliente_razao_social ?? cliente.razao_social ?? null,
+            cliente_cnpj: orcamento.cliente_cnpj ?? cliente.cnpj ?? null,
+            cliente_cpf: orcamento.cliente_cpf ?? cliente.cpf ?? null,
+            cliente_email: orcamento.cliente_email ?? cliente.email ?? null,
+            cliente_telefone: orcamento.cliente_telefone ?? cliente.telefone ?? null,
+            cliente_endereco: orcamento.cliente_endereco ?? cliente.endereco ?? null,
+          }
+        }
+      }
 
       const { data: itens, error: itensError } = await supabase
         .from('orcamento_itens')
@@ -893,7 +951,11 @@ export default function GerarPDFOrcamentoPage() {
       // Desenhar marca d'água na primeira página
       await pdf.drawWatermarkAsync()
       
-      await pdf.drawPrestadorClienteSection(orcamento, perfilData)
+      const camposClienteVisiveis: Record<CampoClienteOrcamento, boolean> = {
+        ...CAMPOS_CLIENTE_PADRAO_PDF,
+        ...(templateConfig?.camposClienteVisiveis || {}),
+      }
+      await pdf.drawPrestadorClienteSection(orcamento, perfilData, camposClienteVisiveis)
       await pdf.drawItemsTable(itens || [])
       await pdf.drawTotalsSection(orcamento)
       await pdf.drawAdditionalInfo(orcamento)
