@@ -33,6 +33,8 @@ interface DashboardStats {
   totalCartoes: number
   gastosMes: number
   receitasMes: number
+  /** Saldo final do mês anterior (receitas - despesas), usado como "Saldo Atual" no mês vigente */
+  saldoMesAnterior: number
 }
 
 interface GastosMensais {
@@ -80,6 +82,7 @@ function DashboardContent() {
     totalCartoes: 0,
     gastosMes: 0,
     receitasMes: 0,
+    saldoMesAnterior: 0,
   })
   const [gastosMensais, setGastosMensais] = useState<GastosMensais[]>([])
   const [investimentos, setInvestimentos] = useState<Investimento[]>([])
@@ -118,6 +121,12 @@ function DashboardContent() {
       const sixMonthsAgo = new Date(anoSelecionado, mesSelecionado - 6, 1)
       const sixMonthsAgoStr = sixMonthsAgo.toISOString().split('T')[0]
 
+      // Mês anterior (para Saldo Atual = saldo com que inicia o mês)
+      const prevMonth = mesSelecionado === 1 ? 12 : mesSelecionado - 1
+      const prevYear = mesSelecionado === 1 ? anoSelecionado - 1 : anoSelecionado
+      const startPrevStr = new Date(prevYear, prevMonth - 1, 1).toISOString().split('T')[0]
+      const endPrevStr = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0]
+
       // Paralelizar todas as queries independentes para reduzir latência (evita soma de round-trips)
       const [
         cartoesResult,
@@ -127,6 +136,9 @@ function DashboardContent() {
         todasCompras6MesesResult,
         parcelas6MesesResult,
         investimentosResult,
+        receitasMesAnteriorResult,
+        comprasMesAnteriorResult,
+        parcelasMesAnteriorResult,
       ] = await Promise.all([
         supabase.from('cartoes').select('id').eq('user_id', userId),
         supabase
@@ -164,6 +176,24 @@ function DashboardContent() {
           .select('id, nome, tipo, valor_investido, valor_atual, data_aquisicao, user_id')
           .eq('user_id', userId)
           .order('data_aquisicao', { ascending: false }),
+        supabase
+          .from('receitas')
+          .select('valor')
+          .eq('user_id', userId)
+          .eq('mes_referencia', prevMonth)
+          .eq('ano_referencia', prevYear),
+        supabase
+          .from('compras')
+          .select('id, valor, data, parcelada, total_parcelas')
+          .eq('user_id', userId)
+          .gte('data', startPrevStr)
+          .lte('data', endPrevStr),
+        supabase
+          .from('parcelas')
+          .select('valor, data_vencimento')
+          .eq('user_id', userId)
+          .gte('data_vencimento', startPrevStr)
+          .lte('data_vencimento', endPrevStr),
       ])
 
       const cartoes = cartoesResult.data ?? []
@@ -173,6 +203,9 @@ function DashboardContent() {
       const todasCompras6Meses = todasCompras6MesesResult.data ?? []
       const parcelas6Meses = parcelas6MesesResult.data ?? []
       const investimentosData = investimentosResult.data ?? []
+      const receitasMesAnterior = receitasMesAnteriorResult.data ?? []
+      const comprasMesAnterior = comprasMesAnteriorResult.data ?? []
+      const parcelasMesAnterior = parcelasMesAnteriorResult.data ?? []
 
       // Filtrar compras NÃO parceladas no cliente (compatível com schemas com/sem coluna parcelada)
       const comprasMes = todasComprasMes.filter((c: { parcelada?: boolean; total_parcelas?: number }) => {
@@ -189,6 +222,16 @@ function DashboardContent() {
       const totalGastosParcelas = parcelasMes.reduce((sum, parcela) => sum + Number(parcela.valor), 0)
       const totalGastos = totalGastosCompras + totalGastosParcelas
       const totalReceitas = receitasMes.reduce((sum, receita) => sum + Number(receita.valor), 0)
+
+      // Saldo do mês anterior (Saldo Atual = com que o usuário "inicia" o mês)
+      const comprasMesAnteriorFiltradas = comprasMesAnterior.filter((c: { parcelada?: boolean; total_parcelas?: number }) => {
+        const isParcelada = c.parcelada === true || (c.total_parcelas ?? 0) > 1
+        return !isParcelada
+      })
+      const gastosMesAnterior = comprasMesAnteriorFiltradas.reduce((s: number, c: { valor: number }) => s + Number(c.valor), 0) +
+        parcelasMesAnterior.reduce((s: number, p: { valor: number }) => s + Number(p.valor), 0)
+      const receitasMesAnteriorTotal = receitasMesAnterior.reduce((s: number, r: { valor: number }) => s + Number(r.valor), 0)
+      const saldoMesAnterior = receitasMesAnteriorTotal - gastosMesAnterior
 
       // Processar dados mensais (últimos 6 meses para o gráfico de linha)
       const gastosPorMes: { [key: string]: number } = {}
@@ -290,6 +333,7 @@ function DashboardContent() {
         totalCartoes: cartoes.length,
         gastosMes: totalGastos,
         receitasMes: totalReceitas,
+        saldoMesAnterior,
       })
       setGastosMensais(gastosMensaisData)
     } catch (error) {
@@ -329,10 +373,18 @@ function DashboardContent() {
       clickable: false,
     },
     {
-      title: 'Saldo Total',
+      title: 'Saldo Resultante',
       value: `R$ ${formatarMoeda(stats.receitasMes - stats.gastosMes)}`,
       icon: FiDollarSign,
-      color: 'text-white',
+      color: stats.receitasMes - stats.gastosMes >= 0 ? 'text-green-400' : 'text-red-400',
+      bgColor: stats.receitasMes - stats.gastosMes >= 0 ? 'bg-green-500/20' : 'bg-red-500/20',
+      clickable: false,
+    },
+    {
+      title: 'Saldo Atual',
+      value: `R$ ${formatarMoeda(stats.saldoMesAnterior)}`,
+      icon: FiDollarSign,
+      color: stats.saldoMesAnterior >= 0 ? 'text-green-400' : 'text-red-400',
       bgColor: 'bg-primary/20',
       clickable: false,
     },
@@ -409,7 +461,7 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           {statCards.map((card, index) => {
             const Icon = card.icon
             const isClickable = (card as any).clickable

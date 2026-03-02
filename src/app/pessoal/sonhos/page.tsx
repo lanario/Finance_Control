@@ -28,6 +28,9 @@ export default function SonhosPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingSonho, setEditingSonho] = useState<Sonho | null>(null)
   const [saldoDisponivel, setSaldoDisponivel] = useState<number>(0)
+  const [showDepositoModal, setShowDepositoModal] = useState(false)
+  const [sonhoParaDeposito, setSonhoParaDeposito] = useState<Sonho | null>(null)
+  const [valorDepositoInput, setValorDepositoInput] = useState('')
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -43,7 +46,7 @@ export default function SonhosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run when session changes
   }, [session])
 
-  // Calcular saldo disponível (receitas - despesas do mês atual)
+  /** Saldo Atual = saldo final do mês anterior (com que o usuário inicia o mês). Usado para Sonhos e validação de depósitos. */
   const calcularSaldoDisponivel = async () => {
     if (!session?.user?.id) return
 
@@ -52,44 +55,44 @@ export default function SonhosPage() {
       const mesAtual = hoje.getMonth() + 1
       const anoAtual = hoje.getFullYear()
 
-      // Buscar receitas do mês atual
+      // Mês anterior (saldo com que o usuário "inicia" o mês atual)
+      const prevMonth = mesAtual === 1 ? 12 : mesAtual - 1
+      const prevYear = mesAtual === 1 ? anoAtual - 1 : anoAtual
+      const startPrevStr = new Date(prevYear, prevMonth - 1, 1).toISOString().split('T')[0]
+      const endPrevStr = new Date(prevYear, prevMonth, 0).toISOString().split('T')[0]
+
+      // Receitas do mês anterior
       const { data: receitas } = await supabase
         .from('receitas')
         .select('valor')
         .eq('user_id', session.user.id)
-        .eq('mes_referencia', mesAtual)
-        .eq('ano_referencia', anoAtual)
+        .eq('mes_referencia', prevMonth)
+        .eq('ano_referencia', prevYear)
 
       const totalReceitas = receitas?.reduce((sum, r) => sum + r.valor, 0) || 0
 
-      // Buscar compras não parceladas do mês atual
-      const startOfMonth = new Date(anoAtual, mesAtual - 1, 1)
-      const endOfMonth = new Date(anoAtual, mesAtual, 0)
-
-      const { data: compras } = await supabase
+      // Compras do mês anterior (buscar todas e filtrar não parceladas no código)
+      const { data: comprasPrev } = await supabase
         .from('compras')
-        .select('valor')
+        .select('valor, parcelada, total_parcelas')
         .eq('user_id', session.user.id)
-        .gte('data', startOfMonth.toISOString().split('T')[0])
-        .lte('data', endOfMonth.toISOString().split('T')[0])
-        .or('parcelada.is.null,parcelada.eq.false')
+        .gte('data', startPrevStr)
+        .lte('data', endPrevStr)
 
-      const comprasNaoParceladas = compras?.reduce((sum, c) => sum + c.valor, 0) || 0
+      const comprasNaoParceladas = (comprasPrev ?? []).filter((c: { parcelada?: boolean; total_parcelas?: number }) => {
+        const isParcelada = c.parcelada === true || (c.total_parcelas ?? 0) > 1
+        return !isParcelada
+      }).reduce((sum: number, c: { valor: number }) => sum + Number(c.valor), 0)
 
-      // Buscar parcelas que vencem no mês atual
+      // Parcelas que venceram no mês anterior
       const { data: parcelas } = await supabase
         .from('parcelas')
         .select('valor')
         .eq('user_id', session.user.id)
-        .gte('data_vencimento', startOfMonth.toISOString().split('T')[0])
-        .lte('data_vencimento', endOfMonth.toISOString().split('T')[0])
+        .gte('data_vencimento', startPrevStr)
+        .lte('data_vencimento', endPrevStr)
 
-      const totalParcelas = parcelas?.reduce((sum, p) => sum + p.valor, 0) || 0
-
-      // O saldo é: Receitas - Despesas
-      // As despesas incluem compras + parcelas
-      // Os depósitos em sonhos JÁ são registrados como despesas (transferências internas) na tabela compras
-      // Portanto, NÃO devemos descontar os depósitos separadamente
+      const totalParcelas = parcelas?.reduce((sum, p) => sum + Number(p.valor), 0) || 0
       const totalDespesas = comprasNaoParceladas + totalParcelas
       const saldo = totalReceitas - totalDespesas
 
@@ -281,9 +284,9 @@ export default function SonhosPage() {
   const handleDeposito = async (sonhoId: string, valor: number) => {
     if (!session?.user?.id) return
 
-    // Validar saldo disponível
+    // Validar saldo atual (saldo do mês anterior)
     if (valor > saldoDisponivel) {
-      alert(`Saldo insuficiente! Você tem apenas R$ ${formatarMoeda(saldoDisponivel)} disponível este mês.`)
+      alert(`Saldo insuficiente! Seu saldo atual é R$ ${formatarMoeda(saldoDisponivel)}.`)
       return
     }
 
@@ -318,7 +321,7 @@ export default function SonhosPage() {
 
       // Validar novamente considerando depósitos existentes
       if (valorDeposito > saldoDisponivel + (depositoExistente?.valor || 0)) {
-        alert(`Saldo insuficiente! Você tem apenas R$ ${formatarMoeda(saldoDisponivel)} disponível este mês.`)
+        alert(`Saldo insuficiente! Seu saldo atual é R$ ${formatarMoeda(saldoDisponivel)}.`)
         return
       }
 
@@ -411,11 +414,12 @@ export default function SonhosPage() {
           </button>
         </div>
 
-        {/* Saldo Disponível */}
+        {/* Saldo Atual (saldo do mês anterior = disponível para sonhos) */}
         <div className="bg-[#0d0d0d] rounded-lg shadow-lg p-6 border border-white/10">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-[#bbbbbb] text-sm mb-1">Saldo Disponível Este Mês</p>
+              <p className="text-[#bbbbbb] text-sm mb-1">Saldo Atual</p>
+              <p className="text-[#666666] text-xs mb-1">Saldo com que você inicia o mês (disponível para depósitos em sonhos)</p>
               <p className={`text-3xl font-bold ${saldoDisponivel >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 R$ {formatarMoeda(saldoDisponivel)}
               </p>
@@ -529,15 +533,9 @@ export default function SonhosPage() {
 
                   <button
                     onClick={() => {
-                      const valor = prompt(`Quanto deseja depositar em "${sonho.nome}"?\n\nSaldo disponível: R$ ${formatarMoeda(saldoDisponivel)}`)
-                      if (valor) {
-                        const valorNum = parseFloat(valor.replace(',', '.'))
-                        if (!isNaN(valorNum) && valorNum > 0) {
-                          handleDeposito(sonho.id, valorNum)
-                        } else {
-                          alert('Valor inválido')
-                        }
-                      }
+                      setSonhoParaDeposito(sonho)
+                      setValorDepositoInput('')
+                      setShowDepositoModal(true)
                     }}
                     className="w-full bg-white text-black px-4 py-2 rounded-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors flex items-center justify-center space-x-2"
                   >
@@ -550,7 +548,94 @@ export default function SonhosPage() {
           </div>
         )}
 
-        {/* Modal */}
+        {/* Modal Depositar */}
+        {showDepositoModal && sonhoParaDeposito && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#0d0d0d] rounded-xl w-full max-w-md border border-white/10 shadow-xl">
+              <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <h2 className="text-xl font-bold text-[#f0f0f0] flex items-center gap-2">
+                  <FiDollarSign className="w-5 h-5 text-green-400" />
+                  Depositar em &quot;{sonhoParaDeposito.nome}&quot;
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDepositoModal(false)
+                    setSonhoParaDeposito(null)
+                    setValorDepositoInput('')
+                  }}
+                  className="p-2 text-[#bbbbbb] hover:text-[#f0f0f0] rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  const valorNum = parseFloat(valorDepositoInput.replace(',', '.'))
+                  if (isNaN(valorNum) || valorNum <= 0) {
+                    alert('Informe um valor válido maior que zero.')
+                    return
+                  }
+                  if (valorNum > saldoDisponivel) {
+                    alert(`Saldo insuficiente. Seu saldo atual é R$ ${formatarMoeda(saldoDisponivel)}.`)
+                    return
+                  }
+                  try {
+                    await handleDeposito(sonhoParaDeposito.id, valorNum)
+                    setShowDepositoModal(false)
+                    setSonhoParaDeposito(null)
+                    setValorDepositoInput('')
+                  } catch {
+                    // handleDeposito já exibe alert em caso de erro
+                  }
+                }}
+                className="p-6 space-y-4"
+              >
+                <div>
+                  <p className="text-sm text-[#bbbbbb] mb-2">
+                    Saldo disponível (Saldo Atual):{' '}
+                    <span className={saldoDisponivel >= 0 ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'}>
+                      R$ {formatarMoeda(saldoDisponivel)}
+                    </span>
+                  </p>
+                  <label className="block text-sm font-medium text-[#dddddd] mb-2">
+                    Valor a depositar (R$)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={valorDepositoInput}
+                    onChange={(e) => setValorDepositoInput(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-[#f0f0f0] text-lg focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/20 placeholder:text-[#666666]"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDepositoModal(false)
+                      setSonhoParaDeposito(null)
+                      setValorDepositoInput('')
+                    }}
+                    className="flex-1 px-4 py-2 border border-white/10 rounded-lg text-[#dddddd] hover:bg-white/5 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-white text-black rounded-lg font-medium hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-colors"
+                  >
+                    Depositar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Novo/Editar Sonho */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-2xl border border-white/10 max-h-[90vh] overflow-y-auto">
