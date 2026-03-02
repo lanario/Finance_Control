@@ -1725,8 +1725,8 @@ export default function GastosPage() {
 
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#0d0d0d] rounded-lg p-8 w-full max-w-md border border-white/10">
-              <div className="flex justify-between items-center mb-6">
+            <div className="bg-[#0d0d0d] rounded-lg w-full max-w-md border border-white/10 flex flex-col max-h-[90vh] overflow-hidden">
+              <div className="flex justify-between items-center p-6 pb-0 flex-shrink-0">
                 <h2 className="text-2xl font-bold text-[#f0f0f0]">
                   {editingCompra ? 'Editar Despesa' : 'Nova Despesa'}
                 </h2>
@@ -1740,7 +1740,8 @@ export default function GastosPage() {
                   <FiX className="w-6 h-6" />
                 </button>
               </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                <div className="overflow-y-auto flex-1 min-h-0 px-6 py-4 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-[#dddddd] mb-2">
                     Descrição
@@ -1987,7 +1988,8 @@ export default function GastosPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex space-x-4 pt-4">
+                </div>
+                <div className="flex space-x-4 p-6 pt-4 flex-shrink-0 border-t border-white/10">
                   <button
                     type="button"
                     onClick={() => {
