@@ -184,6 +184,12 @@ svg .recharts-bar-rectangle:hover,
   content: none !important;
 }
 
+/* Select: opções do dropdown sempre com texto escuro em fundo branco (contraste) */
+select option {
+  color: #111827;
+  background-color: #ffffff;
+}
+
 :root {
   /* Cores Empresarial - Tema Roxo/Púrpura */
   --primary: #6366f1;

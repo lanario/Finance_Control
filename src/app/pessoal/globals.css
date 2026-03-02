@@ -169,6 +169,12 @@ svg .recharts-bar-rectangle:hover,
   content: none !important;
 }
 
+/* Select: opções do dropdown sempre com texto escuro em fundo branco (contraste) */
+select option {
+  color: #111827;
+  background-color: #ffffff;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 255, 255, 255;
