@@ -19,6 +19,8 @@ import {
   FiEdit2,
   FiChevronDown,
   FiChevronRight,
+  FiArchive,
+  FiAlertTriangle,
 } from 'react-icons/fi'
 
 interface Categoria {
@@ -50,6 +52,8 @@ interface Produto {
   descricao?: string | null
   foto_url?: string | null
   ativo?: boolean
+  estoque?: number
+  estoque_minimo?: number
   categoria_nome?: string | null
   categoria_cor?: string | null
   grupo_nome?: string | null
@@ -96,6 +100,8 @@ export default function ProdutosServicosPage() {
     preco_custo: '',
     categoria_id: '',
     grupo_produto_id: '',
+    estoque: '0',
+    estoque_minimo: '0',
   })
   const [formServico, setFormServico] = useState({
     nome: '',
@@ -107,6 +113,10 @@ export default function ProdutosServicosPage() {
   const [fotoFile, setFotoFile] = useState<File | null>(null)
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [expandedGrupos, setExpandedGrupos] = useState<Record<string, boolean>>({})
+  const [showModalEstoque, setShowModalEstoque] = useState(false)
+  const [estoqueProduto, setEstoqueProduto] = useState<Produto | null>(null)
+  const [estoqueTipo, setEstoqueTipo] = useState<'entrada' | 'saida' | 'ajuste'>('entrada')
+  const [estoqueValor, setEstoqueValor] = useState('')
 
   const userId = session?.user?.id
 
@@ -149,13 +159,13 @@ export default function ProdutosServicosPage() {
     let produtosData: (Produto & { grupo_produto_id?: string | null })[] | null = null
     let { data, error: produtosError } = await supabase
       .from('produtos')
-      .select('id, nome, valor_unitario, preco_custo, categoria_id, descricao, foto_url, ativo, grupo_produto_id')
+      .select('id, nome, valor_unitario, preco_custo, categoria_id, descricao, foto_url, ativo, grupo_produto_id, estoque, estoque_minimo')
       .eq('user_id', userId)
       .order('nome')
     if (produtosError) {
       const res = await supabase
         .from('produtos')
-        .select('id, nome, valor_unitario, preco_custo, categoria_id, descricao, foto_url, ativo')
+        .select('id, nome, valor_unitario, preco_custo, categoria_id, descricao, foto_url, ativo, estoque, estoque_minimo')
         .eq('user_id', userId)
         .order('nome')
       produtosError = res.error
@@ -260,7 +270,7 @@ export default function ProdutosServicosPage() {
 
   function openNew() {
     setEditingItem(null)
-    setFormProduto({ nome: '', descricao: '', valor_unitario: '', preco_custo: '', categoria_id: '', grupo_produto_id: '' })
+    setFormProduto({ nome: '', descricao: '', valor_unitario: '', preco_custo: '', categoria_id: '', grupo_produto_id: '', estoque: '0', estoque_minimo: '0' })
     setFormServico({ nome: '', descricao: '', valor_unitario: '', categoria_id: '', grupo_servico_id: '' })
     setFotoFile(null)
     setFotoPreview(null)
@@ -342,13 +352,16 @@ export default function ProdutosServicosPage() {
   function openEdit(item: Produto | Servico) {
     setEditingItem(item)
     if ('preco_custo' in item) {
+      const p = item as Produto
       setFormProduto({
-        nome: item.nome,
-        descricao: item.descricao || '',
-        valor_unitario: String(item.valor_unitario ?? ''),
-        preco_custo: item.preco_custo != null ? String(item.preco_custo) : '',
-        categoria_id: item.categoria_id || '',
-        grupo_produto_id: item.grupo_produto_id || '',
+        nome: p.nome,
+        descricao: p.descricao || '',
+        valor_unitario: String(p.valor_unitario ?? ''),
+        preco_custo: p.preco_custo != null ? String(p.preco_custo) : '',
+        categoria_id: p.categoria_id || '',
+        grupo_produto_id: p.grupo_produto_id || '',
+        estoque: p.estoque != null ? String(p.estoque) : '0',
+        estoque_minimo: p.estoque_minimo != null ? String(p.estoque_minimo) : '0',
       })
     } else {
       const servico = item as Servico
@@ -425,6 +438,8 @@ export default function ProdutosServicosPage() {
           if (isProduto) {
             (payload as Record<string, unknown>).preco_custo = formProduto.preco_custo ? parseFloat(formProduto.preco_custo) : null
             if (grupo_id) (payload as Record<string, unknown>).grupo_produto_id = grupo_id
+            ;(payload as Record<string, unknown>).estoque = parseFloat(formProduto.estoque) || 0
+            ;(payload as Record<string, unknown>).estoque_minimo = parseFloat(formProduto.estoque_minimo) || 0
           } else {
             if (grupo_id) (payload as Record<string, unknown>).grupo_servico_id = grupo_id
           }
@@ -443,6 +458,8 @@ export default function ProdutosServicosPage() {
           if (isProduto) {
             insertPayload.preco_custo = formProduto.preco_custo ? parseFloat(formProduto.preco_custo) : null
             if (grupo_id) insertPayload.grupo_produto_id = grupo_id
+            insertPayload.estoque = parseFloat(formProduto.estoque) || 0
+            insertPayload.estoque_minimo = parseFloat(formProduto.estoque_minimo) || 0
             const { data: inserted, error } = await supabase
               .from('produtos')
               .insert(insertPayload)
@@ -488,6 +505,44 @@ export default function ProdutosServicosPage() {
       }
     }
     submit()
+  }
+
+  function openGerenciarEstoque(produto: Produto) {
+    setEstoqueProduto(produto)
+    setEstoqueValor('')
+    setEstoqueTipo('entrada')
+    setShowModalEstoque(true)
+  }
+
+  async function handleAjustarEstoque(e: React.FormEvent) {
+    e.preventDefault()
+    if (!estoqueProduto || !userId) return
+    const qty = parseFloat(estoqueValor)
+    if (Number.isNaN(qty) || qty < 0) {
+      alert('Informe uma quantidade válida.')
+      return
+    }
+    const atual = Number(estoqueProduto.estoque) || 0
+    let novoEstoque: number
+    if (estoqueTipo === 'entrada') novoEstoque = atual + qty
+    else if (estoqueTipo === 'saida') {
+      novoEstoque = Math.max(0, atual - qty)
+      if (atual - qty < 0) alert('Estoque não pode ficar negativo. Ajustado para zero.')
+    } else novoEstoque = qty
+
+    const { error } = await supabase
+      .from('produtos')
+      .update({ estoque: novoEstoque })
+      .eq('id', estoqueProduto.id)
+    if (error) {
+      console.error(error)
+      alert('Erro ao atualizar estoque.')
+      return
+    }
+    setShowModalEstoque(false)
+    setEstoqueProduto(null)
+    setEstoqueValor('')
+    loadProdutos()
   }
 
   function handleDelete(item: Produto | Servico) {
@@ -781,7 +836,7 @@ export default function ProdutosServicosPage() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="space-y-1 text-sm emp-text-secondary mb-4">
+                              <div className="space-y-1 text-sm emp-text-secondary mb-2">
                                 <p className="flex items-center gap-1">
                                   <FiDollarSign className="w-4 h-4 text-green-400" />
                                   Venda: R$ {Number(item.valor_unitario).toFixed(2)}
@@ -791,7 +846,36 @@ export default function ProdutosServicosPage() {
                                     Custo: R$ {Number((item as Produto).preco_custo).toFixed(2)}
                                   </p>
                                 )}
+                                {isProduto && (
+                                  <div className="flex items-center gap-2 flex-wrap mt-2">
+                                    <span className="flex items-center gap-1 emp-text-muted">
+                                      <FiArchive className="w-4 h-4" />
+                                      Estoque: {Number((item as Produto).estoque ?? 0).toFixed(0)}
+                                    </span>
+                                    {(item as Produto).estoque_minimo != null && Number((item as Produto).estoque_minimo) > 0 && (
+                                      <span className="text-xs emp-text-muted">
+                                        (mín: {Number((item as Produto).estoque_minimo).toFixed(0)})
+                                      </span>
+                                    )}
+                                    {isProduto && (item as Produto).estoque_minimo != null && Number((item as Produto).estoque) <= Number((item as Produto).estoque_minimo) && Number((item as Produto).estoque_minimo) > 0 && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs">
+                                        <FiAlertTriangle className="w-3.5 h-3.5" />
+                                        Baixo
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
+                              {isProduto && (
+                                <button
+                                  type="button"
+                                  onClick={() => openGerenciarEstoque(item as Produto)}
+                                  className="w-full flex items-center justify-center gap-2 py-1.5 mb-2 rounded-lg border emp-border emp-text-secondary hover:emp-input-bg text-sm"
+                                >
+                                  <FiArchive className="w-4 h-4" />
+                                  Gerenciar estoque
+                                </button>
+                              )}
                               <div className="mt-auto flex items-center justify-between gap-2">
                                 <button
                                   type="button"
@@ -959,6 +1043,38 @@ export default function ProdutosServicosPage() {
                 </div>
               )}
 
+              {abaAtiva === 'produtos' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium emp-text-secondary mb-1">Estoque atual</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={formProduto.estoque}
+                        onChange={(e) => setFormProduto((f) => ({ ...f, estoque: e.target.value }))}
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium emp-text-secondary mb-1">Estoque mínimo (alerta)</label>
+                      <input
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        value={formProduto.estoque_minimo}
+                        onChange={(e) => setFormProduto((f) => ({ ...f, estoque_minimo: e.target.value }))}
+                        className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
+                        placeholder="0"
+                      />
+                      <p className="text-xs emp-text-muted mt-0.5">Aviso quando estoque ficar abaixo</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div>
                 <label className="block text-sm font-medium emp-text-secondary mb-1">Descrição (opcional)</label>
                 <input
@@ -1036,6 +1152,92 @@ export default function ProdutosServicosPage() {
                   className="flex-1 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg"
                 >
                   Criar grupo
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gerenciar Estoque */}
+      {showModalEstoque && estoqueProduto && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="emp-bg-card rounded-xl border emp-border w-full max-w-sm shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b emp-border">
+              <h2 className="text-xl font-bold emp-text-primary flex items-center gap-2">
+                <FiArchive className="w-5 h-5" />
+                Gerenciar estoque
+              </h2>
+              <button
+                type="button"
+                onClick={() => { setShowModalEstoque(false); setEstoqueProduto(null); setEstoqueValor('') }}
+                className="p-2 emp-text-muted hover:emp-text-primary rounded-lg hover:emp-input-bg"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAjustarEstoque} className="p-6 space-y-4">
+              <p className="text-sm emp-text-secondary">
+                <strong className="emp-text-primary">{estoqueProduto.nome}</strong>
+                <br />
+                Estoque atual: <strong>{Number(estoqueProduto.estoque ?? 0).toFixed(0)}</strong>
+                {estoqueProduto.estoque_minimo != null && Number(estoqueProduto.estoque_minimo) > 0 && (
+                  <span className="emp-text-muted"> (mín: {Number(estoqueProduto.estoque_minimo).toFixed(0)})</span>
+                )}
+              </p>
+              <div>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">Tipo de movimentação</label>
+                <div className="flex gap-2">
+                  {(['entrada', 'saida', 'ajuste'] as const).map((tipo) => (
+                    <button
+                      key={tipo}
+                      type="button"
+                      onClick={() => setEstoqueTipo(tipo)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        estoqueTipo === tipo
+                          ? 'emp-text-primary'
+                          : 'emp-text-muted border emp-border hover:emp-input-bg'
+                      }`}
+                      style={estoqueTipo === tipo ? { backgroundColor: 'var(--emp-accent)' } : undefined}
+                    >
+                      {tipo === 'entrada' ? 'Entrada' : tipo === 'saida' ? 'Saída' : 'Ajuste'}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs emp-text-muted mt-1">
+                  {estoqueTipo === 'entrada' && 'Adicionar quantidade ao estoque'}
+                  {estoqueTipo === 'saida' && 'Remover quantidade do estoque'}
+                  {estoqueTipo === 'ajuste' && 'Definir novo valor do estoque'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium emp-text-secondary mb-1">
+                  {estoqueTipo === 'ajuste' ? 'Novo valor do estoque' : 'Quantidade'}
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  required
+                  value={estoqueValor}
+                  onChange={(e) => setEstoqueValor(e.target.value)}
+                  className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
+                  placeholder={estoqueTipo === 'ajuste' ? '0' : '0'}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowModalEstoque(false); setEstoqueProduto(null); setEstoqueValor('') }}
+                  className="flex-1 px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:emp-input-bg"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 hover:opacity-90 emp-text-primary rounded-lg"
+                >
+                  Aplicar
                 </button>
               </div>
             </form>

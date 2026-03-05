@@ -7,6 +7,12 @@
 -- 2. Copie TODO o conteúdo deste arquivo e cole no editor
 -- 3. Execute (Run). O script é idempotente: pode rodar em banco novo ou existente.
 --
+-- COMPATIBILIDADE (bancos já existentes):
+-- Colunas críticas são garantidas com ALTER TABLE ... ADD COLUMN IF NOT EXISTS em cada tabela:
+-- fornecedor_id, categoria_id, status (contas_a_pagar, parcelas_contas_pagar, compras, orcamentos,
+-- contas_a_receber, parcelas_contas_receber, vendas, parcelas_vendas), cliente_id onde aplicável,
+-- tipo_venda em vendas. Constraints de status são recriadas com DROP IF EXISTS + ADD.
+--
 -- CONTEÚDO ATUALIZADO:
 -- - Funções com search_path seguro (corrige vulnerabilidades)
 -- - Status de orçamentos (concluido, em_processo, cancelado)
@@ -17,8 +23,12 @@
 -- - Assinatura Stripe em perfis (024): trial_ends_at, subscription_status, stripe_*
 -- - Status 'free' em perfis (025): usuários isentos de pagamento (subscription_status = 'free')
 -- - vendas.orcamento_id (026): vínculo venda ↔ orçamento concluído
+-- - RLS otimizado (027): (SELECT auth.uid()) para performance
+-- - orcamentos (028): cliente_cpf, cliente_cnpj, cliente_razao_social (snapshot)
+-- - contas_a_pagar.venda_id (029): despesa de custo da venda; produtos já têm estoque/estoque_minimo
+-- - compras_itens (030): itens da compra vinculados a produtos (entrada de estoque)
 --
--- ÍNDICE DAS 26 MIGRAÇÕES (incorporadas neste schema):
+-- ÍNDICE DAS 30 MIGRAÇÕES (incorporadas neste schema):
 -- 001 = Schema inicial (categorias, fornecedores, clientes)
 -- 002 = Contas a pagar
 -- 003 = Contas a receber
@@ -35,6 +45,10 @@
 -- 022 = Cartões de crédito empresarial
 -- 023 = Vínculo compras / cartão empresa
 -- 026 = orcamento_id em vendas (venda originada de orçamento concluído)
+-- 027 = RLS auth.uid() otimização (SELECT auth.uid() em políticas)
+-- 028 = orcamentos: cliente_cpf, cliente_cnpj, cliente_razao_social
+-- 029 = contas_a_pagar.venda_id; produtos estoque/estoque_minimo (já na criação)
+-- 030 = compras_itens (itens da compra → produtos)
 -- 012 = Storage (buckets Logo, avatars)
 --
 -- =====================================================
@@ -222,6 +236,13 @@ CREATE TABLE IF NOT EXISTS contas_a_pagar (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Garantir fornecedor_id, categoria_id e status em contas_a_pagar (banco já existente)
+ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS fornecedor_id UUID REFERENCES fornecedores(id) ON DELETE SET NULL;
+ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+ALTER TABLE contas_a_pagar DROP CONSTRAINT IF EXISTS contas_a_pagar_status_check;
+ALTER TABLE contas_a_pagar ADD CONSTRAINT contas_a_pagar_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
+
 -- Tabela de parcelas de contas a pagar
 CREATE TABLE IF NOT EXISTS parcelas_contas_pagar (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -241,6 +262,13 @@ CREATE TABLE IF NOT EXISTS parcelas_contas_pagar (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Garantir fornecedor_id, categoria_id e status em parcelas_contas_pagar (banco já existente)
+ALTER TABLE parcelas_contas_pagar ADD COLUMN IF NOT EXISTS fornecedor_id UUID REFERENCES fornecedores(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_contas_pagar ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_contas_pagar ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+ALTER TABLE parcelas_contas_pagar DROP CONSTRAINT IF EXISTS parcelas_contas_pagar_status_check;
+ALTER TABLE parcelas_contas_pagar ADD CONSTRAINT parcelas_contas_pagar_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
 
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_user_id ON contas_a_pagar(user_id);
@@ -411,6 +439,11 @@ CREATE TABLE IF NOT EXISTS contas_a_receber (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Garantir cliente_id, categoria_id e status em contas_a_receber (banco já existente)
+ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE contas_a_receber ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+
 -- Tabela de parcelas de contas a receber
 CREATE TABLE IF NOT EXISTS parcelas_contas_receber (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -431,26 +464,23 @@ CREATE TABLE IF NOT EXISTS parcelas_contas_receber (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Garantir que o campo status existe (para tabelas que já existiam)
+-- Garantir cliente_id, categoria_id e status em parcelas_contas_receber (banco já existente)
+ALTER TABLE parcelas_contas_receber ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_contas_receber ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_contas_receber ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+
+-- Garantir constraint de status e valores (coluna já criada acima com ALTER ADD COLUMN IF NOT EXISTS)
 DO $$
 BEGIN
-  -- Verificar e adicionar status em contas_a_receber se necessário
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'contas_a_receber' AND column_name = 'status') THEN
-    ALTER TABLE contas_a_receber ADD COLUMN status TEXT DEFAULT 'pendente';
-    ALTER TABLE contas_a_receber ADD CONSTRAINT contas_a_receber_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
-    UPDATE contas_a_receber SET status = 'pendente' WHERE status IS NULL;
-    -- Atualizar registros que já estão recebidos para status 'aprovado'
-    UPDATE contas_a_receber SET status = 'aprovado' WHERE recebida = true AND status = 'pendente';
-  END IF;
+  ALTER TABLE contas_a_receber DROP CONSTRAINT IF EXISTS contas_a_receber_status_check;
+  ALTER TABLE contas_a_receber ADD CONSTRAINT contas_a_receber_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
+  UPDATE contas_a_receber SET status = 'pendente' WHERE status IS NULL;
+  UPDATE contas_a_receber SET status = 'aprovado' WHERE recebida = true AND (status = 'pendente' OR status IS NULL);
 
-  -- Verificar e adicionar status em parcelas_contas_receber se necessário
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'parcelas_contas_receber' AND column_name = 'status') THEN
-    ALTER TABLE parcelas_contas_receber ADD COLUMN status TEXT DEFAULT 'pendente';
-    ALTER TABLE parcelas_contas_receber ADD CONSTRAINT parcelas_contas_receber_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
-    UPDATE parcelas_contas_receber SET status = 'pendente' WHERE status IS NULL;
-    -- Atualizar registros que já estão recebidos para status 'aprovado'
-    UPDATE parcelas_contas_receber SET status = 'aprovado' WHERE recebida = true AND status = 'pendente';
-  END IF;
+  ALTER TABLE parcelas_contas_receber DROP CONSTRAINT IF EXISTS parcelas_contas_receber_status_check;
+  ALTER TABLE parcelas_contas_receber ADD CONSTRAINT parcelas_contas_receber_status_check CHECK (status IN ('pendente', 'aprovado', 'cancelado'));
+  UPDATE parcelas_contas_receber SET status = 'pendente' WHERE status IS NULL;
+  UPDATE parcelas_contas_receber SET status = 'aprovado' WHERE recebida = true AND (status = 'pendente' OR status IS NULL);
 END $$;
 
 -- Índices para melhor performance
@@ -589,9 +619,7 @@ CREATE TABLE IF NOT EXISTS vendas (
   total_parcelas INTEGER DEFAULT 1,
   observacoes TEXT,
   tipo_venda TEXT DEFAULT 'servico' CHECK (tipo_venda IN ('servico', 'produto')),
-  produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL,
-  preco_custo DECIMAL(10, 2) DEFAULT 0,
-  margem_lucro DECIMAL(10, 2) DEFAULT 0,
+  -- produto_id, preco_custo, margem_lucro adicionados após criação da tabela produtos (seção 018)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -616,8 +644,16 @@ CREATE TABLE IF NOT EXISTS parcelas_vendas (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Garantir que o campo status existe (para tabelas que já existiam)
--- Atualizar constraint de status em vendas se necessário
+-- Garantir cliente_id, categoria_id e status em vendas e parcelas_vendas (banco já existente)
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS tipo_venda TEXT DEFAULT 'servico';
+ALTER TABLE parcelas_vendas ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_vendas ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE parcelas_vendas ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendente';
+
+-- Garantir constraints de status/tipo_venda em vendas/parcelas_vendas (para tabelas que já existiam)
 DO $$
 BEGIN
   -- Verificar e atualizar status em vendas
@@ -655,17 +691,7 @@ BEGIN
     UPDATE vendas SET tipo_venda = 'servico' WHERE tipo_venda IS NULL;
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vendas' AND column_name = 'produto_id') THEN
-    ALTER TABLE vendas ADD COLUMN produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vendas' AND column_name = 'preco_custo') THEN
-    ALTER TABLE vendas ADD COLUMN preco_custo DECIMAL(10, 2) DEFAULT 0;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vendas' AND column_name = 'margem_lucro') THEN
-    ALTER TABLE vendas ADD COLUMN margem_lucro DECIMAL(10, 2) DEFAULT 0;
-  END IF;
+  -- produto_id, preco_custo e margem_lucro são adicionados após a tabela produtos existir (seção 018)
 END $$;
 
 -- Índices para melhor performance
@@ -676,7 +702,7 @@ CREATE INDEX IF NOT EXISTS idx_vendas_data_venda ON vendas(data_venda);
 CREATE INDEX IF NOT EXISTS idx_vendas_status ON vendas(status);
 CREATE INDEX IF NOT EXISTS idx_vendas_status_pendente ON vendas(status) WHERE status = 'pendente';
 CREATE INDEX IF NOT EXISTS idx_vendas_tipo_venda ON vendas(tipo_venda);
-CREATE INDEX IF NOT EXISTS idx_vendas_produto_id ON vendas(produto_id);
+-- idx_vendas_produto_id criado na seção 018 (após tabela produtos)
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_user_id ON parcelas_vendas(user_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_venda_id ON parcelas_vendas(venda_id);
 CREATE INDEX IF NOT EXISTS idx_parcelas_vendas_data_vencimento ON parcelas_vendas(data_vencimento);
@@ -741,31 +767,7 @@ CREATE TRIGGER update_vendas_updated_at BEFORE UPDATE ON vendas
 CREATE TRIGGER update_parcelas_vendas_updated_at BEFORE UPDATE ON parcelas_vendas
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Função para calcular margem de lucro automaticamente
-CREATE OR REPLACE FUNCTION calcular_margem_lucro()
-RETURNS TRIGGER 
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  -- Calcular margem de lucro apenas para vendas de produtos
-  IF NEW.tipo_venda = 'produto' AND NEW.preco_custo > 0 AND NEW.valor_final > 0 THEN
-    NEW.margem_lucro = ((NEW.valor_final - NEW.preco_custo) / NEW.preco_custo) * 100;
-  ELSE
-    NEW.margem_lucro = 0;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
--- Criar trigger para calcular margem de lucro automaticamente
-DROP TRIGGER IF EXISTS trigger_calcular_margem_lucro_vendas ON vendas;
-CREATE TRIGGER trigger_calcular_margem_lucro_vendas
-  BEFORE INSERT OR UPDATE OF valor_final, preco_custo, tipo_venda ON vendas
-  FOR EACH ROW
-  EXECUTE FUNCTION calcular_margem_lucro();
+-- Função e trigger calcular_margem_lucro movidos para seção 018 (após colunas preco_custo/margem_lucro existirem)
 
 -- Função para atualizar recebida quando status for aprovado em parcelas de vendas
 CREATE OR REPLACE FUNCTION atualizar_recebida_quando_aprovado_venda()
@@ -826,6 +828,13 @@ CREATE TABLE IF NOT EXISTS compras (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Garantir colunas fornecedor_id, categoria_id e status em compras (banco já existente pode não tê-las)
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS fornecedor_id UUID REFERENCES fornecedores(id) ON DELETE SET NULL;
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+ALTER TABLE compras ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'em_andamento';
+ALTER TABLE compras DROP CONSTRAINT IF EXISTS compras_status_check;
+ALTER TABLE compras ADD CONSTRAINT compras_status_check CHECK (status IN ('finalizado', 'em_andamento', 'cancelado'));
 
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_compras_user_id ON compras(user_id);
@@ -1058,9 +1067,18 @@ CREATE TABLE IF NOT EXISTS orcamentos (
   cliente_email TEXT,
   cliente_telefone TEXT,
   cliente_endereco TEXT,
+  cliente_cpf TEXT,
+  cliente_cnpj TEXT,
+  cliente_razao_social TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Garantir cliente_id e status em orcamentos (banco já existente)
+ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE orcamentos ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'em_processo';
+ALTER TABLE orcamentos DROP CONSTRAINT IF EXISTS orcamentos_status_check;
+ALTER TABLE orcamentos ADD CONSTRAINT orcamentos_status_check CHECK (status IN ('concluido', 'em_processo', 'cancelado'));
 
 -- Tabela de itens do orçamento
 CREATE TABLE IF NOT EXISTS orcamento_itens (
@@ -1179,6 +1197,9 @@ CREATE TABLE IF NOT EXISTS produtos (
   UNIQUE(user_id, codigo) -- Garante que o código seja único por usuário
 );
 
+-- Garantir categoria_id em produtos (banco já existente)
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
+
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_produtos_user_id ON produtos(user_id);
 CREATE INDEX IF NOT EXISTS idx_produtos_categoria_id ON produtos(categoria_id);
@@ -1218,6 +1239,39 @@ CREATE TRIGGER update_produtos_updated_at BEFORE UPDATE ON produtos
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- =====================================================
+-- 018 - VENDAS: produto_id, preco_custo, margem_lucro (após produtos existir)
+-- =====================================================
+-- Referência a produtos(id) só pode ser criada depois da tabela produtos
+
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS produto_id UUID REFERENCES produtos(id) ON DELETE SET NULL;
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS preco_custo DECIMAL(10, 2) DEFAULT 0;
+ALTER TABLE vendas ADD COLUMN IF NOT EXISTS margem_lucro DECIMAL(10, 2) DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_vendas_produto_id ON vendas(produto_id);
+
+-- Função e trigger para calcular margem de lucro (exigem colunas preco_custo e margem_lucro)
+CREATE OR REPLACE FUNCTION calcular_margem_lucro()
+RETURNS TRIGGER 
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.tipo_venda = 'produto' AND NEW.preco_custo > 0 AND NEW.valor_final > 0 THEN
+    NEW.margem_lucro = ((NEW.valor_final - NEW.preco_custo) / NEW.preco_custo) * 100;
+  ELSE
+    NEW.margem_lucro = 0;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trigger_calcular_margem_lucro_vendas ON vendas;
+CREATE TRIGGER trigger_calcular_margem_lucro_vendas
+  BEFORE INSERT OR UPDATE OF valor_final, preco_custo, tipo_venda ON vendas
+  FOR EACH ROW
+  EXECUTE FUNCTION calcular_margem_lucro();
+
+-- =====================================================
 -- 010 - CONTRATOS (RECEITAS FIXAS MENSais)
 -- =====================================================
 
@@ -1240,6 +1294,10 @@ CREATE TABLE IF NOT EXISTS contratos (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Garantir cliente_id e categoria_id em contratos (banco já existente)
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS cliente_id UUID REFERENCES clientes(id) ON DELETE SET NULL;
+ALTER TABLE contratos ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
 
 -- Tabela para rastrear quais meses já foram gerados para cada contrato
 CREATE TABLE IF NOT EXISTS contratos_receitas_geradas (
@@ -1333,6 +1391,9 @@ CREATE TABLE IF NOT EXISTS servicos (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   UNIQUE(user_id, codigo) -- Garante que o código seja único por usuário
 );
+
+-- Garantir categoria_id em servicos (banco já existente)
+ALTER TABLE servicos ADD COLUMN IF NOT EXISTS categoria_id UUID REFERENCES categorias(id) ON DELETE SET NULL;
 
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_servicos_user_id ON servicos(user_id);
@@ -1584,6 +1645,81 @@ CREATE INDEX IF NOT EXISTS idx_compras_cartao_empresa_id ON compras(cartao_empre
 -- compras_cartao_empresa já possui compra_id (criado na seção 022)
 
 -- =====================================================
+-- 029 - CONTAS A PAGAR: VENDA_ID (CUSTO DA VENDA)
+-- =====================================================
+-- Despesa gerada pela venda de produto (custo); permite rastrear e reverter ao cancelar
+
+ALTER TABLE contas_a_pagar ADD COLUMN IF NOT EXISTS venda_id UUID REFERENCES vendas(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_contas_a_pagar_venda_id ON contas_a_pagar(venda_id) WHERE venda_id IS NOT NULL;
+
+-- =====================================================
+-- 030 - COMPRAS_ITENS (ITENS DA COMPRA → PRODUTOS)
+-- =====================================================
+-- Vincula compras a produtos; ao finalizar compra, estoque dos produtos é atualizado (entrada)
+
+CREATE TABLE IF NOT EXISTS compras_itens (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  compra_id UUID NOT NULL REFERENCES compras(id) ON DELETE CASCADE,
+  produto_id UUID NOT NULL REFERENCES produtos(id) ON DELETE CASCADE,
+  quantidade DECIMAL(10, 3) NOT NULL DEFAULT 1,
+  preco_unitario DECIMAL(10, 2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_compras_itens_compra_id ON compras_itens(compra_id);
+CREATE INDEX IF NOT EXISTS idx_compras_itens_produto_id ON compras_itens(produto_id);
+
+ALTER TABLE compras_itens ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view compras_itens of their compras" ON compras_itens;
+DROP POLICY IF EXISTS "Users can insert compras_itens for their compras" ON compras_itens;
+DROP POLICY IF EXISTS "Users can update compras_itens of their compras" ON compras_itens;
+DROP POLICY IF EXISTS "Users can delete compras_itens of their compras" ON compras_itens;
+
+CREATE POLICY "Users can view compras_itens of their compras"
+  ON compras_itens FOR SELECT
+  USING (EXISTS (SELECT 1 FROM compras WHERE compras.id = compras_itens.compra_id AND compras.user_id = auth.uid()));
+
+CREATE POLICY "Users can insert compras_itens for their compras"
+  ON compras_itens FOR INSERT
+  WITH CHECK (EXISTS (SELECT 1 FROM compras WHERE compras.id = compras_itens.compra_id AND compras.user_id = auth.uid()));
+
+CREATE POLICY "Users can update compras_itens of their compras"
+  ON compras_itens FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM compras WHERE compras.id = compras_itens.compra_id AND compras.user_id = auth.uid()));
+
+CREATE POLICY "Users can delete compras_itens of their compras"
+  ON compras_itens FOR DELETE
+  USING (EXISTS (SELECT 1 FROM compras WHERE compras.id = compras_itens.compra_id AND compras.user_id = auth.uid()));
+
+-- =====================================================
+-- 027 - RLS: OTIMIZAÇÃO AUTH.UID() (PERFORMANCE)
+-- =====================================================
+-- Usa (SELECT auth.uid()) para evitar reavaliação desnecessária nas políticas
+
+DO $$
+DECLARE
+  t text;
+  tables text[] := ARRAY['categorias','fornecedores','clientes','contas_a_pagar','parcelas_contas_pagar','contas_a_receber','parcelas_contas_receber'];
+  pol_prefix text;
+BEGIN
+  FOREACH t IN ARRAY tables
+  LOOP
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = t) THEN
+      pol_prefix := 'Users can view their own ' || t;
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol_prefix, t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'Users can insert their own ' || t, t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'Users can update their own ' || t, t);
+      EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'Users can delete their own ' || t, t);
+      EXECUTE format('CREATE POLICY %I ON %I FOR SELECT USING ((SELECT auth.uid()) = user_id)', pol_prefix, t);
+      EXECUTE format('CREATE POLICY %I ON %I FOR INSERT WITH CHECK ((SELECT auth.uid()) = user_id)', 'Users can insert their own ' || t, t);
+      EXECUTE format('CREATE POLICY %I ON %I FOR UPDATE USING ((SELECT auth.uid()) = user_id)', 'Users can update their own ' || t, t);
+      EXECUTE format('CREATE POLICY %I ON %I FOR DELETE USING ((SELECT auth.uid()) = user_id)', 'Users can delete their own ' || t, t);
+    END IF;
+  END LOOP;
+END $$;
+
+-- =====================================================
 -- 012 - CONFIGURAÇÃO DO STORAGE - BUCKETS E POLÍTICAS
 -- =====================================================
 -- IMPORTANTE: Antes de executar este SQL, você precisa criar os buckets manualmente:
@@ -1676,34 +1812,35 @@ USING (
 );
 
 -- =====================================================
--- FIM DO SCHEMA COMPLETO (26 MIGRAÇÕES INCORPORADAS)
+-- FIM DO SCHEMA COMPLETO (30 MIGRAÇÕES INCORPORADAS)
 -- =====================================================
 -- 
 -- RESUMO DAS TABELAS CRIADAS:
 -- 1. categorias - Categorias de despesas e receitas
 -- 2. fornecedores - Fornecedores da empresa
 -- 3. clientes - Clientes da empresa
--- 4. contas_a_pagar - Contas a pagar (status: pendente, aprovado, cancelado)
+-- 4. contas_a_pagar - Contas a pagar (status: pendente, aprovado, cancelado); venda_id (029) custo da venda
 -- 5. parcelas_contas_pagar - Parcelas de contas a pagar (status: pendente, aprovado, cancelado)
 -- 6. contas_a_receber - Contas a receber (status: pendente, aprovado, cancelado)
 -- 7. parcelas_contas_receber - Parcelas de contas a receber (status: pendente, aprovado, cancelado)
 -- 8. vendas - Vendas realizadas (status: pendente, aprovado, cancelado); orcamento_id (026) quando venda originada de orçamento concluído
 -- 9. parcelas_vendas - Parcelas de vendas (status: pendente, aprovado, cancelado)
 -- 10. compras - Compras empresariais (status: finalizado, em_andamento, cancelado); cartao_empresa_id quando forma_pagamento = cartao_credito
--- 11. fluxo_caixa - Fluxo de caixa consolidado (origens: conta_pagar, conta_receber, venda, compra, outro)
--- 12. perfis - Perfis de usuários (assinatura: trial_ends_at, subscription_status trialing|active|expired|canceled|free, stripe_*)
--- 13. orcamentos - Orçamentos (status: concluido, em_processo, cancelado)
--- 14. orcamento_itens - Itens dos orçamentos
--- 15. produtos - Produtos cadastrados (preco_custo, foto_url; grupo_produto_id)
--- 16. servicos - Serviços cadastrados (foto_url; grupo_servico_id)
--- 17. grupo_produtos - Grupos/pastas para organizar produtos (020)
--- 18. grupo_servicos - Grupos/pastas para organizar serviços (020)
--- 19. contratos - Contratos de receitas fixas mensais
--- 20. contratos_receitas_geradas - Rastreamento de receitas geradas a partir de contratos
--- 21. cartoes_empresa - Cartões de crédito da empresa (022)
--- 22. compras_cartao_empresa - Compras no cartão; compra_id = vínculo com compras (022/023)
--- 23. parcelas_cartao_empresa - Parcelas de compras parceladas no cartão
--- 24. faturas_pagas_cartao_empresa - Faturas pagas por cartão/mês
+-- 11. compras_itens - Itens da compra vinculados a produtos (030); entrada de estoque ao finalizar
+-- 12. fluxo_caixa - Fluxo de caixa consolidado (origens: conta_pagar, conta_receber, venda, compra, outro)
+-- 13. perfis - Perfis de usuários (assinatura: trial_ends_at, subscription_status trialing|active|expired|canceled|free, stripe_*)
+-- 14. orcamentos - Orçamentos (status: concluido, em_processo, cancelado); cliente_cpf/cnpj/razao_social (028)
+-- 15. orcamento_itens - Itens dos orçamentos
+-- 16. produtos - Produtos cadastrados (preco_custo, foto_url, estoque, estoque_minimo; grupo_produto_id)
+-- 17. servicos - Serviços cadastrados (foto_url; grupo_servico_id)
+-- 18. grupo_produtos - Grupos/pastas para organizar produtos (020)
+-- 19. grupo_servicos - Grupos/pastas para organizar serviços (020)
+-- 20. contratos - Contratos de receitas fixas mensais
+-- 21. contratos_receitas_geradas - Rastreamento de receitas geradas a partir de contratos
+-- 22. cartoes_empresa - Cartões de crédito da empresa (022)
+-- 23. compras_cartao_empresa - Compras no cartão; compra_id = vínculo com compras (022/023)
+-- 24. parcelas_cartao_empresa - Parcelas de compras parceladas no cartão
+-- 25. faturas_pagas_cartao_empresa - Faturas pagas por cartão/mês
 --
 -- FUNÇÕES:
 -- - update_updated_at_column() - Atualiza updated_at automaticamente (com search_path seguro)
@@ -1732,5 +1869,9 @@ USING (
 -- - Cartões empresa (022/023): cartao_empresa_id em compras; compra_id em compras_cartao_empresa
 -- - Perfis (025): subscription_status 'free' para usuários isentos de pagamento
 -- - Vendas (026): orcamento_id para vincular venda ao orçamento concluído
+-- - RLS (027): políticas com (SELECT auth.uid()) para melhor performance
+-- - Orçamentos (028): cliente_cpf, cliente_cnpj, cliente_razao_social (snapshot)
+-- - Contas a pagar (029): venda_id para despesa de custo da venda
+-- - Compras itens (030): compras_itens vinculando compra a produtos (estoque)
 --
 -- =====================================================

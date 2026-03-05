@@ -243,10 +243,10 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
       setCategorias(categoriasData || [])
 
-      // Carregar produtos
+      // Carregar produtos (inclui preco_custo para preencher automaticamente na venda)
       const { data: produtosData } = await supabase
         .from('produtos')
-        .select('id, nome, valor_unitario')
+        .select('id, nome, valor_unitario, preco_custo')
         .eq('user_id', userId)
         .eq('ativo', true)
         .order('nome', { ascending: true })
@@ -458,6 +458,50 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     setFormData(prev => ({ ...prev, valor_final: valorFinal.toFixed(2) }))
   }
 
+  /**
+   * Lança o custo da venda de produto como despesa (contas a pagar) e baixa o estoque.
+   * Assim a receita (venda) e a despesa (custo) ficam lançadas e o lucro real é a diferença.
+   */
+  async function lancarCustoVendaProduto(
+    vendaId: string,
+    produtoId: string,
+    precoCusto: number,
+    dataVenda: string,
+    descricaoVenda: string,
+    formaPagamento: string
+  ) {
+    const userId = session?.user?.id
+    if (!userId || precoCusto <= 0) return
+    const forma = formaPagamento || 'pix'
+    const descricaoDespesa = `Custo da venda - ${descricaoVenda}`
+    await supabase.from('contas_a_pagar').insert({
+      user_id: userId,
+      venda_id: vendaId,
+      descricao: descricaoDespesa,
+      valor: precoCusto,
+      data_vencimento: dataVenda,
+      data_pagamento: dataVenda,
+      paga: true,
+      status: 'aprovado',
+      parcelada: false,
+      total_parcelas: 1,
+      forma_pagamento: forma,
+    })
+    const { data: prod } = await supabase.from('produtos').select('estoque').eq('id', produtoId).single()
+    const estoqueAtual = Number((prod as { estoque?: number } | null)?.estoque ?? 0)
+    await supabase.from('produtos').update({ estoque: Math.max(0, estoqueAtual - 1) }).eq('id', produtoId)
+  }
+
+  /**
+   * Reverte o lançamento de custo (remove a despesa) e devolve 1 unidade ao estoque do produto.
+   */
+  async function reverterCustoVendaProduto(vendaId: string, produtoId: string) {
+    await supabase.from('contas_a_pagar').delete().eq('venda_id', vendaId)
+    const { data: prod } = await supabase.from('produtos').select('estoque').eq('id', produtoId).single()
+    const estoqueAtual = Number((prod as { estoque?: number } | null)?.estoque ?? 0)
+    await supabase.from('produtos').update({ estoque: estoqueAtual + 1 }).eq('id', produtoId)
+  }
+
   useEffect(() => {
     calcularValorFinal()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run when valor_total or valor_desconto change
@@ -476,15 +520,19 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     return '0'
   }
 
-  // Quando selecionar um produto, preencher automaticamente
+  // Quando selecionar um produto, preencher automaticamente descrição, valor e preço de custo
   useEffect(() => {
     if (formData.tipo_venda === 'produto' && formData.produto_id) {
       const produtoSelecionado = produtos.find(p => p.id === formData.produto_id)
       if (produtoSelecionado) {
+        const precoCusto = produtoSelecionado.preco_custo != null
+          ? Number(produtoSelecionado.preco_custo).toFixed(2)
+          : '0.00'
         setFormData(prev => ({
           ...prev,
           descricao: produtoSelecionado.nome,
           valor_total: produtoSelecionado.valor_unitario.toString(),
+          preco_custo: precoCusto,
         }))
       }
     }
@@ -539,10 +587,9 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
 
         if (error) throw error
 
-        // Atualizar fluxo de caixa se o status mudou
+        // Atualizar fluxo de caixa e custo/estoque (venda de produto) se o status mudou
         if (statusAnterior !== novoStatus) {
           if (novoStatus === 'aprovado' && statusAnterior !== 'aprovado') {
-            // Criar movimentaÃ§Ã£o no fluxo de caixa
             await supabase.from('fluxo_caixa').insert({
               user_id: userId,
               tipo: 'entrada',
@@ -553,14 +600,26 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
               data_movimentacao: formData.data_venda,
               forma_pagamento: formData.forma_pagamento || 'pix',
             })
+            if (formData.tipo_venda === 'produto' && formData.produto_id && precoCusto > 0) {
+              await lancarCustoVendaProduto(
+                editingVenda.id,
+                formData.produto_id,
+                precoCusto,
+                formData.data_venda,
+                formData.descricao,
+                formData.forma_pagamento || 'pix'
+              )
+            }
           } else if ((novoStatus === 'cancelado' || novoStatus === 'pendente') && statusAnterior === 'aprovado') {
-            // Remover movimentaÃ§Ã£o do fluxo de caixa
             await supabase
               .from('fluxo_caixa')
               .delete()
               .eq('user_id', userId)
               .eq('origem', 'venda')
               .eq('origem_id', editingVenda.id)
+            if (formData.tipo_venda === 'produto' && formData.produto_id) {
+              await reverterCustoVendaProduto(editingVenda.id, formData.produto_id)
+            }
           }
         }
 
@@ -739,6 +798,16 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
             data_movimentacao: formData.data_venda,
             forma_pagamento: formData.forma_pagamento || 'pix',
           })
+          if (formData.tipo_venda === 'produto' && formData.produto_id && precoCusto > 0) {
+            await lancarCustoVendaProduto(
+              novaVenda.id,
+              formData.produto_id,
+              precoCusto,
+              formData.data_venda,
+              formData.descricao,
+              formData.forma_pagamento || 'pix'
+            )
+          }
         }
 
         if (formData.parcelada && novaVenda && !comEntrada) {
@@ -778,6 +847,16 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                 forma_pagamento: formData.forma_pagamento || 'pix',
               })
             }
+          }
+          if (formData.status === 'aprovado' && formData.tipo_venda === 'produto' && formData.produto_id && precoCusto > 0) {
+            await lancarCustoVendaProduto(
+              novaVenda.id,
+              formData.produto_id,
+              precoCusto,
+              formData.data_venda,
+              formData.descricao,
+              formData.forma_pagamento || 'pix'
+            )
           }
         }
       }
@@ -826,6 +905,15 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     try {
       const userId = session?.user?.id
       if (!userId) return
+
+      const { data: vendaExcluir } = await supabase
+        .from('vendas')
+        .select('tipo_venda, produto_id, status')
+        .eq('id', id)
+        .single()
+      if (vendaExcluir && (vendaExcluir as { tipo_venda?: string }).tipo_venda === 'produto' && (vendaExcluir as { produto_id?: string }).produto_id && (vendaExcluir as { status?: string }).status === 'aprovado') {
+        await reverterCustoVendaProduto(id, (vendaExcluir as { produto_id: string }).produto_id)
+      }
 
       // Deletar movimentaÃ§Ãµes do fluxo de caixa relacionadas Ã  venda principal
       await supabase
@@ -888,6 +976,16 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
           .eq('id', id)
 
         if (error) throw error
+
+        const { data: vendaAtual } = await supabase
+          .from('vendas')
+          .select('tipo_venda, produto_id, preco_custo, descricao, data_venda, forma_pagamento')
+          .eq('id', id)
+          .single()
+        if (vendaAtual && (vendaAtual as { tipo_venda?: string }).tipo_venda === 'produto' && (vendaAtual as { produto_id?: string }).produto_id && Number((vendaAtual as { preco_custo?: number }).preco_custo) > 0) {
+          const v = vendaAtual as { produto_id: string; preco_custo: number; descricao: string; data_venda: string; forma_pagamento: string | null }
+          await lancarCustoVendaProduto(id, v.produto_id, v.preco_custo, v.data_venda, v.descricao, v.forma_pagamento || 'pix')
+        }
       }
 
       loadVendas()

@@ -18,6 +18,7 @@ import {
   FiSearch,
   FiXCircle,
   FiCreditCard,
+  FiPackage,
 } from 'react-icons/fi'
 import ActionButtons from '@/components/Empresarial/ActionButtons'
 import { DateInput } from '@/components/ui/DateInput'
@@ -68,6 +69,19 @@ interface CartaoEmpresa {
   vencimento?: number
 }
 
+interface Produto {
+  id: string
+  nome: string
+}
+
+/** Item de produto na compra (opcional) */
+interface CompraItemForm {
+  id: string
+  produto_id: string
+  quantidade: string
+  preco_unitario: string
+}
+
 interface ResumoCompras {
   totalCompras: number
   totalFinalizadas: number
@@ -90,8 +104,10 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
   const [compras, setCompras] = useState<Compra[]>([])
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
   const [cartoesEmpresa, setCartoesEmpresa] = useState<CartaoEmpresa[]>([])
   const [loading, setLoading] = useState(true)
+  const [compraItens, setCompraItens] = useState<CompraItemForm[]>([])
   const [showModal, setShowModal] = useState(false)
   const [showModalCategoria, setShowModalCategoria] = useState(false)
   const [editingCompra, setEditingCompra] = useState<Compra | null>(null)
@@ -233,6 +249,15 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
         .eq('user_id', userId)
         .order('nome', { ascending: true })
       setCartoesEmpresa((cartoesData || []) as CartaoEmpresa[])
+
+      // Produtos (para compra de produtos existentes - opcional)
+      const { data: produtosData } = await supabase
+        .from('produtos')
+        .select('id, nome')
+        .eq('user_id', userId)
+        .eq('ativo', true)
+        .order('nome', { ascending: true })
+      setProdutos((produtosData || []) as Produto[])
 
       await loadCompras()
     } catch (error) {
@@ -591,7 +616,6 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
 
       if (editingCompra) {
         if (editingCompra.origem === 'cartao_empresa') {
-          // Editar compra direta do cartão (tabela compras_cartao_empresa)
           const categoriaNome = categorias.find(c => c.id === formData.categoria_id)?.nome ?? formData.categoria_id ? 'Outros' : 'Outros'
           const { error } = await supabase
             .from('compras_cartao_empresa')
@@ -604,15 +628,65 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
             .eq('id', editingCompra.id)
           if (error) throw error
         } else {
-          const { error } = await supabase
-            .from('compras')
-            .update(compraData)
-            .eq('id', editingCompra.id)
+          const compraId = editingCompra.id
+          if (editingCompra.status === 'finalizado') {
+            const { data: itensAntigos } = await supabase
+              .from('compras_itens')
+              .select('produto_id, quantidade')
+              .eq('compra_id', compraId)
+            for (const row of itensAntigos || []) {
+              const prod = row as { produto_id: string; quantidade: number }
+              const { data: p } = await supabase.from('produtos').select('estoque').eq('id', prod.produto_id).single()
+              const atual = Number((p as { estoque?: number } | null)?.estoque ?? 0)
+              await supabase.from('produtos').update({ estoque: Math.max(0, atual - Number(prod.quantidade)) }).eq('id', prod.produto_id)
+            }
+          }
+          const { error } = await supabase.from('compras').update(compraData).eq('id', compraId)
           if (error) throw error
+          await supabase.from('compras_itens').delete().eq('compra_id', compraId)
+          const itensValidos = compraItens.filter((i) => i.produto_id && parseFloat(i.quantidade) > 0)
+          if (itensValidos.length > 0) {
+            await supabase.from('compras_itens').insert(
+              itensValidos.map((i) => ({
+                compra_id: compraId,
+                produto_id: i.produto_id,
+                quantidade: parseFloat(i.quantidade) || 1,
+                preco_unitario: i.preco_unitario ? parseFloat(i.preco_unitario) : null,
+              }))
+            )
+            if (formData.status === 'finalizado') {
+              for (const i of itensValidos) {
+                const qty = parseFloat(i.quantidade) || 1
+                const { data: prod } = await supabase.from('produtos').select('estoque').eq('id', i.produto_id).single()
+                const atual = Number((prod as { estoque?: number } | null)?.estoque ?? 0)
+                await supabase.from('produtos').update({ estoque: atual + qty }).eq('id', i.produto_id)
+              }
+            }
+          }
         }
       } else {
         const { data: novaCompra, error } = await supabase.from('compras').insert(compraData).select('id').single()
         if (error) throw error
+        const compraId = novaCompra?.id as string
+        const itensValidos = compraItens.filter((i) => i.produto_id && parseFloat(i.quantidade) > 0)
+        if (compraId && itensValidos.length > 0) {
+          await supabase.from('compras_itens').insert(
+            itensValidos.map((i) => ({
+              compra_id: compraId,
+              produto_id: i.produto_id,
+              quantidade: parseFloat(i.quantidade) || 1,
+              preco_unitario: i.preco_unitario ? parseFloat(i.preco_unitario) : null,
+            }))
+          )
+          if (formData.status === 'finalizado') {
+            for (const i of itensValidos) {
+              const qty = parseFloat(i.quantidade) || 1
+              const { data: prod } = await supabase.from('produtos').select('estoque').eq('id', i.produto_id).single()
+              const atual = Number((prod as { estoque?: number } | null)?.estoque ?? 0)
+              await supabase.from('produtos').update({ estoque: atual + qty }).eq('id', i.produto_id)
+            }
+          }
+        }
         if (isCartaoCredito && cartaoId && novaCompra?.id) {
           const categoriaNome = categorias.find(c => c.id === formData.categoria_id)?.nome ?? 'Outros'
           // Número de parcelas: quando "Compra parcelada" marcado, usar valor do formulário (2 a 24)
@@ -696,7 +770,7 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
     }
   }
 
-  const handleEdit = (compra: Compra) => {
+  const handleEdit = async (compra: Compra) => {
     setEditingCompra(compra)
     setTipoCompra(compra.fornecedor_id ? 'compra_com_fornecedor' : 'compra')
     const categoriaId = compra.categoria_id || (compra.categoria_nome ? categorias.find(c => c.nome === compra.categoria_nome)?.id ?? '' : '')
@@ -717,6 +791,22 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
       status: compra.status,
       observacoes: compra.observacoes || '',
     })
+    if (compra.origem === 'compra' && !compra.contaPagarId) {
+      const { data: itens } = await supabase
+        .from('compras_itens')
+        .select('produto_id, quantidade, preco_unitario')
+        .eq('compra_id', compra.id)
+      setCompraItens(
+        (itens || []).map((row: { produto_id: string; quantidade: number; preco_unitario?: number | null }) => ({
+          id: crypto.randomUUID(),
+          produto_id: row.produto_id,
+          quantidade: String(row.quantidade),
+          preco_unitario: row.preco_unitario != null ? String(row.preco_unitario) : '',
+        }))
+      )
+    } else {
+      setCompraItens([])
+    }
     setShowModal(true)
   }
 
@@ -730,6 +820,18 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
         const { error } = await supabase.from('parcelas_cartao_empresa').delete().eq('id', compra.id)
         if (error) throw error
       } else if (compra.origem !== 'conta_pagar') {
+        if (compra.status === 'finalizado') {
+          const { data: itens } = await supabase
+            .from('compras_itens')
+            .select('produto_id, quantidade')
+            .eq('compra_id', compra.id)
+          for (const row of itens || []) {
+            const prod = row as { produto_id: string; quantidade: number }
+            const { data: p } = await supabase.from('produtos').select('estoque').eq('id', prod.produto_id).single()
+            const atual = Number((p as { estoque?: number } | null)?.estoque ?? 0)
+            await supabase.from('produtos').update({ estoque: Math.max(0, atual - Number(prod.quantidade)) }).eq('id', prod.produto_id)
+          }
+        }
         const { error } = await supabase.from('compras').delete().eq('id', compra.id)
         if (error) throw error
       }
@@ -834,7 +936,23 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
       status: 'em_andamento',
       observacoes: '',
     })
+    setCompraItens([])
     setEditingCompra(null)
+  }
+
+  function addCompraItem() {
+    setCompraItens((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), produto_id: '', quantidade: '1', preco_unitario: '' },
+    ])
+  }
+
+  function removeCompraItem(id: string) {
+    setCompraItens((prev) => prev.filter((i) => i.id !== id))
+  }
+
+  function updateCompraItem(id: string, field: keyof CompraItemForm, value: string) {
+    setCompraItens((prev) => prev.map((i) => (i.id === id ? { ...i, [field]: value } : i)))
   }
 
   /** Calcula a data de vencimento da parcela: mesesAdicionar = 1 (1ª = próximo mês), 2 (2ª = daqui 2 meses), etc. */
@@ -1337,6 +1455,67 @@ export function ComprasContent({ sectionLabel, hideMainTitle }: ComprasContentPr
                       className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-neon"
                       placeholder="Ex: Compra de materiais"
                     />
+                  </div>
+
+                  {/* Produtos desta compra (opcional) - apenas para compras da tabela compras */}
+                  <div className="rounded-lg border emp-border p-4 emp-input-bg/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm emp-text-muted flex items-center gap-2">
+                        <FiPackage className="w-4 h-4" />
+                        Produtos desta compra (opcional)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addCompraItem}
+                        className="text-sm px-3 py-1.5 rounded-lg border emp-border emp-text-secondary hover:emp-text-primary transition-colors"
+                      >
+                        <FiPlus className="w-4 h-4 inline mr-1" />
+                        Adicionar produto
+                      </button>
+                    </div>
+                    <p className="text-xs emp-text-muted mb-3">
+                      Vincule produtos já cadastrados. Ao finalizar a compra, o estoque será atualizado.
+                    </p>
+                    {compraItens.length > 0 && (
+                      <div className="space-y-2">
+                        {compraItens.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex flex-wrap items-center gap-2 py-2 border-b emp-border last:border-0"
+                          >
+                            <select
+                              value={item.produto_id}
+                              onChange={(e) => updateCompraItem(item.id, 'produto_id', e.target.value)}
+                              className="flex-1 min-w-[140px] px-3 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-neon"
+                            >
+                              <option value="">Selecione o produto</option>
+                              {produtos.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.nome}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="number"
+                              step="0.001"
+                              min="0.001"
+                              placeholder="Qtd"
+                              value={item.quantidade}
+                              onChange={(e) => updateCompraItem(item.id, 'quantidade', e.target.value)}
+                              className="w-20 px-3 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary text-sm focus:outline-none focus:ring-2 focus:ring-neon"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeCompraItem(item.id)}
+                              className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                              title="Remover"
+                            >
+                              <FiXCircle className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
