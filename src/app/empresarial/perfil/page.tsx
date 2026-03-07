@@ -408,10 +408,10 @@ export default function PerfilPage() {
                         className="object-contain rounded-lg border emp-border p-2 emp-bg-card"
                         unoptimized
                         onLoad={() => {
-                          console.log('✅ Logo carregada com sucesso:', previewUrl || logoUrl)
+                          // Logo carregada com sucesso
                         }}
                         onError={(e) => {
-                          console.error('❌ Erro ao carregar logo:', previewUrl || logoUrl)
+                          console.error('Erro ao carregar logo')
                           const target = e.target as HTMLImageElement
                           target.style.display = 'none'
                           if (!previewUrl) {

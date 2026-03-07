@@ -518,7 +518,7 @@ export default function OrcamentoEstiloPage() {
                           className="object-contain rounded-lg border border-gray-600"
                           unoptimized
                           onError={(e) => {
-                            console.error('Erro ao carregar logo:', logoUrl)
+                            console.error('Erro ao carregar logo')
                             const target = e.target as HTMLImageElement
                             target.style.display = 'none'
                           }}
@@ -576,7 +576,7 @@ export default function OrcamentoEstiloPage() {
           <h2 className="text-xl font-semibold emp-text-primary mb-4">Preview do Orçamento</h2>
           {logoUrl && (
             <div className="mb-2 text-xs emp-text-muted">
-              Logo carregada: {logoUrl.substring(0, 50)}...
+              Logo configurada
             </div>
           )}
           {!logoUrl && (
@@ -620,12 +620,12 @@ export default function OrcamentoEstiloPage() {
                     className="object-contain"
                     unoptimized
                     onError={(e) => {
-                      console.error('Erro ao carregar logo no preview:', logoUrl)
+                      console.error('Erro ao carregar logo no preview')
                       const target = e.target as HTMLImageElement
                       target.style.display = 'none'
                     }}
                     onLoad={() => {
-                      console.log('Logo carregada com sucesso no preview:', logoUrl)
+                      // Logo carregada com sucesso no preview
                     }}
                   />
                 </div>

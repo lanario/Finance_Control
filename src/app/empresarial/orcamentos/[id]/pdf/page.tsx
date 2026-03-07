@@ -275,7 +275,7 @@ class PDFGenerator {
             }
           }
           img.onerror = () => {
-            console.error('Erro ao carregar logo:', logoUrl)
+            console.error('Erro ao carregar logo')
             resolve()
           }
         })

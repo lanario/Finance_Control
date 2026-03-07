@@ -1,16 +1,20 @@
 -- =====================================================
 -- SCHEMA COMPLETO - FINANCEIRO PESSOAL
 -- =====================================================
--- Execute este arquivo no SQL Editor do Supabase Pessoal
--- 
--- IMPORTANTE: Este schema está otimizado e atualizado com:
+--
+-- COMO ATUALIZAR O SCHEMA NO SUPABASE:
+-- 1. Abra o projeto Pessoal no Dashboard do Supabase
+-- 2. Vá em SQL Editor > New query
+-- 3. Cole o conteúdo completo deste arquivo
+-- 4. Execute (Run). O script é idempotente: pode rodar em banco novo
+--    ou existente (cria o que falta e atualiza políticas/triggers).
+--
+-- Este schema inclui:
 -- - Funções com search_path seguro (corrige vulnerabilidades)
 -- - Todas as tabelas, índices, RLS e triggers configurados
--- - Storage buckets e políticas configuradas
--- - Suporte completo a cartões, compras, parcelas, investimentos, sonhos
--- - Upload de PDFs de faturas
+-- - Storage: buckets criados via SQL + políticas
+-- - Cartões, compras, parcelas, investimentos, sonhos, faturas PDF
 --
--- ORDEM DE EXECUÇÃO: Execute este arquivo completo de uma vez
 -- =====================================================
 
 -- =====================================================
@@ -856,14 +860,14 @@ CREATE TRIGGER update_faturas_pdf_updated_at BEFORE UPDATE ON faturas_pdf
 -- =====================================================
 -- 017 - CONFIGURAÇÃO DO STORAGE - BUCKETS E POLÍTICAS
 -- =====================================================
--- IMPORTANTE: Antes de executar este SQL, você precisa criar os buckets manualmente:
--- 1. Vá em Storage no dashboard do Supabase
--- 2. Clique em "New bucket"
--- 3. Crie os seguintes buckets:
---    - "avatars" (para fotos de perfil)
---    - "faturas-pdf" (para PDFs de faturas)
--- 4. Configure os buckets como PRIVADOS (public: false) para segurança
--- =====================================================
+-- Cria os buckets se não existirem (idempotente)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('avatars', 'avatars', false)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('faturas-pdf', 'faturas-pdf', false)
+ON CONFLICT (id) DO NOTHING;
 
 -- Políticas para o bucket avatars
 DROP POLICY IF EXISTS "Users can view their own avatars" ON storage.objects;
@@ -1004,8 +1008,6 @@ CREATE TRIGGER update_meses_pagos_updated_at BEFORE UPDATE ON meses_pagos
 -- 1. update_updated_at_column() - Atualiza updated_at automaticamente
 -- 2. atualizar_valor_atual_sonho() - Atualiza valor_atual dos sonhos
 --
--- STORAGE BUCKETS NECESSÁRIOS (criar manualmente):
--- 1. avatars - Para fotos de perfil
--- 2. faturas-pdf - Para PDFs de faturas
+-- STORAGE: buckets "avatars" e "faturas-pdf" são criados pelo próprio script (ON CONFLICT DO NOTHING).
 --
 -- =====================================================

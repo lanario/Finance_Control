@@ -353,9 +353,14 @@ export default function EditarOrcamentoPage() {
       return
     }
 
+    const userId = session?.user?.id
+    if (!userId) {
+      alert('Sessão expirada. Faça login novamente para salvar o orçamento.')
+      return
+    }
+
     setSaving(true)
     try {
-      const userId = session?.user?.id
       const { valorTotal, valorFinal } = calcularTotais()
 
       // Atualizar orçamento
@@ -394,10 +399,12 @@ export default function EditarOrcamentoPage() {
       if (orcamentoError) throw orcamentoError
 
       // Deletar itens antigos
-      await supabase
+      const { error: deleteItensError } = await supabase
         .from('orcamento_itens')
         .delete()
         .eq('orcamento_id', orcamentoId)
+
+      if (deleteItensError) throw deleteItensError
 
       // Inserir novos itens
       const itensData = itens.map(item => ({
@@ -450,9 +457,11 @@ export default function EditarOrcamentoPage() {
       }
 
       router.push('/empresarial/orcamentos')
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao salvar orçamento:', error)
-      alert('Erro ao salvar orçamento')
+      const err = error as { message?: string; error_description?: string }
+      const errorMessage = err?.message || err?.error_description || (typeof error === 'string' ? error : 'Erro desconhecido ao salvar.')
+      alert(`Erro ao salvar orçamento:\n\n${errorMessage}`)
     } finally {
       setSaving(false)
     }
@@ -1403,7 +1412,7 @@ export default function EditarOrcamentoPage() {
               <h2 className="text-xl font-semibold text-white mb-4">Preview do Orçamento</h2>
               {logoUrl && (
                 <div className="mb-2 text-xs text-gray-400">
-                  Logo carregada: {logoUrl.substring(0, 50)}...
+                  Logo configurada
                 </div>
               )}
               {!logoUrl && (

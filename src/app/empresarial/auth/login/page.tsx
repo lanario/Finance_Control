@@ -111,13 +111,14 @@ export default function LoginEmpresarialPage() {
         return
       }
 
+      // Redirecionar para /empresarial/auth/callback após confirmação: estabelece sessão e envia para o dashboard
       const getRedirectUrl = () => {
         if (typeof window !== 'undefined') {
-          return `${window.location.origin}/empresarial/auth/login?confirmed=true`
+          return `${window.location.origin}/empresarial/auth/callback`
         }
         return process.env.NEXT_PUBLIC_SITE_URL
-          ? `${process.env.NEXT_PUBLIC_SITE_URL}/empresarial/auth/login?confirmed=true`
-          : 'http://localhost:3000/empresarial/auth/login?confirmed=true'
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/empresarial/auth/callback`
+          : 'https://infinity-lines.vercel.app/empresarial/auth/callback'
       }
 
       const { error: signUpError } = await supabaseEmpresarial.auth.signUp({

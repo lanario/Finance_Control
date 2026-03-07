@@ -115,10 +115,24 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [showModalProduto, setShowModalProduto] = useState(false)
+  const [showModalServico, setShowModalServico] = useState(false)
   const [editingVenda, setEditingVenda] = useState<Venda | null>(null)
   const [abaAtiva, setAbaAtiva] = useState<'servico' | 'produto'>('servico')
   
-  // FormulÃ¡rios para criar produto/serviÃ§o
+  // Formulários para criar produto/serviço
+  const [formDataServico, setFormDataServico] = useState({
+    nome: '',
+    valor_unitario: '',
+    descricao: '',
+    categoria_id: '',
+  })
+
+  const [showModalCategoria, setShowModalCategoria] = useState(false)
+  const [formDataCategoria, setFormDataCategoria] = useState({
+    nome: '',
+    cor: '#6366f1',
+  })
+
   const [formDataProduto, setFormDataProduto] = useState({
     nome: '',
     codigo: '',
@@ -1026,7 +1040,7 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
       const userId = session?.user?.id
       if (!userId) return
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('produtos')
         .insert({
           user_id: userId,
@@ -1041,11 +1055,17 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
           observacoes: formDataProduto.observacoes || null,
           ativo: true,
         })
+        .select('id')
+        .single()
 
       if (error) throw error
 
       alert('Produto criado com sucesso!')
       setShowModalProduto(false)
+      if (inserted?.id) {
+        setFormData((prev) => ({ ...prev, produto_id: inserted.id }))
+        await loadData()
+      }
       setFormDataProduto({
         nome: '',
         codigo: '',
@@ -1062,6 +1082,86 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
     } catch (error) {
       console.error('Erro ao criar produto:', error)
       alert('Erro ao criar produto')
+    }
+  }
+
+  const handleCriarCategoria = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const { data: inserted, error } = await supabase
+        .from('categorias')
+        .insert({
+          user_id: userId,
+          nome: formDataCategoria.nome.trim(),
+          descricao: null,
+          cor: formDataCategoria.cor,
+          tipo: 'receita',
+          ativo: true,
+        })
+        .select('id')
+        .single()
+
+      if (error) throw error
+
+      alert('Categoria criada com sucesso!')
+      setShowModalCategoria(false)
+      setFormDataCategoria({ nome: '', cor: '#6366f1' })
+      if (inserted?.id) setFormData((prev) => ({ ...prev, categoria_id: inserted.id }))
+      await loadData()
+    } catch (err) {
+      console.error('Erro ao criar categoria:', err)
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code: string }).code : null
+      if (code === '23505') alert('Já existe uma categoria com este nome.')
+      else alert('Erro ao criar categoria.')
+    }
+  }
+
+  const handleCriarServico = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const userId = session?.user?.id
+      if (!userId) return
+
+      const { data: inserted, error } = await supabase
+        .from('servicos')
+        .insert({
+          user_id: userId,
+          nome: formDataServico.nome.trim(),
+          valor_unitario: parseFloat(formDataServico.valor_unitario) || 0,
+          descricao: formDataServico.descricao.trim() || null,
+          categoria_id: formDataServico.categoria_id || null,
+          ativo: true,
+        })
+        .select('id')
+        .single()
+
+      if (error) throw error
+
+      alert('Serviço criado com sucesso!')
+      setShowModalServico(false)
+      setFormDataServico({
+        nome: '',
+        valor_unitario: '',
+        descricao: '',
+        categoria_id: '',
+      })
+      if (inserted?.id) {
+        const nomeServico = formDataServico.nome.trim()
+        const valorServico = parseFloat(formDataServico.valor_unitario) || 0
+        setFormData((prev) => ({
+          ...prev,
+          servico_id: inserted.id,
+          descricao: nomeServico,
+          valor_total: valorServico.toString(),
+        }))
+      }
+      await loadData()
+    } catch (error) {
+      console.error('Erro ao criar serviço:', error)
+      alert('Erro ao criar serviço')
     }
   }
 
@@ -1353,7 +1453,20 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
           </div>
         </div>
 
-        {/* Botão para cadastrar novo produto (serviços são cadastrados em Produtos e Serviços) */}
+        {/* Botão para cadastrar novo serviço (aba Vendas por Serviço) */}
+        {abaAtiva === 'servico' && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => setShowModalServico(true)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors bg-blue-500/20 border border-blue-500/50 text-blue-400 hover:bg-blue-500/30"
+            >
+              <FiPlus className="w-4 h-4" />
+              <span>Cadastrar Novo Serviço</span>
+            </button>
+          </div>
+        )}
+
+        {/* Botão para cadastrar novo produto (aba Vendas por Produto) */}
         {abaAtiva === 'produto' && (
           <div className="flex justify-end">
             <button
@@ -1768,8 +1881,8 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                         value={formData.servico_id}
                         onChange={(e) => {
                           const servicoSelecionado = servicos.find(s => s.id === e.target.value)
-                          setFormData({ 
-                            ...formData, 
+                          setFormData({
+                            ...formData,
                             servico_id: e.target.value,
                             descricao: servicoSelecionado?.nome || formData.descricao,
                             valor_total: servicoSelecionado ? servicoSelecionado.valor_unitario.toString() : formData.valor_total
@@ -1784,6 +1897,15 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                           </option>
                         ))}
                       </select>
+                      <button
+                        type="button"
+                        onClick={() => setShowModalServico(true)}
+                        className="px-3 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                        style={{ backgroundColor: 'var(--emp-accent)' }}
+                        title="Cadastrar novo serviço"
+                      >
+                        <FiPlus className="w-5 h-5" />
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1809,18 +1931,28 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                   {/* Categoria */}
                   <div>
                     <label className="block text-sm font-medium emp-text-secondary mb-2">Categoria</label>
-                    <select
-                      value={formData.categoria_id}
-                      onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
-                      className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
-                    >
-                      <option value="">Selecione uma categoria</option>
-                      {categorias.map((categoria) => (
-                        <option key={categoria.id} value={categoria.id}>
-                          {categoria.nome}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex gap-2">
+                      <select
+                        value={formData.categoria_id}
+                        onChange={(e) => setFormData({ ...formData, categoria_id: e.target.value })}
+                        className="flex-1 px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-[var(--emp-accent)]"
+                      >
+                        <option value="">Selecione uma categoria</option>
+                        {categorias.map((categoria) => (
+                          <option key={categoria.id} value={categoria.id}>
+                            {categoria.nome}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setShowModalCategoria(true)}
+                        className="px-3 py-2 rounded-lg transition-colors bg-blue-500/20 border border-blue-500/50 text-blue-400 hover:bg-blue-500/30"
+                        title="Nova categoria"
+                      >
+                        <FiPlus className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2227,6 +2359,158 @@ export function VendasContent({ sectionLabel, hideMainTitle }: VendasContentProp
                     style={{ backgroundColor: 'var(--emp-accent)' }}
                   >
                     Criar Produto
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Cadastrar Novo Serviço */}
+        {showModalServico && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+            <div className="emp-bg-card rounded-lg p-6 w-full max-w-lg border emp-border max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold emp-text-primary">Cadastrar Novo Serviço</h2>
+                <button
+                  onClick={() => setShowModalServico(false)}
+                  className="emp-text-muted hover:emp-text-primary transition-colors"
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCriarServico} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Nome do Serviço *</label>
+                  <input
+                    type="text"
+                    value={formDataServico.nome}
+                    onChange={(e) => setFormDataServico({ ...formDataServico, nome: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: Consultoria, Manutenção"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Valor (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formDataServico.valor_unitario}
+                    onChange={(e) => setFormDataServico({ ...formDataServico, valor_unitario: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0,00"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Categoria</label>
+                  <select
+                    value={formDataServico.categoria_id}
+                    onChange={(e) => setFormDataServico({ ...formDataServico, categoria_id: e.target.value })}
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Nenhuma</option>
+                    {categorias.map((categoria) => (
+                      <option key={categoria.id} value={categoria.id}>
+                        {categoria.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Descrição</label>
+                  <textarea
+                    value={formDataServico.descricao}
+                    onChange={(e) => setFormDataServico({ ...formDataServico, descricao: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Descrição do serviço"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowModalServico(false)}
+                    className="px-6 py-2 border emp-border rounded-lg emp-text-secondary hover:opacity-90 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-6 py-2 rounded-lg transition-colors emp-text-primary hover:opacity-90"
+                    style={{ backgroundColor: 'var(--emp-accent)' }}
+                  >
+                    Criar Serviço
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Nova Categoria (receita) */}
+        {showModalCategoria && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[80] p-4">
+            <div className="emp-bg-card rounded-lg p-6 w-full max-w-md border emp-border">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold emp-text-primary">Nova Categoria</h2>
+                <button
+                  onClick={() => { setShowModalCategoria(false); setFormDataCategoria({ nome: '', cor: '#6366f1' }); }}
+                  className="emp-text-muted hover:emp-text-primary transition-colors"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
+              <form onSubmit={handleCriarCategoria} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Nome da categoria *</label>
+                  <input
+                    type="text"
+                    value={formDataCategoria.nome}
+                    onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nome: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: Consultoria"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium emp-text-secondary mb-2">Cor</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={formDataCategoria.cor}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                      className="w-10 h-10 rounded border emp-border cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={formDataCategoria.cor}
+                      onChange={(e) => setFormDataCategoria({ ...formDataCategoria, cor: e.target.value })}
+                      className="flex-1 px-4 py-2 emp-input-bg border emp-border rounded-lg emp-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => { setShowModalCategoria(false); setFormDataCategoria({ nome: '', cor: '#6366f1' }); }}
+                    className="px-4 py-2 border emp-border rounded-lg emp-text-secondary hover:opacity-90"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 rounded-lg emp-text-primary hover:opacity-90"
+                    style={{ backgroundColor: 'var(--emp-accent)' }}
+                  >
+                    Criar Categoria
                   </button>
                 </div>
               </form>

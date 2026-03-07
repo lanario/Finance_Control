@@ -122,16 +122,14 @@ export default function LoginPage() {
       console.log('🔍 Tentando criar conta...')
       console.log('URL:', supabaseUrl ? '✅' : '❌')
       
-      // Determinar a URL base da aplicação para redirecionamento após confirmação
+      // Redirecionar para /pessoal/auth/callback após confirmação: estabelece sessão e envia para o dashboard
       const getRedirectUrl = () => {
-        // Se estiver no cliente, usar a URL atual
         if (typeof window !== 'undefined') {
-          return `${window.location.origin}/auth/login?confirmed=true`
+          return `${window.location.origin}/pessoal/auth/callback`
         }
-        // Se estiver no servidor, usar variável de ambiente ou URL padrão da VPS
-        return process.env.NEXT_PUBLIC_SITE_URL 
-          ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login?confirmed=true`
-          : 'http://69.62.87.91:3001/auth/login?confirmed=true'
+        return process.env.NEXT_PUBLIC_SITE_URL
+          ? `${process.env.NEXT_PUBLIC_SITE_URL}/pessoal/auth/callback`
+          : 'https://infinity-lines.vercel.app/pessoal/auth/callback'
       }
       
       const redirectUrl = getRedirectUrl()
@@ -207,7 +205,7 @@ export default function LoginPage() {
         typeof window !== 'undefined'
           ? window.location.origin
           : (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000')
-      const redirectTo = `${baseUrl}/auth/callback`
+      const redirectTo = `${baseUrl}/pessoal/auth/callback`
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo },
